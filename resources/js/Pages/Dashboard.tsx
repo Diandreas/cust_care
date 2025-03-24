@@ -26,10 +26,22 @@ interface DashboardStats {
         recipients_count: number;
     }[];
     subscription: {
+        id: number;
         plan: string;
-        sms_allowed: number;
+        plan_id: number;
+        clients_limit: number;
+        campaigns_limit: number;
+        campaign_sms_limit: number;
+        personal_sms_quota: number;
         sms_used: number;
+        campaigns_used: number;
+        next_renewal_date: string;
+        auto_renew: boolean;
         expires_at: string;
+        sms_usage_percent: number;
+        campaigns_usage_percent: number;
+        sms_quota_low: boolean;
+        sms_quota_exhausted: boolean;
     } | null;
 }
 
@@ -49,6 +61,53 @@ export default function Dashboard({ auth, stats }: PageProps<{ stats: DashboardS
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
+                    {/* Alertes */}
+                    {stats.subscription?.sms_quota_low && (
+                        <div className="mb-6 rounded-lg bg-yellow-50 p-4 dark:bg-yellow-900/20">
+                            <div className="flex">
+                                <div className="shrink-0">
+                                    <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Attention : Quota de SMS faible</h3>
+                                    <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                                        <p>
+                                            Vous avez utilisé plus de 80% de votre quota de SMS mensuel.{" "}
+                                            <a href={route('subscription.addons.index')} className="font-medium underline">
+                                                Acheter des SMS supplémentaires
+                                            </a>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {stats.subscription?.sms_quota_exhausted && (
+                        <div className="mb-6 rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
+                            <div className="flex">
+                                <div className="shrink-0">
+                                    <svg className="h-5 w-5 text-red-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">Alerte : Quota de SMS épuisé</h3>
+                                    <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                                        <p>
+                                            Votre quota de SMS est complètement épuisé. Vous ne pourrez plus envoyer de messages jusqu'à ce que vous achetiez des SMS supplémentaires.{" "}
+                                            <a href={route('subscription.addons.index')} className="font-medium underline">
+                                                Acheter des SMS maintenant
+                                            </a>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Cartes de statistiques */}
                     <div className="mb-6 grid grid-cols-1 gap-6 md:grid-cols-3">
                         {/* Nombre total de clients */}
@@ -115,31 +174,37 @@ export default function Dashboard({ auth, stats }: PageProps<{ stats: DashboardS
                         </div>
                     </div>
 
-                    {/* Informations d'abonnement */}
+                    {/* Abonnement */}
                     {stats.subscription && (
-                        <div className="mb-6 overflow-hidden rounded-lg bg-gradient-to-r from-purple-700 to-indigo-800 shadow-lg dark:from-purple-900 dark:to-indigo-950">
+                        <div className="mb-6 overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800">
                             <div className="px-4 py-5 sm:p-6">
-                                <h3 className="mb-3 text-xl font-semibold text-white">{t('dashboard.subscription.yourSubscription')}</h3>
-                                <div className="flex flex-col md:flex-row md:justify-between">
-                                    <div className="mb-4 md:mb-0">
-                                        <p className="text-sm text-white/80">{t('dashboard.subscription.plan')}</p>
-                                        <p className="text-lg font-bold text-white capitalize">
-                                            {stats.subscription.plan === 'starter' && 'Pack Starter'}
-                                            {stats.subscription.plan === 'business' && 'Pack Business'}
-                                            {stats.subscription.plan === 'enterprise' && 'Pack Enterprise'}
-                                        </p>
+                                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">{t('dashboard.subscription.yourSubscription')}</h3>
+                                <div className="mt-5 space-y-3">
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.subscription.plan')}</span>
+                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{stats.subscription.plan}</span>
                                     </div>
-                                    <div className="mb-4 md:mb-0">
-                                        <p className="text-sm text-white/80">{t('dashboard.subscription.smsUsage')}</p>
-                                        <p className="text-lg font-bold text-white">{stats.subscription.sms_used} / {stats.subscription.sms_allowed}</p>
-                                    </div>
-                                    <div className="mb-4 md:mb-0">
-                                        <p className="text-sm text-white/80">{t('dashboard.subscription.expiration')}</p>
-                                        <p className="text-lg font-bold text-white">{formatDate(stats.subscription.expires_at)}</p>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.subscription.smsUsage')}</span>
+                                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                            {stats.subscription.sms_used} / {stats.subscription.personal_sms_quota}
+                                        </span>
                                     </div>
                                     <div>
-                                        <a href={route('subscription.index')} className="inline-flex items-center justify-center rounded-md border border-transparent bg-white px-4 py-2 text-sm font-medium text-indigo-600 hover:bg-white/90">
-                                            {t('dashboard.subscription.manage')}
+                                        <div className="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                            <div
+                                                className={`absolute left-0 h-full ${stats.subscription.sms_usage_percent > 80 ? 'bg-red-500' : 'bg-green-500'}`}
+                                                style={{ width: `${stats.subscription.sms_usage_percent}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.subscription.expiration')}</span>
+                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(stats.subscription.next_renewal_date)}</span>
+                                    </div>
+                                    <div className="pt-2">
+                                        <a href={route('subscription.index')} className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                                            {t('dashboard.subscription.manage')} &rarr;
                                         </a>
                                     </div>
                                 </div>

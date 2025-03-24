@@ -1,9 +1,8 @@
 {
     "app": {
-        "name": "EliteSMS",
-        "tagline": "The professional SMS management solution"
+        "name": "EliteSMS"
     },
-    "common": {
+    "navigation": {
         "dashboard": "Dashboard",
         "clients": "Clients",
         "campaigns": "Campaigns",
@@ -11,97 +10,270 @@
         "templates": "Templates",
         "events": "Events",
         "subscription": "Subscription",
-        "profile": "Profile",
+        "profile": "My Profile",
         "settings": "Settings",
         "logout": "Logout",
-        "search": "Search",
+        "openSidebar": "Open sidebar"
+    },
+    "common": {
+        "dashboard": "Dashboard",
         "save": "Save",
         "cancel": "Cancel",
-        "delete": "Delete",
-        "edit": "Edit",
         "create": "Create",
-        "add": "Add",
+        "edit": "Edit",
+        "delete": "Delete",
+        "details": "Details",
         "actions": "Actions",
-        "confirm": "Confirm",
         "back": "Back",
+        "previous": "Previous",
         "next": "Next",
-        "send": "Send",
-        "status": "Status",
-        "date": "Date",
         "name": "Name",
         "email": "Email",
         "phone": "Phone",
-        "category": "Category",
-        "allCategories": "All categories",
         "birthday": "Birthday",
         "notes": "Notes",
+        "description": "Description",
+        "category": "Category",
+        "categories": "Categories",
+        "clients": "Clients",
+        "campaigns": "Campaigns",
+        "messages": "Messages",
+        "templates": "Templates",
+        "status": "Status",
+        "type": "Type",
+        "add": "Add",
+        "search": "Search",
+        "allCategories": "All Categories",
         "noResults": "No results found",
-        "total": "Total",
-        "details": "Details",
-        "loading": "Loading...",
-        "sortBy": "Sort by",
-        "filter": "Filter",
-        "apply": "Apply",
-        "reset": "Reset",
-        "import": "Import",
-        "export": "Export",
-        "upload": "Upload",
-        "download": "Download",
-        "yes": "Yes",
-        "no": "No",
-        "enable": "Enable",
-        "disable": "Disable",
-        "enabled": "Enabled",
-        "disabled": "Disabled",
-        "required": "Required",
-        "optional": "Optional"
+        "active": "Active",
+        "inactive": "Inactive",
+        "send": "Send"
     },
     "auth": {
-        "login": "Login",
-        "register": "Register",
-        "forgotPassword": "Forgot your password?",
-        "resetPassword": "Reset password",
-        "rememberMe": "Remember me",
-        "alreadyRegistered": "Already registered?",
-        "loginToYourAccount": "Log in to your account",
-        "createYourAccount": "Create your account"
+        "login": "Log in",
+        "register": "Register"
+    },
+    "pagination": {
+        "showing": "Showing",
+        "of": "of",
+        "results": "results",
+        "previous": "Previous",
+        "next": "Next"
     },
     "dashboard": {
         "title": "Dashboard",
         "stats": {
-            "clients": "Clients",
-            "messages": "Messages",
-            "campaigns": "Campaigns",
-            "clientsRegistered": "Registered clients",
-            "messagesSent": "Messages sent",
-            "campaignsCreated": "Campaigns created"
+            "clients": "Total Clients",
+            "messages": "Total Messages",
+            "campaigns": "Total Campaigns"
         },
         "subscription": {
-            "yourSubscription": "Your subscription",
+            "yourSubscription": "Your Subscription",
             "plan": "Plan",
-            "smsUsage": "SMS usage",
+            "smsUsage": "SMS Usage",
             "expiration": "Expiration",
-            "manage": "Manage subscription"
+            "manage": "Manage Subscription"
         },
         "recentMessages": {
-            "title": "Recent messages",
-            "description": "Latest messages sent to your clients",
-            "viewAll": "View all messages",
-            "noMessages": "No recent messages",
-            "sendMessage": "Send a message"
+            "title": "Recent Messages",
+            "description": "Your most recent messages sent",
+            "noMessages": "No messages sent yet",
+            "viewAll": "View all messages"
         },
         "upcomingCampaigns": {
-            "title": "Upcoming campaigns",
+            "title": "Upcoming Campaigns",
             "description": "Your scheduled campaigns",
-            "viewAll": "View all campaigns",
-            "noCampaigns": "No scheduled campaigns",
-            "createCampaign": "Create a campaign",
-            "recipients": "recipients"
+            "recipients": "recipients",
+            "noCampaigns": "No upcoming campaigns",
+            "viewAll": "View all campaigns"
         }
+    },
+    "clients": {
+        "create": "Create Client",
+        "edit": "Edit Client",
+        "selectCategory": "Select a category",
+        "confirmDelete": "Are you sure you want to delete this client?"
+    },
+    "campaigns": {
+        "create": "Create Campaign",
+        "createNew": "Create a New Campaign",
+        "step1Title": "Basic Information",
+        "step2Title": "Message Content",
+        "step3Title": "Recipients",
+        "step4Title": "Schedule & Review",
+        "name": "Campaign Name",
+        "selectTemplate": "Select a Template",
+        "noTemplate": "No Template",
+        "messageContent": "Message Content",
+        "charactersRemaining": "Characters remaining",
+        "clientsSelected": "clients selected",
+        "noClientsAvailable": "No clients available",
+        "selectByCategory": "Select by Category",
+        "selectIndividualClients": "Select Individual Clients",
+        "sendingOptions": "Sending Options",
+        "sendImmediately": "Send Immediately",
+        "scheduleSending": "Schedule Sending",
+        "scheduleDateTime": "Schedule Date & Time",
+        "summary": "Summary",
+        "recipients": "Recipients",
+        "sendingTime": "Sending Time",
+        "messageSize": "Message Size",
+        "characters": "characters",
+        "messagePreview": "Message Preview",
+        "createCampaign": "Create Campaign",
+        "immediately": "Immediately",
+        "status": {
+            "all": "All",
+            "draft": "Draft",
+            "scheduled": "Scheduled",
+            "sent": "Sent",
+            "paused": "Paused"
+        },
+        "scheduledDate": "Scheduled Date",
+        "delivery": "Delivery",
+        "delivered": "Delivered",
+        "failed": "Failed",
+        "pause": "Pause",
+        "resume": "Resume",
+        "noCampaigns": "No campaigns found",
+        "confirmDelete": "Are you sure you want to delete this campaign?",
+        "deliveryRate": "Delivery Rate",
+        "recipientsList": "Recipients List",
+        "details": "Campaign Details",
+        "createdOn": "Created on",
+        "nameRequired": "Campaign name is required",
+        "messageRequired": "Message content is required",
+        "recipientsRequired": "You must select at least one recipient",
+        "filterByStatus": "Filter by status"
+    },
+    "messages": {
+        "send": "Send Message",
+        "selectRecipient": "Select a Recipient",
+        "chooseClient": "Choose a client",
+        "useTemplate": "Use a Template",
+        "noTemplate": "No Template",
+        "messageContent": "Message Content",
+        "charactersRemaining": "Characters remaining",
+        "recipient": "Recipient",
+        "content": "Content",
+        "sentAt": "Sent At",
+        "noMessages": "No messages found",
+        "status": {
+            "sent": "Sent",
+            "delivered": "Delivered",
+            "failed": "Failed"
+        },
+        "type": {
+            "promotional": "Promotional",
+            "personal": "Personal",
+            "automatic": "Automatic"
+        }
+    },
+    "categories": {
+        "create": "Create Category",
+        "noCategories": "No categories found",
+        "confirmDelete": "Are you sure you want to delete this category?",
+        "clientsCount": "{count} clients"
+    },
+    "templates": {
+        "create": "Create Template",
+        "cancel": "Cancel",
+        "name": "Template Name",
+        "content": "Template Content",
+        "isGlobal": "Make this template available to all users",
+        "globalDescription": "Global templates can be used by all users on your team",
+        "yourTemplates": "Your Templates",
+        "noTemplates": "No templates found",
+        "confirmDelete": "Are you sure you want to delete this template?",
+        "global": "Global"
+    },
+    "automatic-events": {
+        "title": "Automatic Events",
+        "create": "Create Event",
+        "name": "Event Name",
+        "type": "Event Type",
+        "types": {
+            "birthday": "Birthday",
+            "holiday": "Holiday",
+            "custom": "Custom"
+        },
+        "daysBefore": "Days Before",
+        "daysAfter": "Days After",
+        "date": "Date",
+        "messageTemplate": "Message Template",
+        "isActive": "Active",
+        "yourEvents": "Your Events",
+        "noEvents": "No events found",
+        "confirmDelete": "Are you sure you want to delete this event?"
+    },
+    "subscription": {
+        "title": "Subscription",
+        "currentPlan": "Current Plan",
+        "period": "Period",
+        "status": {
+            "active": "Active",
+            "cancelled": "Cancelled",
+            "expired": "Expired"
+        },
+        "cancellationNotice": "Your subscription will be cancelled at the end of your current billing period",
+        "smsUsage": "SMS Usage",
+        "smsUsed": "SMS Used",
+        "topUp": "Top Up",
+        "limits": "Account Limits",
+        "clientLimit": "Client Limit",
+        "campaignLimit": "Campaign Limit",
+        "changePlan": "Change Plan",
+        "plans": {
+            "title": "Subscription Plans",
+            "heading": "Choose the right plan for your business",
+            "subheading": "All plans include unlimited templates and automatic events",
+            "popular": "Most Popular",
+            "month": "month",
+            "year": "year",
+            "currentPlan": "Current Plan",
+            "selectPlan": "Select Plan",
+            "faq": {
+                "title": "Frequently Asked Questions",
+                "q1": "Can I change my plan later?",
+                "a1": "Yes, you can upgrade or downgrade your plan at any time. Changes will take effect at the start of your next billing cycle.",
+                "q2": "How do SMS credits work?",
+                "a2": "Each plan comes with a monthly allocation of SMS credits. One credit equals one SMS. Unused credits may roll over depending on your plan.",
+                "q3": "What happens if I run out of SMS credits?",
+                "a3": "You can purchase additional SMS credits at any time. Your base plan will renew with the standard allocation at the start of each billing cycle."
+            }
+        },
+        "noSubscription": "You don't have an active subscription"
+    },
+    "settings": {
+        "title": "Settings",
+        "tabs": {
+            "general": "General",
+            "notifications": "Notifications",
+            "data": "Data & Export"
+        },
+        "language": "Language",
+        "theme": "Theme",
+        "themes": {
+            "light": "Light",
+            "dark": "Dark",
+            "system": "System default"
+        },
+        "dateFormat": "Date Format",
+        "timeFormat": "Time Format",
+        "notifications": {
+            "email": "Email Notifications",
+            "emailDescription": "Receive important updates and summaries via email",
+            "sms": "SMS Notifications",
+            "smsDescription": "Receive alerts via SMS",
+            "push": "Push Notifications",
+            "pushDescription": "Receive notifications in your browser"
+        },
+        "exportFormat": "Export Format",
+        "includeArchived": "Include archived items",
+        "exportData": "Export Data"
     },
     "profile": {
         "title": "Profile",
-        "loading": "Loading profile...",
         "tabs": {
             "profile": "Profile",
             "security": "Security",
@@ -113,17 +285,18 @@
         "email": "Email",
         "phone": "Phone",
         "company": "Company",
-        "currentPassword": "Current password",
-        "newPassword": "New password",
-        "confirmPassword": "Confirm new password",
-        "updatePassword": "Update password",
+        "currentPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm Password",
+        "updatePassword": "Update Password",
+        "loading": "Loading profile information...",
         "notifications": {
-            "email": "Email notifications",
-            "emailDescription": "Receive notifications by email",
-            "sms": "SMS notifications",
-            "smsDescription": "Receive notifications by SMS",
-            "push": "Push notifications",
-            "pushDescription": "Receive push notifications"
+            "email": "Email Notifications",
+            "emailDescription": "Receive important updates and summaries via email",
+            "sms": "SMS Notifications",
+            "smsDescription": "Receive alerts via SMS",
+            "push": "Push Notifications",
+            "pushDescription": "Receive notifications in your browser"
         },
         "payments": {
             "date": "Date",
@@ -138,457 +311,77 @@
         },
         "api": {
             "title": "API Keys",
-            "name": "Name",
-            "key": "Key",
-            "lastUsed": "Last used",
-            "generateKey": "Generate new key"
+            "generateKey": "Generate New Key",
+            "name": "Key Name",
+            "key": "API Key",
+            "lastUsed": "Last Used"
         }
     },
-    "subscription": {
-        "title": "Subscription",
-        "currentPlan": "Current plan",
-        "plan": "Plan",
-        "status": "Status",
-        "statuses": {
-            "active": "Active",
-            "expired": "Expired",
-            "cancelled": "Cancelled"
+    "welcome": {
+        "hero": {
+            "title": "Connect with your customers via SMS like never before",
+            "subtitle": "Professional platform to manage your SMS campaigns, automate events, and build customer loyalty.",
+            "startButton": "Start for free",
+            "learnMoreButton": "Learn more"
         },
-        "smsUsage": "SMS usage",
-        "used": "Used",
-        "total": "Total",
-        "expiration": "Expiration",
-        "expiresOn": "Expires on",
-        "manage": "Manage subscription",
-        "changePlan": "Change plan",
-        "topUp": "Top up SMS",
-        "noSubscription": "No active subscription",
-        "plans": {
-            "title": "Subscription plans",
-            "subtitle": "Choose the plan that best suits your needs",
-            "monthly": "Monthly",
-            "yearly": "Yearly",
-            "popular": "Popular",
-            "features": "Features",
-            "subscribe": "Subscribe",
-            "currentPlan": "Current plan",
-            "faq": {
-                "title": "Frequently asked questions",
-                "questions": {
-                    "billing": "How does billing work?",
-                    "billingAnswer": "You are billed monthly or yearly depending on your chosen plan. You can change your plan at any time.",
-                    "sms": "How do SMS credits work?",
-                    "smsAnswer": "Each plan includes a certain number of SMS credits. Unused credits roll over to the next month.",
-                    "support": "What kind of support do you offer?",
-                    "supportAnswer": "We offer 24/7 support via email and chat for all our customers."
-                }
+        "features": {
+            "title": "Powerful Features",
+            "subtitle": "Everything you need to efficiently manage your SMS communications",
+            "feature1": {
+                "title": "Client Management",
+                "description": "Organize your contacts by categories and keep all important information."
+            },
+            "feature2": {
+                "title": "SMS Campaigns",
+                "description": "Create and schedule targeted SMS campaigns to reach your customers at the right time."
+            },
+            "feature3": {
+                "title": "Automatic Events",
+                "description": "Automate messages for birthdays, holidays, and other important events."
             }
         },
-        "billing": {
-            "title": "Billing",
-            "history": "Billing history",
-            "invoices": "Invoices",
-            "paymentMethods": "Payment methods",
-            "addPaymentMethod": "Add payment method",
-            "card": "Card",
-            "cardNumber": "Card number",
-            "cardExpiry": "Expiry date",
-            "cardCVC": "CVC",
-            "billingAddress": "Billing address"
-        }
-    },
-    "campaigns": {
-        "title": "Campaigns",
-        "create": "Create campaign",
-        "edit": "Edit campaign",
-        "show": "Campaign details",
-        "name": "Campaign name",
-        "description": "Description",
-        "template": "Template",
-        "selectTemplate": "Select template",
-        "message": "Message",
-        "recipients": "Recipients",
-        "selectRecipients": "Select recipients",
-        "schedule": "Schedule",
-        "scheduleType": "Schedule type",
-        "scheduleTypes": {
-            "now": "Send now",
-            "scheduled": "Scheduled",
-            "recurring": "Recurring"
-        },
-        "scheduleDate": "Send date",
-        "scheduleTime": "Send time",
-        "recurrence": "Recurrence",
-        "recurrenceTypes": {
-            "daily": "Daily",
-            "weekly": "Weekly",
-            "monthly": "Monthly",
-            "yearly": "Yearly"
-        },
-        "status": "Status",
-        "statuses": {
-            "draft": "Draft",
-            "scheduled": "Scheduled",
-            "sending": "Sending",
-            "completed": "Completed",
-            "failed": "Failed",
-            "cancelled": "Cancelled"
-        },
-        "stats": {
-            "total": "Total",
-            "sent": "Sent",
-            "delivered": "Delivered",
-            "failed": "Failed",
-            "pending": "Pending"
-        },
-        "actions": {
-            "create": "Create campaign",
-            "edit": "Edit",
-            "delete": "Delete",
-            "send": "Send",
-            "cancel": "Cancel",
-            "pause": "Pause",
-            "resume": "Resume"
-        },
-        "filter": {
-            "all": "All campaigns",
-            "draft": "Draft",
-            "scheduled": "Scheduled",
-            "active": "Active",
-            "completed": "Completed",
-            "failed": "Failed",
-            "cancelled": "Cancelled"
-        },
-        "metrics": {
-            "deliveryRate": "Delivery rate",
-            "openRate": "Open rate",
-            "clickRate": "Click rate",
-            "conversionRate": "Conversion rate"
-        }
-    },
-    "categories": {
-        "title": "Categories",
-        "create": "Create category",
-        "edit": "Edit category",
-        "name": "Name",
-        "description": "Description",
-        "color": "Color",
-        "icon": "Icon",
-        "actions": {
-            "create": "Create category",
-            "edit": "Edit",
-            "delete": "Delete"
-        },
-        "filter": {
-            "all": "All categories",
-            "active": "Active",
-            "inactive": "Inactive"
-        },
-        "selectColor": "Select color",
-        "selectIcon": "Select icon"
-    },
-    "clients": {
-        "title": "Clients",
-        "create": "Add client",
-        "edit": "Edit client",
-        "show": "Client details",
-        "name": "Name",
-        "email": "Email",
-        "phone": "Phone",
-        "company": "Company",
-        "category": "Category",
-        "birthday": "Birthday",
-        "notes": "Notes",
-        "stats": {
-            "messages": "Messages",
-            "campaigns": "Campaigns",
-            "lastContact": "Last contact"
-        },
-        "actions": {
-            "create": "Add client",
-            "edit": "Edit",
-            "delete": "Delete",
-            "sendMessage": "Send message"
-        },
-        "filter": {
-            "all": "All clients",
-            "recentlyAdded": "Recently added",
-            "recentlyContacted": "Recently contacted",
-            "notContacted": "Not contacted",
-            "byCategory": "By category"
-        },
-        "import": {
-            "title": "Import clients",
-            "file": "CSV file",
-            "template": "Download template",
-            "instructions": "Instructions",
-            "mapping": "Field mapping",
-            "review": "Review data",
-            "process": "Process import"
-        },
-        "export": {
-            "title": "Export clients",
-            "format": "Format",
-            "selection": "Selection",
-            "allFields": "All fields",
-            "selectedFields": "Selected fields"
-        },
-        "groups": {
-            "title": "Groups",
-            "create": "Create group",
-            "edit": "Edit group",
-            "name": "Name",
-            "members": "Members",
-            "addToGroup": "Add to group",
-            "removeFromGroup": "Remove from group"
-        }
-    },
-    "messages": {
-        "title": "Messages",
-        "create": "Send message",
-        "template": "Template",
-        "recipient": "Recipient",
-        "content": "Content",
-        "schedule": "Schedule",
-        "scheduleDate": "Send date",
-        "scheduleTime": "Send time",
-        "status": "Status",
-        "statuses": {
-            "draft": "Draft",
-            "scheduled": "Scheduled",
-            "sent": "Sent",
-            "delivered": "Delivered",
-            "failed": "Failed"
-        },
-        "actions": {
-            "send": "Send",
-            "schedule": "Schedule",
-            "cancel": "Cancel",
-            "delete": "Delete"
-        },
-        "filter": {
-            "all": "All messages",
-            "sent": "Sent",
-            "delivered": "Delivered",
-            "failed": "Failed",
-            "byDate": "By date"
-        },
-        "variables": {
-            "title": "Variables",
-            "name": "Client name",
-            "firstName": "First name",
-            "lastName": "Last name",
-            "company": "Company",
-            "customFields": "Custom fields"
-        },
-        "preview": {
-            "title": "Preview",
-            "sendTestMessage": "Send test message"
-        },
-        "reportDetails": {
-            "title": "Delivery report",
-            "sentAt": "Sent at",
-            "deliveredAt": "Delivered at",
-            "status": "Status",
-            "messageId": "Message ID",
-            "cost": "Cost"
-        }
-    },
-    "settings": {
-        "title": "Settings",
-        "general": {
-            "title": "General",
-            "language": "Language",
-            "theme": "Theme",
-            "dateFormat": "Date format",
-            "timeFormat": "Time format",
-            "timezone": "Timezone"
-        },
-        "notifications": {
-            "title": "Notifications",
-            "email": "Email notifications",
-            "sms": "SMS notifications",
-            "push": "Push notifications",
-            "types": {
-                "campaigns": "Campaigns",
-                "messages": "Messages",
-                "subscription": "Subscription",
-                "system": "System"
-            }
-        },
-        "data": {
-            "title": "Data",
-            "export": "Export data",
-            "import": "Import data",
-            "backup": "Backup",
-            "delete": "Delete account"
-        },
-        "advanced": {
-            "title": "Advanced",
-            "apiAccess": "API access",
-            "smsGateway": "SMS gateway",
-            "configureGateway": "Configure gateway",
-            "logs": "System logs",
-            "showLogs": "Show logs",
-            "debugMode": "Debug mode"
-        },
-        "regional": {
-            "title": "Regional",
-            "country": "Country",
-            "language": "Language",
-            "currency": "Currency",
-            "dateFormat": "Date format",
-            "timeFormat": "Time format",
-            "firstDayOfWeek": "First day of week"
-        },
-        "interface": {
-            "title": "Interface",
-            "theme": "Theme",
-            "themes": {
-                "light": "Light",
-                "dark": "Dark",
-                "system": "System default"
+        "pricing": {
+            "title": "Pricing Plans",
+            "subtitle": "Choose the plan that best fits your needs",
+            "popular": "Most Popular",
+            "starter": {
+                "name": "Starter Pack",
+                "description": "Ideal for small businesses and beginners",
+                "feature1": "Up to 100 clients",
+                "feature2": "2 campaigns per month (200 SMS)",
+                "feature3": "50 personalized SMS per month",
+                "feature4": "Email support"
             },
-            "density": "Density",
-            "densities": {
-                "comfortable": "Comfortable",
-                "compact": "Compact"
+            "business": {
+                "name": "Business Pack",
+                "description": "Perfect for growing businesses",
+                "feature1": "Up to 500 clients",
+                "feature2": "4 campaigns per month (1,000 SMS)",
+                "feature3": "200 personalized SMS per month",
+                "feature4": "10% rollover of unused SMS",
+                "feature5": "Priority support"
             },
-            "animations": "Animations",
-            "menuLayout": "Menu layout"
+            "enterprise": {
+                "name": "Enterprise Pack",
+                "description": "For businesses with significant needs",
+                "feature1": "Up to 2,000 clients",
+                "feature2": "8 campaigns per month (4,000 SMS)",
+                "feature3": "500 personalized SMS per month",
+                "feature4": "20% rollover of unused SMS",
+                "feature5": "Dedicated 24/7 support"
+            },
+            "button": "Get started"
+        },
+        "cta": {
+            "title": "Ready to improve your SMS communications?",
+            "subtitle": "Sign up today and get 50 free SMS to try our service",
+            "button": "Create a free account"
+        },
+        "footer": {
+            "privacy": "Privacy",
+            "terms": "Terms",
+            "contact": "Contact",
+            "rights": "All rights reserved."
         }
-    },
-    "templates": {
-        "title": "Templates",
-        "create": "Create template",
-        "edit": "Edit template",
-        "name": "Name",
-        "content": "Content",
-        "category": "Category",
-        "variables": "Variables",
-        "preview": "Preview",
-        "actions": {
-            "create": "Create template",
-            "edit": "Edit",
-            "delete": "Delete",
-            "duplicate": "Duplicate"
-        },
-        "filter": {
-            "all": "All templates",
-            "recent": "Recent",
-            "favorite": "Favorite",
-            "byCategory": "By category"
-        },
-        "tags": {
-            "title": "Formatting tags",
-            "bold": "Bold",
-            "italic": "Italic",
-            "link": "Link",
-            "variable": "Variable"
-        },
-        "help": {
-            "title": "Help",
-            "personalization": "How to personalize templates",
-            "variables": "How to use variables",
-            "formatting": "Formatting options"
-        },
-        "sharing": {
-            "title": "Sharing",
-            "share": "Share template",
-            "export": "Export template",
-            "import": "Import template"
-        }
-    },
-    "automaticEvents": {
-        "title": "Automatic Events",
-        "create": "Create event",
-        "edit": "Edit event",
-        "name": "Event name",
-        "type": "Event type",
-        "types": {
-            "birthday": "Birthday",
-            "anniversary": "Anniversary",
-            "holiday": "Holiday",
-            "custom": "Custom"
-        },
-        "template": "Message template",
-        "selectTemplate": "Select template",
-        "schedule": "Schedule",
-        "beforeDays": "Days before",
-        "afterDays": "Days after",
-        "status": "Status",
-        "active": "Active",
-        "inactive": "Inactive",
-        "noEvents": "No automatic events configured",
-        "actions": {
-            "create": "Create event",
-            "edit": "Edit",
-            "delete": "Delete",
-            "activate": "Activate",
-            "deactivate": "Deactivate",
-            "test": "Test event"
-        },
-        "filter": {
-            "all": "All events",
-            "active": "Active",
-            "inactive": "Inactive",
-            "byType": "By type"
-        }
-    },
-    "errors": {
-        "general": "An error occurred",
-        "notFound": "Resource not found",
-        "unauthorized": "Unauthorized access",
-        "forbidden": "Forbidden",
-        "server": "Server error",
-        "network": "Network error",
-        "validation": "Validation error",
-        "subscription": "Subscription error",
-        "insufficientCredits": "Insufficient SMS credits",
-        "invalidPhone": "Invalid phone number",
-        "invalidEmail": "Invalid email address",
-        "messageFailed": "Message failed to send",
-        "campaignFailed": "Campaign failed",
-        "importFailed": "Import failed",
-        "exportFailed": "Export failed",
-        "fileUpload": "File upload error",
-        "invalidFile": "Invalid file format"
-    },
-    "validation": {
-        "required": "This field is required",
-        "email": "Please enter a valid email address",
-        "phone": "Please enter a valid phone number",
-        "minLength": "Must be at least {0} characters",
-        "maxLength": "Must be less than {0} characters",
-        "passwordMatch": "Passwords must match",
-        "unique": "This value is already in use",
-        "date": "Please enter a valid date",
-        "number": "Please enter a valid number",
-        "url": "Please enter a valid URL",
-        "integer": "Please enter a whole number",
-        "decimal": "Please enter a decimal number"
-    },
-    "confirmations": {
-        "delete": "Are you sure you want to delete this item?",
-        "deleteMultiple": "Are you sure you want to delete these items?",
-        "cancel": "Are you sure you want to cancel?",
-        "discard": "Are you sure you want to discard changes?",
-        "sendNow": "Are you sure you want to send this now?",
-        "schedule": "Are you sure you want to schedule this?",
-        "logout": "Are you sure you want to log out?",
-        "deleteAccount": "Are you sure you want to delete your account? This action cannot be undone.",
-        "changePlan": "Are you sure you want to change your subscription plan?"
-    },
-    "pagination": {
-        "previous": "Previous",
-        "next": "Next",
-        "page": "Page",
-        "of": "of",
-        "perPage": "Per page",
-        "showing": "Showing",
-        "to": "to",
-        "of": "of",
-        "entries": "entries",
-        "all": "All"
     }
 }

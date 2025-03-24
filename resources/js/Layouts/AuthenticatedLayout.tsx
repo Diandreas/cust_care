@@ -11,6 +11,7 @@ import {
     DropdownMenuTrigger,
 } from '@/Components/ui/dropdown-menu';
 import { ThemeToggle } from '@/Components/ThemeToggle';
+import LanguageSwitcher from '@/Components/LanguageSwitcher';
 import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -18,6 +19,7 @@ import {
     CreditCard, Settings, User as UserIcon, LayoutDashboard,
     Menu, X, LogOut, BellRing
 } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 interface AuthenticatedLayoutProps {
     user: User;
@@ -28,15 +30,16 @@ interface AuthenticatedLayoutProps {
 export default function AuthenticatedLayout({ user, header, children }: AuthenticatedLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { url } = usePage();
+    const { t } = useTranslation();
 
     const navigation = [
-        { name: 'Tableau de bord', href: route('dashboard'), icon: LayoutDashboard, current: url.startsWith('/dashboard') },
-        { name: 'Clients', href: route('clients.index'), icon: Users, current: url.startsWith('/clients') },
-        { name: 'Campagnes', href: route('campaigns.index'), icon: Send, current: url.startsWith('/campaigns') },
-        { name: 'Messages', href: route('messages.index'), icon: MessageSquare, current: url.startsWith('/messages') },
-        { name: 'Modèles', href: route('templates.index'), icon: FileText, current: url.startsWith('/templates') },
-        { name: 'Événements', href: route('automatic-events.index'), icon: Calendar, current: url.startsWith('/automatic-events') },
-        { name: 'Abonnement', href: route('subscription.index'), icon: CreditCard, current: url.startsWith('/subscription') },
+        { name: t('navigation.dashboard'), href: route('dashboard'), icon: LayoutDashboard, current: url.startsWith('/dashboard') },
+        { name: t('navigation.clients'), href: route('clients.index'), icon: Users, current: url.startsWith('/clients') },
+        { name: t('navigation.campaigns'), href: route('campaigns.index'), icon: Send, current: url.startsWith('/campaigns') },
+        { name: t('navigation.messages'), href: route('messages.index'), icon: MessageSquare, current: url.startsWith('/messages') },
+        { name: t('navigation.templates'), href: route('templates.index'), icon: FileText, current: url.startsWith('/templates') },
+        { name: t('navigation.events'), href: route('automatic-events.index'), icon: Calendar, current: url.startsWith('/automatic-events') },
+        { name: t('navigation.subscription'), href: route('subscription.index'), icon: CreditCard, current: url.startsWith('/subscription') },
     ];
 
     return (
@@ -156,7 +159,7 @@ export default function AuthenticatedLayout({ user, header, children }: Authenti
                             className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500 lg:hidden dark:border-gray-800 dark:text-gray-400"
                             onClick={() => setSidebarOpen(true)}
                         >
-                            <span className="sr-only">Ouvrir la barre latérale</span>
+                            <span className="sr-only">{t('navigation.openSidebar')}</span>
                             <Menu className="h-6 w-6" aria-hidden="true" />
                         </button>
 
@@ -164,6 +167,7 @@ export default function AuthenticatedLayout({ user, header, children }: Authenti
                             <div className="flex items-center">{header}</div>
                             <div className="ml-4 flex items-center gap-4">
                                 <ThemeToggle />
+                                <LanguageSwitcher />
 
                                 <Button variant="ghost" size="icon" className="relative">
                                     <BellRing className="h-5 w-5" />
@@ -199,19 +203,19 @@ export default function AuthenticatedLayout({ user, header, children }: Authenti
                                         <DropdownMenuItem asChild>
                                             <Link href={route('profile.edit')} className="flex cursor-pointer items-center">
                                                 <UserIcon className="mr-2 h-4 w-4" />
-                                                <span>Mon profil</span>
+                                                <span>{t('navigation.profile')}</span>
                                             </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem asChild>
                                             <Link href={route('subscription.index')} className="flex cursor-pointer items-center">
                                                 <CreditCard className="mr-2 h-4 w-4" />
-                                                <span>Abonnement</span>
+                                                <span>{t('navigation.subscription')}</span>
                                             </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem asChild>
                                             <Link href={route('dashboard')} className="flex cursor-pointer items-center">
                                                 <Settings className="mr-2 h-4 w-4" />
-                                                <span>Paramètres</span>
+                                                <span>{t('navigation.settings')}</span>
                                             </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
@@ -223,7 +227,7 @@ export default function AuthenticatedLayout({ user, header, children }: Authenti
                                                 className="flex w-full cursor-pointer items-center text-red-600 hover:text-red-700 dark:text-red-500 dark:hover:text-red-400"
                                             >
                                                 <LogOut className="mr-2 h-4 w-4" />
-                                                <span>Déconnexion</span>
+                                                <span>{t('navigation.logout')}</span>
                                             </Link>
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>

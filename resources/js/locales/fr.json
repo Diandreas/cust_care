@@ -1,9 +1,8 @@
 {
     "app": {
-        "name": "EliteSMS",
-        "tagline": "La solution professionnelle de gestion SMS"
+        "name": "EliteSMS"
     },
-    "common": {
+    "navigation": {
         "dashboard": "Tableau de bord",
         "clients": "Clients",
         "campaigns": "Campagnes",
@@ -11,97 +10,270 @@
         "templates": "Modèles",
         "events": "Événements",
         "subscription": "Abonnement",
-        "profile": "Profil",
+        "profile": "Mon profil",
         "settings": "Paramètres",
         "logout": "Déconnexion",
-        "search": "Rechercher",
+        "openSidebar": "Ouvrir la barre latérale"
+    },
+    "common": {
+        "dashboard": "Tableau de bord",
         "save": "Enregistrer",
         "cancel": "Annuler",
-        "delete": "Supprimer",
-        "edit": "Modifier",
         "create": "Créer",
-        "add": "Ajouter",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "details": "Détails",
         "actions": "Actions",
-        "confirm": "Confirmer",
         "back": "Retour",
+        "previous": "Précédent",
         "next": "Suivant",
-        "send": "Envoyer",
-        "status": "Statut",
-        "date": "Date",
         "name": "Nom",
         "email": "Email",
         "phone": "Téléphone",
-        "category": "Catégorie",
-        "allCategories": "Toutes les catégories",
         "birthday": "Date de naissance",
         "notes": "Notes",
+        "description": "Description",
+        "category": "Catégorie",
+        "categories": "Catégories",
+        "clients": "Clients",
+        "campaigns": "Campagnes",
+        "messages": "Messages",
+        "templates": "Modèles",
+        "status": "Statut",
+        "type": "Type",
+        "add": "Ajouter",
+        "search": "Rechercher",
+        "allCategories": "Toutes les catégories",
         "noResults": "Aucun résultat trouvé",
-        "total": "Total",
-        "details": "Détails",
-        "loading": "Chargement...",
-        "sortBy": "Trier par",
-        "filter": "Filtrer",
-        "apply": "Appliquer",
-        "reset": "Réinitialiser",
-        "import": "Importer",
-        "export": "Exporter",
-        "upload": "Télécharger",
-        "download": "Télécharger",
-        "yes": "Oui",
-        "no": "Non",
-        "enable": "Activer",
-        "disable": "Désactiver",
-        "enabled": "Activé",
-        "disabled": "Désactivé",
-        "required": "Obligatoire",
-        "optional": "Optionnel"
+        "active": "Actif",
+        "inactive": "Inactif",
+        "send": "Envoyer"
     },
     "auth": {
         "login": "Connexion",
-        "register": "Inscription",
-        "forgotPassword": "Mot de passe oublié?",
-        "resetPassword": "Réinitialiser le mot de passe",
-        "rememberMe": "Se souvenir de moi",
-        "alreadyRegistered": "Déjà inscrit?",
-        "loginToYourAccount": "Connectez-vous à votre compte",
-        "createYourAccount": "Créez votre compte"
+        "register": "Inscription"
+    },
+    "pagination": {
+        "showing": "Affichage de",
+        "of": "sur",
+        "results": "résultats",
+        "previous": "Précédent",
+        "next": "Suivant"
     },
     "dashboard": {
         "title": "Tableau de bord",
         "stats": {
-            "clients": "Clients",
-            "messages": "Messages",
-            "campaigns": "Campagnes",
-            "clientsRegistered": "Clients enregistrés",
-            "messagesSent": "Messages envoyés",
-            "campaignsCreated": "Campagnes créées"
+            "clients": "Total Clients",
+            "messages": "Total Messages",
+            "campaigns": "Total Campagnes"
         },
         "subscription": {
-            "yourSubscription": "Votre abonnement",
-            "plan": "Plan",
+            "yourSubscription": "Votre Abonnement",
+            "plan": "Forfait",
             "smsUsage": "Utilisation SMS",
             "expiration": "Expiration",
             "manage": "Gérer l'abonnement"
         },
         "recentMessages": {
             "title": "Messages récents",
-            "description": "Les derniers messages envoyés à vos clients",
-            "viewAll": "Voir tous les messages",
-            "noMessages": "Aucun message récent",
-            "sendMessage": "Envoyer un message"
+            "description": "Vos messages récemment envoyés",
+            "noMessages": "Aucun message envoyé",
+            "viewAll": "Voir tous les messages"
         },
         "upcomingCampaigns": {
             "title": "Campagnes à venir",
-            "description": "Vos prochaines campagnes programmées",
-            "viewAll": "Voir toutes les campagnes",
-            "noCampaigns": "Aucune campagne programmée",
-            "createCampaign": "Créer une campagne",
-            "recipients": "destinataires"
+            "description": "Vos campagnes programmées",
+            "recipients": "destinataires",
+            "noCampaigns": "Aucune campagne à venir",
+            "viewAll": "Voir toutes les campagnes"
         }
+    },
+    "clients": {
+        "create": "Créer un client",
+        "edit": "Modifier le client",
+        "selectCategory": "Sélectionner une catégorie",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce client ?"
+    },
+    "campaigns": {
+        "create": "Créer une campagne",
+        "createNew": "Créer une nouvelle campagne",
+        "step1Title": "Informations de base",
+        "step2Title": "Contenu du message",
+        "step3Title": "Destinataires",
+        "step4Title": "Programmation et récapitulatif",
+        "name": "Nom de la campagne",
+        "selectTemplate": "Sélectionner un modèle",
+        "noTemplate": "Aucun modèle",
+        "messageContent": "Contenu du message",
+        "charactersRemaining": "Caractères restants",
+        "clientsSelected": "clients sélectionnés",
+        "noClientsAvailable": "Aucun client disponible",
+        "selectByCategory": "Sélectionner par catégorie",
+        "selectIndividualClients": "Sélectionner des clients individuels",
+        "sendingOptions": "Options d'envoi",
+        "sendImmediately": "Envoyer immédiatement",
+        "scheduleSending": "Programmer l'envoi",
+        "scheduleDateTime": "Date et heure programmées",
+        "summary": "Récapitulatif",
+        "recipients": "Destinataires",
+        "sendingTime": "Heure d'envoi",
+        "messageSize": "Taille du message",
+        "characters": "caractères",
+        "messagePreview": "Aperçu du message",
+        "createCampaign": "Créer la campagne",
+        "immediately": "Immédiatement",
+        "status": {
+            "all": "Tous",
+            "draft": "Brouillon",
+            "scheduled": "Programmé",
+            "sent": "Envoyé",
+            "paused": "En pause"
+        },
+        "scheduledDate": "Date programmée",
+        "delivery": "Livraison",
+        "delivered": "Livrés",
+        "failed": "Échoués",
+        "pause": "Mettre en pause",
+        "resume": "Reprendre",
+        "noCampaigns": "Aucune campagne trouvée",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette campagne ?",
+        "deliveryRate": "Taux de livraison",
+        "recipientsList": "Liste des destinataires",
+        "details": "Détails de la campagne",
+        "createdOn": "Créée le",
+        "nameRequired": "Le nom de la campagne est obligatoire",
+        "messageRequired": "Le contenu du message est obligatoire",
+        "recipientsRequired": "Vous devez sélectionner au moins un destinataire",
+        "filterByStatus": "Filtrer par statut"
+    },
+    "messages": {
+        "send": "Envoyer un message",
+        "selectRecipient": "Sélectionner un destinataire",
+        "chooseClient": "Choisir un client",
+        "useTemplate": "Utiliser un modèle",
+        "noTemplate": "Aucun modèle",
+        "messageContent": "Contenu du message",
+        "charactersRemaining": "Caractères restants",
+        "recipient": "Destinataire",
+        "content": "Contenu",
+        "sentAt": "Envoyé le",
+        "noMessages": "Aucun message trouvé",
+        "status": {
+            "sent": "Envoyé",
+            "delivered": "Livré",
+            "failed": "Échoué"
+        },
+        "type": {
+            "promotional": "Promotionnel",
+            "personal": "Personnel",
+            "automatic": "Automatique"
+        }
+    },
+    "categories": {
+        "create": "Créer une catégorie",
+        "noCategories": "Aucune catégorie trouvée",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette catégorie ?",
+        "clientsCount": "{count} clients"
+    },
+    "templates": {
+        "create": "Créer un modèle",
+        "cancel": "Annuler",
+        "name": "Nom du modèle",
+        "content": "Contenu du modèle",
+        "isGlobal": "Rendre ce modèle disponible pour tous les utilisateurs",
+        "globalDescription": "Les modèles globaux peuvent être utilisés par tous les utilisateurs de votre équipe",
+        "yourTemplates": "Vos modèles",
+        "noTemplates": "Aucun modèle trouvé",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce modèle ?",
+        "global": "Global"
+    },
+    "automatic-events": {
+        "title": "Événements automatiques",
+        "create": "Créer un événement",
+        "name": "Nom de l'événement",
+        "type": "Type d'événement",
+        "types": {
+            "birthday": "Anniversaire",
+            "holiday": "Jour férié",
+            "custom": "Personnalisé"
+        },
+        "daysBefore": "Jours avant",
+        "daysAfter": "Jours après",
+        "date": "Date",
+        "messageTemplate": "Modèle de message",
+        "isActive": "Actif",
+        "yourEvents": "Vos événements",
+        "noEvents": "Aucun événement trouvé",
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer cet événement ?"
+    },
+    "subscription": {
+        "title": "Abonnement",
+        "currentPlan": "Forfait actuel",
+        "period": "Période",
+        "status": {
+            "active": "Actif",
+            "cancelled": "Annulé",
+            "expired": "Expiré"
+        },
+        "cancellationNotice": "Votre abonnement sera annulé à la fin de votre période de facturation actuelle",
+        "smsUsage": "Utilisation des SMS",
+        "smsUsed": "SMS utilisés",
+        "topUp": "Recharger",
+        "limits": "Limites du compte",
+        "clientLimit": "Limite de clients",
+        "campaignLimit": "Limite de campagnes",
+        "changePlan": "Changer de forfait",
+        "plans": {
+            "title": "Forfaits d'abonnement",
+            "heading": "Choisissez le forfait adapté à votre entreprise",
+            "subheading": "Tous les forfaits incluent des modèles et des événements automatiques illimités",
+            "popular": "Plus populaire",
+            "month": "mois",
+            "year": "an",
+            "currentPlan": "Forfait actuel",
+            "selectPlan": "Sélectionner",
+            "faq": {
+                "title": "Questions fréquentes",
+                "q1": "Puis-je changer de forfait ultérieurement ?",
+                "a1": "Oui, vous pouvez mettre à niveau ou rétrograder votre forfait à tout moment. Les changements prendront effet au début de votre prochain cycle de facturation.",
+                "q2": "Comment fonctionnent les crédits SMS ?",
+                "a2": "Chaque forfait comprend une allocation mensuelle de crédits SMS. Un crédit équivaut à un SMS. Les crédits non utilisés peuvent être reportés selon votre forfait.",
+                "q3": "Que se passe-t-il si je n'ai plus de crédits SMS ?",
+                "a3": "Vous pouvez acheter des crédits SMS supplémentaires à tout moment. Votre forfait de base sera renouvelé avec l'allocation standard au début de chaque cycle de facturation."
+            }
+        },
+        "noSubscription": "Vous n'avez pas d'abonnement actif"
+    },
+    "settings": {
+        "title": "Paramètres",
+        "tabs": {
+            "general": "Général",
+            "notifications": "Notifications",
+            "data": "Données et exportation"
+        },
+        "language": "Langue",
+        "theme": "Thème",
+        "themes": {
+            "light": "Clair",
+            "dark": "Sombre",
+            "system": "Système"
+        },
+        "dateFormat": "Format de date",
+        "timeFormat": "Format d'heure",
+        "notifications": {
+            "email": "Notifications par email",
+            "emailDescription": "Recevoir des mises à jour importantes et des résumés par email",
+            "sms": "Notifications par SMS",
+            "smsDescription": "Recevoir des alertes par SMS",
+            "push": "Notifications push",
+            "pushDescription": "Recevoir des notifications dans votre navigateur"
+        },
+        "exportFormat": "Format d'exportation",
+        "includeArchived": "Inclure les éléments archivés",
+        "exportData": "Exporter les données"
     },
     "profile": {
         "title": "Profil",
-        "loading": "Chargement du profil...",
         "tabs": {
             "profile": "Profil",
             "security": "Sécurité",
@@ -115,15 +287,16 @@
         "company": "Entreprise",
         "currentPassword": "Mot de passe actuel",
         "newPassword": "Nouveau mot de passe",
-        "confirmPassword": "Confirmer le nouveau mot de passe",
+        "confirmPassword": "Confirmer le mot de passe",
         "updatePassword": "Mettre à jour le mot de passe",
+        "loading": "Chargement des informations du profil...",
         "notifications": {
             "email": "Notifications par email",
-            "emailDescription": "Recevoir des notifications par email",
+            "emailDescription": "Recevoir des mises à jour importantes et des résumés par email",
             "sms": "Notifications par SMS",
-            "smsDescription": "Recevoir des notifications par SMS",
+            "smsDescription": "Recevoir des alertes par SMS",
             "push": "Notifications push",
-            "pushDescription": "Recevoir des notifications push"
+            "pushDescription": "Recevoir des notifications dans votre navigateur"
         },
         "payments": {
             "date": "Date",
@@ -131,464 +304,84 @@
             "method": "Méthode",
             "status": "Statut",
             "statuses": {
-                "completed": "Complété",
+                "completed": "Terminé",
                 "pending": "En attente",
                 "failed": "Échoué"
             }
         },
         "api": {
             "title": "Clés API",
-            "name": "Nom",
-            "key": "Clé",
-            "lastUsed": "Dernière utilisation",
-            "generateKey": "Générer une nouvelle clé"
+            "generateKey": "Générer une nouvelle clé",
+            "name": "Nom de la clé",
+            "key": "Clé API",
+            "lastUsed": "Dernière utilisation"
         }
     },
-    "subscription": {
-        "title": "Abonnement",
-        "currentPlan": "Plan actuel",
-        "plan": "Plan",
-        "status": "Statut",
-        "statuses": {
-            "active": "Actif",
-            "expired": "Expiré",
-            "cancelled": "Annulé"
+    "welcome": {
+        "hero": {
+            "title": "Connectez avec vos clients par SMS comme jamais auparavant",
+            "subtitle": "Plateforme professionnelle pour gérer vos campagnes SMS, automatiser vos événements et fidéliser vos clients.",
+            "startButton": "Commencer gratuitement",
+            "learnMoreButton": "En savoir plus"
         },
-        "smsUsage": "Utilisation SMS",
-        "used": "Utilisé",
-        "total": "Total",
-        "expiration": "Expiration",
-        "expiresOn": "Expire le",
-        "manage": "Gérer l'abonnement",
-        "changePlan": "Changer de plan",
-        "topUp": "Recharger SMS",
-        "noSubscription": "Aucun abonnement actif",
-        "plans": {
-            "title": "Plans d'abonnement",
-            "subtitle": "Choisissez le plan qui vous convient le mieux",
-            "monthly": "Mensuel",
-            "yearly": "Annuel",
-            "popular": "Populaire",
-            "features": "Fonctionnalités",
-            "subscribe": "S'abonner",
-            "currentPlan": "Plan actuel",
-            "faq": {
-                "title": "Questions fréquentes",
-                "questions": {
-                    "billing": "Comment fonctionne la facturation ?",
-                    "billingAnswer": "Vous êtes facturé mensuellement ou annuellement selon votre plan choisi. Vous pouvez changer de plan à tout moment.",
-                    "sms": "Comment fonctionnent les crédits SMS ?",
-                    "smsAnswer": "Chaque plan inclut un certain nombre de crédits SMS. Les crédits non utilisés sont reportés au mois suivant.",
-                    "support": "Quel type de support proposez-vous ?",
-                    "supportAnswer": "Nous proposons un support 24/7 par email et chat pour tous nos clients."
-                }
+        "features": {
+            "title": "Fonctionnalités puissantes",
+            "subtitle": "Tout ce dont vous avez besoin pour gérer efficacement vos communications par SMS",
+            "feature1": {
+                "title": "Gestion des clients",
+                "description": "Organisez vos contacts par catégories et conservez toutes les informations importantes."
+            },
+            "feature2": {
+                "title": "Campagnes SMS",
+                "description": "Créez et programmez des campagnes SMS ciblées pour atteindre vos clients au bon moment."
+            },
+            "feature3": {
+                "title": "Événements automatiques",
+                "description": "Automatisez les messages pour les anniversaires, fêtes et autres événements importants."
             }
         },
-        "billing": {
-            "title": "Facturation",
-            "history": "Historique de facturation",
-            "invoices": "Factures",
-            "paymentMethods": "Méthodes de paiement",
-            "addPaymentMethod": "Ajouter une méthode de paiement",
-            "card": "Carte",
-            "cardNumber": "Numéro de carte",
-            "cardExpiry": "Date d'expiration",
-            "cardCVC": "CVC",
-            "billingAddress": "Adresse de facturation"
-        }
-    },
-    "campaigns": {
-        "title": "Campagnes",
-        "create": "Créer une campagne",
-        "edit": "Modifier la campagne",
-        "show": "Détails de la campagne",
-        "name": "Nom de la campagne",
-        "description": "Description",
-        "template": "Modèle",
-        "selectTemplate": "Sélectionner un modèle",
-        "message": "Message",
-        "recipients": "Destinataires",
-        "selectRecipients": "Sélectionner les destinataires",
-        "schedule": "Planification",
-        "scheduleType": "Type de planification",
-        "scheduleTypes": {
-            "now": "Envoi immédiat",
-            "scheduled": "Planifié",
-            "recurring": "Récurrent"
-        },
-        "scheduleDate": "Date d'envoi",
-        "scheduleTime": "Heure d'envoi",
-        "recurrence": "Récurrence",
-        "recurrenceTypes": {
-            "daily": "Quotidien",
-            "weekly": "Hebdomadaire",
-            "monthly": "Mensuel",
-            "yearly": "Annuel"
-        },
-        "status": "Statut",
-        "statuses": {
-            "draft": "Brouillon",
-            "scheduled": "Planifiée",
-            "sending": "Envoi en cours",
-            "completed": "Terminée",
-            "failed": "Échouée",
-            "cancelled": "Annulée"
-        },
-        "stats": {
-            "total": "Total",
-            "sent": "Envoyés",
-            "delivered": "Livrés",
-            "failed": "Échoués",
-            "pending": "En attente"
-        },
-        "actions": {
-            "create": "Créer une campagne",
-            "edit": "Modifier",
-            "delete": "Supprimer",
-            "send": "Envoyer",
-            "cancel": "Annuler",
-            "pause": "Mettre en pause",
-            "resume": "Reprendre"
-        },
-        "filter": {
-            "all": "Toutes les campagnes",
-            "draft": "Brouillon",
-            "scheduled": "Planifiées",
-            "active": "Actives",
-            "completed": "Terminées",
-            "failed": "Échouées",
-            "cancelled": "Annulées"
-        },
-        "metrics": {
-            "deliveryRate": "Taux de livraison",
-            "openRate": "Taux d'ouverture",
-            "clickRate": "Taux de clic",
-            "conversionRate": "Taux de conversion"
-        }
-    },
-    "categories": {
-        "title": "Catégories",
-        "create": "Créer une catégorie",
-        "edit": "Modifier la catégorie",
-        "name": "Nom",
-        "description": "Description",
-        "color": "Couleur",
-        "icon": "Icône",
-        "actions": {
-            "create": "Créer une catégorie",
-            "edit": "Modifier",
-            "delete": "Supprimer"
-        },
-        "filter": {
-            "all": "Toutes les catégories",
-            "active": "Actives",
-            "inactive": "Inactives"
-        },
-        "selectColor": "Sélectionner une couleur",
-        "selectIcon": "Sélectionner une icône"
-    },
-    "clients": {
-        "title": "Clients",
-        "create": "Ajouter un client",
-        "edit": "Modifier le client",
-        "show": "Détails du client",
-        "name": "Nom",
-        "email": "Email",
-        "phone": "Téléphone",
-        "company": "Entreprise",
-        "category": "Catégorie",
-        "birthday": "Date de naissance",
-        "notes": "Notes",
-        "stats": {
-            "messages": "Messages",
-            "campaigns": "Campagnes",
-            "lastContact": "Dernier contact"
-        },
-        "actions": {
-            "create": "Ajouter un client",
-            "edit": "Modifier",
-            "delete": "Supprimer",
-            "sendMessage": "Envoyer un message"
-        },
-        "filter": {
-            "all": "Tous les clients",
-            "recentlyAdded": "Récemment ajoutés",
-            "recentlyContacted": "Récemment contactés",
-            "notContacted": "Non contactés",
-            "byCategory": "Par catégorie"
-        },
-        "import": {
-            "title": "Importer des clients",
-            "file": "Fichier CSV",
-            "template": "Télécharger le modèle",
-            "instructions": "Instructions",
-            "mapping": "Mapping des champs",
-            "review": "Vérifier les données",
-            "process": "Traiter l'importation"
-        },
-        "export": {
-            "title": "Exporter les clients",
-            "format": "Format",
-            "selection": "Sélection",
-            "allFields": "Tous les champs",
-            "selectedFields": "Champs sélectionnés"
-        },
-        "groups": {
-            "title": "Groupes",
-            "create": "Créer un groupe",
-            "edit": "Modifier le groupe",
-            "name": "Nom",
-            "members": "Membres",
-            "addToGroup": "Ajouter au groupe",
-            "removeFromGroup": "Retirer du groupe"
-        }
-    },
-    "messages": {
-        "title": "Messages",
-        "create": "Envoyer un message",
-        "template": "Modèle",
-        "recipient": "Destinataire",
-        "content": "Contenu",
-        "schedule": "Planifier",
-        "scheduleDate": "Date d'envoi",
-        "scheduleTime": "Heure d'envoi",
-        "status": "Statut",
-        "statuses": {
-            "draft": "Brouillon",
-            "scheduled": "Planifié",
-            "sent": "Envoyé",
-            "delivered": "Livré",
-            "failed": "Échoué"
-        },
-        "actions": {
-            "send": "Envoyer",
-            "schedule": "Planifier",
-            "cancel": "Annuler",
-            "delete": "Supprimer"
-        },
-        "filter": {
-            "all": "Tous les messages",
-            "sent": "Envoyés",
-            "delivered": "Livrés",
-            "failed": "Échoués",
-            "byDate": "Par date"
-        },
-        "variables": {
-            "title": "Variables",
-            "name": "Nom du client",
-            "firstName": "Prénom",
-            "lastName": "Nom",
-            "company": "Entreprise",
-            "customFields": "Champs personnalisés"
-        },
-        "preview": {
-            "title": "Aperçu",
-            "sendTestMessage": "Envoyer un message test"
-        },
-        "reportDetails": {
-            "title": "Rapport de livraison",
-            "sentAt": "Envoyé le",
-            "deliveredAt": "Livré le",
-            "status": "Statut",
-            "messageId": "ID du message",
-            "cost": "Coût"
-        }
-    },
-    "settings": {
-        "title": "Paramètres",
-        "general": {
-            "title": "Général",
-            "language": "Langue",
-            "theme": "Thème",
-            "dateFormat": "Format de date",
-            "timeFormat": "Format d'heure",
-            "timezone": "Fuseau horaire"
-        },
-        "notifications": {
-            "title": "Notifications",
-            "email": "Notifications par email",
-            "sms": "Notifications par SMS",
-            "push": "Notifications push",
-            "types": {
-                "campaigns": "Campagnes",
-                "messages": "Messages",
-                "subscription": "Abonnement",
-                "system": "Système"
-            }
-        },
-        "data": {
-            "title": "Données",
-            "export": "Exporter les données",
-            "import": "Importer des données",
-            "backup": "Sauvegarde",
-            "delete": "Supprimer le compte"
-        },
-        "advanced": {
-            "title": "Avancé",
-            "apiAccess": "Accès API",
-            "smsGateway": "Passerelle SMS",
-            "configureGateway": "Configurer la passerelle",
-            "logs": "Journaux système",
-            "showLogs": "Afficher les journaux",
-            "debugMode": "Mode débogage"
-        },
-        "regional": {
-            "title": "Régional",
-            "country": "Pays",
-            "language": "Langue",
-            "currency": "Devise",
-            "dateFormat": "Format de date",
-            "timeFormat": "Format d'heure",
-            "firstDayOfWeek": "Premier jour de la semaine"
-        },
-        "interface": {
-            "title": "Interface",
-            "theme": "Thème",
-            "themes": {
-                "light": "Clair",
-                "dark": "Sombre",
-                "system": "Par défaut du système"
+        "pricing": {
+            "title": "Plans tarifaires",
+            "subtitle": "Choisissez le plan qui correspond le mieux à vos besoins",
+            "popular": "Plus populaire",
+            "starter": {
+                "name": "Pack Starter",
+                "description": "Idéal pour les petites entreprises et les débutants",
+                "feature1": "Jusqu'à 100 clients",
+                "feature2": "2 campagnes par mois (200 SMS)",
+                "feature3": "50 SMS personnalisés par mois",
+                "feature4": "Support par email"
             },
-            "density": "Densité",
-            "densities": {
-                "comfortable": "Confortable",
-                "compact": "Compact"
+            "business": {
+                "name": "Pack Business",
+                "description": "Parfait pour les entreprises en croissance",
+                "feature1": "Jusqu'à 500 clients",
+                "feature2": "4 campagnes par mois (1 000 SMS)",
+                "feature3": "200 SMS personnalisés par mois",
+                "feature4": "Report de 10% des SMS non utilisés",
+                "feature5": "Support prioritaire"
             },
-            "animations": "Animations",
-            "menuLayout": "Disposition du menu"
+            "enterprise": {
+                "name": "Pack Enterprise",
+                "description": "Pour les entreprises avec besoins importants",
+                "feature1": "Jusqu'à 2 000 clients",
+                "feature2": "8 campagnes par mois (4 000 SMS)",
+                "feature3": "500 SMS personnalisés par mois",
+                "feature4": "Report de 20% des SMS non utilisés",
+                "feature5": "Support dédié 24/7"
+            },
+            "button": "Commencer"
+        },
+        "cta": {
+            "title": "Prêt à améliorer vos communications par SMS?",
+            "subtitle": "Inscrivez-vous aujourd'hui et obtenez 50 SMS gratuits pour essayer notre service",
+            "button": "Créer un compte gratuitement"
+        },
+        "footer": {
+            "privacy": "Confidentialité",
+            "terms": "Conditions",
+            "contact": "Contact",
+            "rights": "Tous droits réservés."
         }
-    },
-    "templates": {
-        "title": "Modèles",
-        "create": "Créer un modèle",
-        "edit": "Modifier le modèle",
-        "name": "Nom",
-        "content": "Contenu",
-        "category": "Catégorie",
-        "variables": "Variables",
-        "preview": "Aperçu",
-        "actions": {
-            "create": "Créer un modèle",
-            "edit": "Modifier",
-            "delete": "Supprimer",
-            "duplicate": "Dupliquer"
-        },
-        "filter": {
-            "all": "Tous les modèles",
-            "recent": "Récents",
-            "favorite": "Favoris",
-            "byCategory": "Par catégorie"
-        },
-        "tags": {
-            "title": "Balises de formatage",
-            "bold": "Gras",
-            "italic": "Italique",
-            "link": "Lien",
-            "variable": "Variable"
-        },
-        "help": {
-            "title": "Aide",
-            "personalization": "Comment personnaliser les modèles",
-            "variables": "Comment utiliser les variables",
-            "formatting": "Options de formatage"
-        },
-        "sharing": {
-            "title": "Partage",
-            "share": "Partager le modèle",
-            "export": "Exporter le modèle",
-            "import": "Importer un modèle"
-        }
-    },
-    "automaticEvents": {
-        "title": "Événements automatiques",
-        "create": "Créer un événement",
-        "edit": "Modifier l'événement",
-        "name": "Nom de l'événement",
-        "type": "Type d'événement",
-        "types": {
-            "birthday": "Anniversaire",
-            "anniversary": "Anniversaire (date)",
-            "holiday": "Jour férié",
-            "custom": "Personnalisé"
-        },
-        "template": "Modèle de message",
-        "selectTemplate": "Sélectionner un modèle",
-        "schedule": "Planification",
-        "beforeDays": "Jours avant",
-        "afterDays": "Jours après",
-        "status": "Statut",
-        "active": "Actif",
-        "inactive": "Inactif",
-        "noEvents": "Aucun événement automatique configuré",
-        "actions": {
-            "create": "Créer un événement",
-            "edit": "Modifier",
-            "delete": "Supprimer",
-            "activate": "Activer",
-            "deactivate": "Désactiver",
-            "test": "Tester l'événement"
-        },
-        "filter": {
-            "all": "Tous les événements",
-            "active": "Actifs",
-            "inactive": "Inactifs",
-            "byType": "Par type"
-        }
-    },
-    "errors": {
-        "general": "Une erreur s'est produite",
-        "notFound": "Ressource non trouvée",
-        "unauthorized": "Accès non autorisé",
-        "forbidden": "Interdit",
-        "server": "Erreur serveur",
-        "network": "Erreur réseau",
-        "validation": "Erreur de validation",
-        "subscription": "Erreur d'abonnement",
-        "insufficientCredits": "Crédits SMS insuffisants",
-        "invalidPhone": "Numéro de téléphone invalide",
-        "invalidEmail": "Adresse email invalide",
-        "messageFailed": "Échec de l'envoi du message",
-        "campaignFailed": "Échec de la campagne",
-        "importFailed": "Échec de l'importation",
-        "exportFailed": "Échec de l'exportation",
-        "fileUpload": "Erreur lors du téléchargement du fichier",
-        "invalidFile": "Format de fichier invalide"
-    },
-    "validation": {
-        "required": "Ce champ est obligatoire",
-        "email": "Veuillez saisir une adresse email valide",
-        "phone": "Veuillez saisir un numéro de téléphone valide",
-        "minLength": "Doit contenir au moins {0} caractères",
-        "maxLength": "Doit contenir moins de {0} caractères",
-        "passwordMatch": "Les mots de passe doivent correspondre",
-        "unique": "Cette valeur est déjà utilisée",
-        "date": "Veuillez saisir une date valide",
-        "number": "Veuillez saisir un nombre valide",
-        "url": "Veuillez saisir une URL valide",
-        "integer": "Veuillez saisir un nombre entier",
-        "decimal": "Veuillez saisir un nombre décimal"
-    },
-    "confirmations": {
-        "delete": "Êtes-vous sûr de vouloir supprimer cet élément ?",
-        "deleteMultiple": "Êtes-vous sûr de vouloir supprimer ces éléments ?",
-        "cancel": "Êtes-vous sûr de vouloir annuler ?",
-        "discard": "Êtes-vous sûr de vouloir abandonner les modifications ?",
-        "sendNow": "Êtes-vous sûr de vouloir envoyer ceci maintenant ?",
-        "schedule": "Êtes-vous sûr de vouloir planifier ceci ?",
-        "logout": "Êtes-vous sûr de vouloir vous déconnecter ?",
-        "deleteAccount": "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action ne peut pas être annulée.",
-        "changePlan": "Êtes-vous sûr de vouloir changer votre plan d'abonnement ?"
-    },
-    "pagination": {
-        "previous": "Précédent",
-        "next": "Suivant",
-        "page": "Page",
-        "of": "sur",
-        "perPage": "Par page",
-        "showing": "Affichage de",
-        "to": "à",
-        "of": "sur",
-        "entries": "entrées",
-        "all": "Tout"
     }
 }

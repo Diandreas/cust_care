@@ -6,12 +6,20 @@ use App\Models\Campaign;
 use App\Models\Client;
 use App\Models\Category;
 use App\Models\Template;
+use App\Services\UsageTrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class CampaignController extends Controller
 {
+    protected $usageTracker;
+    
+    public function __construct(UsageTrackingService $usageTracker)
+    {
+        $this->usageTracker = $usageTracker;
+    }
+    
     public function index()
     {
         $campaigns = Auth::user()->campaigns()->orderBy('created_at', 'desc')->paginate(10);
@@ -23,8 +31,15 @@ class CampaignController extends Controller
     
     public function create()
     {
-        $categories = Auth::user()->categories()->with('clients')->get();
-        $templates = Auth::user()->templates()->get();
+        $user = Auth::user();
+        
+        // Vérifier si l'utilisateur peut créer une nouvelle campagne
+        if (!$this->usageTracker->canCreateCampaign($user)) {
+            return redirect()->route('subscription.index')->with('error', 'Vous avez atteint votre limite de campagnes pour ce mois-ci. Veuillez mettre à jour votre abonnement pour continuer.');
+        }
+        
+        $categories = $user->categories()->with('clients')->get();
+        $templates = $user->templates()->get();
         
         return Inertia::render('Campaigns/Create', [
             'categories' => $categories,
@@ -42,13 +57,26 @@ class CampaignController extends Controller
             'client_ids.*' => 'exists:clients,id'
         ]);
         
+        $user = Auth::user();
+        $clientsCount = count($validated['client_ids']);
+        
+        // Vérifier si l'utilisateur peut envoyer des SMS à tous ces clients
+        if (!$this->usageTracker->canSendSms($user, $clientsCount)) {
+            return redirect()->back()->with('error', 'Votre quota SMS est insuffisant pour cette campagne. Veuillez acheter des SMS supplémentaires.');
+        }
+        
+        // Vérifier si l'utilisateur peut créer une nouvelle campagne
+        if (!$this->usageTracker->trackCampaignUsage($user)) {
+            return redirect()->route('subscription.index')->with('error', 'Vous avez atteint votre limite de campagnes pour ce mois-ci. Veuillez mettre à jour votre abonnement pour continuer.');
+        }
+        
         $campaign = new Campaign();
         $campaign->user_id = Auth::id();
         $campaign->name = $validated['name'];
         $campaign->message_content = $validated['message_content'];
         $campaign->scheduled_at = $validated['scheduled_at'] ?? null;
         $campaign->status = $validated['scheduled_at'] ? 'scheduled' : 'draft';
-        $campaign->recipients_count = count($validated['client_ids']);
+        $campaign->recipients_count = $clientsCount;
         $campaign->save();
         
         $campaign->recipients()->attach($validated['client_ids']);

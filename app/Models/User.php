@@ -66,6 +66,14 @@ class User extends Authenticatable
         return $this->hasMany(Message::class);
     }
 
+    /**
+     * Relation avec les tags
+     */
+    public function tags()
+    {
+        return $this->hasMany(Tag::class);
+    }
+
     public function templates()
     {
         return $this->hasMany(Template::class);

@@ -16,6 +16,7 @@ class Client extends Model
         'email',
         'category_id',
         'birthday',
+        'address',
         'notes',
     ];
 
@@ -36,5 +37,13 @@ class Client extends Model
     public function messages()
     {
         return $this->hasMany(Message::class);
+    }
+
+    /**
+     * Relation avec les tags (many-to-many)
+     */
+    public function tags()
+    {
+        return $this->belongsToMany(Tag::class);
     }
 } 

@@ -1,28 +1,16 @@
-import React, { useEffect } from "react";
+import React from "react";
 import "@theme-toggles/react/css/Classic.css";
 import { Classic } from "@theme-toggles/react";
+import { useTheme } from "./theme-provider";
 
 export function ThemeToggle() {
-    const [isDark, setIsDark] = React.useState(() => {
-        if (typeof window !== 'undefined') {
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme) {
-                return savedTheme === 'dark';
-            }
-            return window.matchMedia('(prefers-color-scheme: dark)').matches;
-        }
-        return false;
-    });
+    const { theme, setTheme } = useTheme();
 
-    useEffect(() => {
-        const html = document.documentElement;
-        if (isDark) {
-            html.classList.add('dark');
-        } else {
-            html.classList.remove('dark');
-        }
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    }, [isDark]);
+    const isDark = theme === "dark";
+
+    const toggleTheme = () => {
+        setTheme(isDark ? "light" : "dark");
+    };
 
     return (
         <div className="flex items-center justify-center">
@@ -30,7 +18,7 @@ export function ThemeToggle() {
             <Classic
                 duration={750}
                 toggled={isDark}
-                onToggle={() => setIsDark(!isDark)}
+                onToggle={toggleTheme}
                 className="h-8 w-8 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 cursor-pointer"
                 style={{ fontSize: '2rem' }}
             />
