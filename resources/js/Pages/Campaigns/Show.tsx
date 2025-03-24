@@ -1,390 +1,223 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+// resources/js/Pages/Campaigns/Show.tsx
+import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { useTranslation } from 'react-i18next';
 
-interface Message {
+interface Client {
     id: number;
-    content: string;
-    status: string;
-    sent_at: string;
-    delivered_at: string | null;
-    client: {
-        id: number;
-        name: string;
-        phone: string;
-    };
+    name: string;
+    phone: string;
 }
 
 interface Campaign {
     id: number;
     name: string;
-    message: string;
-    status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+    message_content: string;
+    status: 'draft' | 'scheduled' | 'sent' | 'paused';
     scheduled_at: string | null;
-    completed_at: string | null;
-    created_at: string;
-    total_recipients: number;
-    sent_count: number;
+    recipients_count: number;
     delivered_count: number;
     failed_count: number;
-    messages: Message[];
-    categories: Array<{
-        id: number;
-        name: string;
-        clients_count: number;
-    }>;
+    created_at: string;
+    recipients: Client[];
 }
 
-interface CampaignShowProps extends PageProps {
+interface CampaignShowProps {
     campaign: Campaign;
 }
 
-export default function Show({ auth, campaign }: CampaignShowProps) {
-    const getStatusColor = (status: Campaign['status']) => {
+export default function CampaignShow({
+    auth,
+    campaign,
+}: PageProps<CampaignShowProps>) {
+    const { t } = useTranslation();
+
+    const formatDate = (dateString: string | null) => {
+        if (!dateString) return '-';
+        return new Date(dateString).toLocaleString();
+    };
+
+    const getStatusBadgeClass = (status: string) => {
         switch (status) {
             case 'draft':
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
             case 'scheduled':
-                return 'bg-blue-100 text-blue-800';
-            case 'in_progress':
-                return 'bg-yellow-100 text-yellow-800';
-            case 'completed':
-                return 'bg-green-100 text-green-800';
-            case 'cancelled':
-                return 'bg-red-100 text-red-800';
+                return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+            case 'sent':
+                return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+            case 'paused':
+                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+            default:
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
     };
 
-    const getStatusLabel = (status: Campaign['status']) => {
+    const getStatusName = (status: string) => {
         switch (status) {
             case 'draft':
-                return 'Brouillon';
+                return t('campaigns.status.draft');
             case 'scheduled':
-                return 'Programmée';
-            case 'in_progress':
-                return 'En cours';
-            case 'completed':
-                return 'Terminée';
-            case 'cancelled':
-                return 'Annulée';
-        }
-    };
-
-    const getMessageStatusColor = (status: string) => {
-        switch (status) {
-            case 'delivered':
-                return 'bg-green-100 text-green-800';
-            case 'failed':
-                return 'bg-red-100 text-red-800';
-            case 'pending':
-                return 'bg-yellow-100 text-yellow-800';
+                return t('campaigns.status.scheduled');
+            case 'sent':
+                return t('campaigns.status.sent');
+            case 'paused':
+                return t('campaigns.status.paused');
             default:
-                return 'bg-gray-100 text-gray-800';
+                return status;
         }
-    };
-
-    const getMessageStatusLabel = (status: string) => {
-        switch (status) {
-            case 'delivered':
-                return 'Livré';
-            case 'failed':
-                return 'Échoué';
-            case 'pending':
-                return 'En attente';
-            default:
-                return 'Inconnu';
-        }
-    };
-
-    const formatDate = (date: string | null) => {
-        if (!date) return '-';
-        return format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: fr });
     };
 
     return (
         <AuthenticatedLayout
-            header={
-                <div className="flex items-center justify-between">
-                    <h2 className="font-playfair text-xl font-semibold leading-tight text-gray-800">
-                        Détails de la Campagne
-                    </h2>
-                    <div className="flex gap-4">
-                        {campaign.status === 'draft' && (
-                            <Link
-                                href={route('campaigns.edit', campaign.id)}
-                                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500"
-                            >
-                                Modifier
-                            </Link>
-                        )}
-                        <Link
-                            href={route('campaigns.index')}
-                            className="rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                        >
-                            Retour à la liste
-                        </Link>
-                    </div>
-                </div>
-            }
+            user={auth.user}
+            header={<h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">{t('campaigns.details')}</h2>}
         >
-            <Head title={`Campagne: ${campaign.name}`} />
+            <Head title={t('campaigns.details')} />
 
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="grid gap-6 lg:grid-cols-3">
-                        {/* Campaign Information */}
-                        <div className="col-span-1 space-y-6">
-                            <div className="overflow-hidden rounded-lg bg-white shadow">
-                                <div className="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6">
-                                    <h3 className="font-playfair text-lg font-medium leading-6 text-gray-900">
-                                        Informations
-                                    </h3>
-                                </div>
-                                <div className="px-4 py-5 sm:p-6">
-                                    <dl className="grid grid-cols-1 gap-x-4 gap-y-6">
-                                        <div>
-                                            <dt className="font-montserrat text-sm font-medium text-gray-500">Nom</dt>
-                                            <dd className="mt-1 text-sm text-gray-900">{campaign.name}</dd>
-                                        </div>
-                                        <div>
-                                            <dt className="font-montserrat text-sm font-medium text-gray-500">Statut</dt>
-                                            <dd className="mt-1">
-                                                <span
-                                                    className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(
-                                                        campaign.status
-                                                    )}`}
-                                                >
-                                                    {getStatusLabel(campaign.status)}
-                                                </span>
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="font-montserrat text-sm font-medium text-gray-500">
-                                                Date de création
-                                            </dt>
-                                            <dd className="mt-1 text-sm text-gray-900">
-                                                {formatDate(campaign.created_at)}
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="font-montserrat text-sm font-medium text-gray-500">
-                                                Programmée pour
-                                            </dt>
-                                            <dd className="mt-1 text-sm text-gray-900">
-                                                {formatDate(campaign.scheduled_at)}
-                                            </dd>
-                                        </div>
-                                        {campaign.completed_at && (
-                                            <div>
-                                                <dt className="font-montserrat text-sm font-medium text-gray-500">
-                                                    Terminée le
-                                                </dt>
-                                                <dd className="mt-1 text-sm text-gray-900">
-                                                    {formatDate(campaign.completed_at)}
-                                                </dd>
-                                            </div>
-                                        )}
-                                    </dl>
-                                </div>
-                            </div>
-
-                            <div className="overflow-hidden rounded-lg bg-white shadow">
-                                <div className="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6">
-                                    <h3 className="font-playfair text-lg font-medium leading-6 text-gray-900">Message</h3>
-                                </div>
-                                <div className="px-4 py-5 sm:p-6">
-                                    <div className="rounded-lg bg-gray-100 p-4">
-                                        <div className="space-y-4">
-                                            <div className="flex items-center space-x-4">
-                                                <div className="h-10 w-10 flex-shrink-0">
-                                                    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-100 text-lg font-semibold text-violet-600">
-                                                        S
-                                                    </span>
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <div className="rounded-2xl bg-white p-4 text-sm shadow">
-                                                        {campaign.message}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p className="mt-2 text-sm text-gray-500">
-                                        {campaign.message.length} caractère{campaign.message.length !== 1 ? 's' : ''} (
-                                        {Math.ceil(campaign.message.length / 160)} SMS)
+                    <div className="mb-6 overflow-hidden bg-white shadow-sm dark:bg-gray-800 sm:rounded-lg">
+                        <div className="border-b border-gray-200 bg-white px-4 py-5 dark:border-gray-700 dark:bg-gray-800 sm:px-6">
+                            <div className="flex flex-col justify-between md:flex-row md:items-center">
+                                <div>
+                                    <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">{campaign.name}</h3>
+                                    <p className="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+                                        {t('campaigns.createdOn')}: {formatDate(campaign.created_at)}
                                     </p>
                                 </div>
-                            </div>
-
-                            <div className="overflow-hidden rounded-lg bg-white shadow">
-                                <div className="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6">
-                                    <h3 className="font-playfair text-lg font-medium leading-6 text-gray-900">
-                                        Destinataires
-                                    </h3>
-                                </div>
-                                <div className="px-4 py-5 sm:p-6">
-                                    <div className="space-y-4">
-                                        {campaign.categories.map((category) => (
-                                            <div
-                                                key={category.id}
-                                                className="flex items-center justify-between rounded-lg border bg-white p-4"
-                                            >
-                                                <div>
-                                                    <p className="font-medium text-gray-900">{category.name}</p>
-                                                    <p className="text-sm text-gray-500">
-                                                        {category.clients_count} client
-                                                        {category.clients_count !== 1 ? 's' : ''}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
+                                <div className="mt-4 md:mt-0">
+                                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(campaign.status)}`}>
+                                        {getStatusName(campaign.status)}
+                                    </span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Statistics and Messages */}
-                        <div className="col-span-2 space-y-6">
-                            {/* Statistics */}
-                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                                <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-                                    <dt className="truncate font-montserrat text-sm font-medium text-gray-500">
-                                        Total Messages
-                                    </dt>
-                                    <dd className="mt-1 font-playfair text-3xl font-semibold tracking-tight text-gray-900">
-                                        {campaign.total_recipients}
-                                    </dd>
+                        <div className="px-4 py-5 sm:p-6">
+                            {/* Statistiques de la campagne */}
+                            <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
+                                <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-700">
+                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('campaigns.recipients')}</div>
+                                    <div className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">{campaign.recipients_count}</div>
                                 </div>
-                                <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-                                    <dt className="truncate font-montserrat text-sm font-medium text-gray-500">
-                                        Messages Livrés
-                                    </dt>
-                                    <dd className="mt-1 font-playfair text-3xl font-semibold tracking-tight text-green-600">
-                                        {campaign.delivered_count}
-                                    </dd>
+                                <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-700">
+                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('campaigns.delivered')}</div>
+                                    <div className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">
+                                        {campaign.status === 'sent' ? campaign.delivered_count : '-'}
+                                    </div>
                                 </div>
-                                <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
-                                    <dt className="truncate font-montserrat text-sm font-medium text-gray-500">
-                                        Messages Échoués
-                                    </dt>
-                                    <dd className="mt-1 font-playfair text-3xl font-semibold tracking-tight text-red-600">
-                                        {campaign.failed_count}
-                                    </dd>
-                                </div>
-                            </div>
-
-                            {/* Progress */}
-                            <div className="overflow-hidden rounded-lg bg-white shadow">
-                                <div className="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6">
-                                    <h3 className="font-playfair text-lg font-medium leading-6 text-gray-900">
-                                        Progression
-                                    </h3>
-                                </div>
-                                <div className="px-4 py-5 sm:p-6">
-                                    <div>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-gray-600">
-                                                {campaign.sent_count} message{campaign.sent_count !== 1 ? 's' : ''} envoyé
-                                                {campaign.sent_count !== 1 ? 's' : ''}
-                                            </span>
-                                            <span className="font-medium text-gray-900">
-                                                {campaign.total_recipients > 0
-                                                    ? Math.round((campaign.sent_count / campaign.total_recipients) * 100)
-                                                    : 0}
-                                                %
-                                            </span>
-                                        </div>
-                                        <div className="mt-2 overflow-hidden rounded-full bg-gray-200">
-                                            <div
-                                                className="h-2 rounded-full bg-violet-600"
-                                                style={{
-                                                    width: `${campaign.total_recipients > 0
-                                                        ? (campaign.sent_count / campaign.total_recipients) * 100
-                                                        : 0
-                                                        }%`,
-                                                }}
-                                            />
-                                        </div>
+                                <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-700">
+                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('campaigns.sendingTime')}</div>
+                                    <div className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
+                                        {campaign.scheduled_at ? formatDate(campaign.scheduled_at) : t('campaigns.immediately')}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Messages List */}
-                            <div className="overflow-hidden rounded-lg bg-white shadow">
-                                <div className="border-b border-gray-200 bg-gray-50 px-4 py-5 sm:px-6">
-                                    <h3 className="font-playfair text-lg font-medium leading-6 text-gray-900">
-                                        Messages Envoyés
-                                    </h3>
+                            {/* Message de la campagne */}
+                            <div className="mb-8">
+                                <h4 className="mb-2 text-base font-medium text-gray-900 dark:text-white">{t('campaigns.messageContent')}</h4>
+                                <div className="rounded-md bg-gray-50 p-4 dark:bg-gray-700">
+                                    <p className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-200">{campaign.message_content}</p>
                                 </div>
+                                <div className="mt-2 text-right text-sm text-gray-500 dark:text-gray-400">
+                                    {campaign.message_content.length} {t('campaigns.characters')} ({Math.ceil(campaign.message_content.length / 160)} SMS)
+                                </div>
+                            </div>
+
+                            {/* Taux de livraison (si envoyé) */}
+                            {campaign.status === 'sent' && (
+                                <div className="mb-8">
+                                    <h4 className="mb-2 text-base font-medium text-gray-900 dark:text-white">{t('campaigns.deliveryRate')}</h4>
+                                    <div className="mb-1 flex items-center">
+                                        <span className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            {Math.round((campaign.delivered_count / campaign.recipients_count) * 100)}%
+                                        </span>
+                                        <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-600">
+                                            <div
+                                                className="h-2 rounded-full bg-green-500"
+                                                style={{ width: `${(campaign.delivered_count / campaign.recipients_count) * 100}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        {campaign.delivered_count} {t('campaigns.delivered')}, {campaign.failed_count} {t('campaigns.failed')}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Liste des destinataires */}
+                            <div>
+                                <h4 className="mb-2 text-base font-medium text-gray-900 dark:text-white">{t('campaigns.recipientsList')}</h4>
                                 <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-gray-200">
-                                        <thead className="bg-gray-50">
+                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                        <thead className="bg-gray-50 dark:bg-gray-700">
                                             <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                                    Client
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                                                    {t('common.name')}
                                                 </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                                    Envoyé le
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                                    Livré le
-                                                </th>
-                                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                                    Statut
+                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                                                    {t('common.phone')}
                                                 </th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-200 bg-white">
-                                            {campaign.messages.map((message) => (
-                                                <tr key={message.id}>
-                                                    <td className="whitespace-nowrap px-6 py-4">
-                                                        <div className="flex items-center">
-                                                            <div className="h-8 w-8 flex-shrink-0">
-                                                                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-600">
-                                                                    {message.client.name.charAt(0)}
-                                                                </span>
-                                                            </div>
-                                                            <div className="ml-4">
-                                                                <div className="font-medium text-gray-900">
-                                                                    {message.client.name}
-                                                                </div>
-                                                                <div className="text-sm text-gray-500">
-                                                                    {message.client.phone}
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                        <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                                            {campaign.recipients.map((client) => (
+                                                <tr key={client.id}>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                                                        {client.name}
                                                     </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                                        {formatDate(message.sent_at)}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                                        {formatDate(message.delivered_at)}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm">
-                                                        <span
-                                                            className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getMessageStatusColor(
-                                                                message.status
-                                                            )}`}
-                                                        >
-                                                            {getMessageStatusLabel(message.status)}
-                                                        </span>
+                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                        {client.phone}
                                                     </td>
                                                 </tr>
                                             ))}
-                                            {campaign.messages.length === 0 && (
-                                                <tr>
-                                                    <td
-                                                        colSpan={4}
-                                                        className="px-6 py-4 text-center text-sm text-gray-500"
-                                                    >
-                                                        Aucun message envoyé
-                                                    </td>
-                                                </tr>
-                                            )}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-gray-200 px-4 py-4 dark:border-gray-700 sm:px-6">
+                            <div className="flex justify-between">
+                                <Link
+                                    href={route('campaigns.index')}
+                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                >
+                                    {t('common.back')}
+                                </Link>
+                                <div className="flex space-x-2">
+                                    {campaign.status === 'draft' && (
+                                        <Link
+                                            href={route('campaigns.edit', campaign.id)}
+                                            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                                        >
+                                            {t('common.edit')}
+                                        </Link>
+                                    )}
+                                    {campaign.status === 'scheduled' && (
+                                        <Link
+                                            href={route('campaigns.status', campaign.id)}
+                                            method="put"
+                                            data={{ status: 'paused' }}
+                                            as="button"
+                                            className="inline-flex items-center rounded-md border border-transparent bg-yellow-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 dark:bg-yellow-700 dark:hover:bg-yellow-600"
+
+                                            href={route('campaigns.destroy', campaign.id)}
+                                            method="delete"
+                                            as="button"
+                                            className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
+                                            onClick={(e) => {
+                                                if (!confirm(t('campaigns.confirmDelete'))) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                        >
+                                            {t('common.delete')}
+                                        </Link>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -393,4 +226,4 @@ export default function Show({ auth, campaign }: CampaignShowProps) {
             </div>
         </AuthenticatedLayout>
     );
-} 
+}
