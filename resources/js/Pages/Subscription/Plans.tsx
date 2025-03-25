@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
@@ -99,8 +99,8 @@ export default function Plans({
                                     <button
                                         type="button"
                                         className={`${duration === 'monthly'
-                                                ? 'bg-white shadow-sm dark:bg-gray-600'
-                                                : 'hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            ? 'bg-white shadow-sm dark:bg-gray-600'
+                                            : 'hover:bg-gray-200 dark:hover:bg-gray-600'
                                             } relative rounded-full px-4 py-2 text-sm font-medium transition-colors`}
                                         onClick={toggleDuration}
                                     >
@@ -109,8 +109,8 @@ export default function Plans({
                                     <button
                                         type="button"
                                         className={`${duration === 'annual'
-                                                ? 'bg-white shadow-sm dark:bg-gray-600'
-                                                : 'hover:bg-gray-200 dark:hover:bg-gray-600'
+                                            ? 'bg-white shadow-sm dark:bg-gray-600'
+                                            : 'hover:bg-gray-200 dark:hover:bg-gray-600'
                                             } relative ml-0.5 rounded-full px-4 py-2 text-sm font-medium transition-colors`}
                                         onClick={toggleDuration}
                                     >
@@ -188,7 +188,11 @@ export default function Plans({
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        post(route('subscription.plans.subscribe', plan.id));
+                                                        router.post(route('payment.subscription', plan.id), {
+                                                            payment_method: data.payment_method,
+                                                            duration: data.duration,
+                                                            simulation_mode: true
+                                                        });
                                                     }}
                                                     disabled={currentPlanId === plan.id || processing}
                                                     className={`mt-8 block w-full rounded-lg px-4 py-3 text-center text-sm font-semibold  

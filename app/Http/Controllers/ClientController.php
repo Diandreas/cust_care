@@ -376,7 +376,8 @@ class ClientController extends Controller
     }
     
     public function import(Request $request)
-    {
+{
+    try {
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xls,xlsx',
             'mapping' => 'required|json'
@@ -403,25 +404,58 @@ class ClientController extends Controller
             }
             
             $mapping = json_decode($request->mapping, true);
-            Excel::import(new ClientsImport($mapping, Auth::id()), $request->file('file'));
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Erreur dans le format du mapping JSON: ' . json_last_error_msg());
+            }
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Les clients ont été importés avec succès.'
-            ]);
+            try {
+                DB::beginTransaction();
+                Excel::import(new ClientsImport($mapping, Auth::id()), $request->file('file'));
+                DB::commit();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Les clients ont été importés avec succès.'
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                \Log::error('Erreur lors de l\'importation Excel: ' . $e->getMessage(), [
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+                
+                throw $e;
+            }
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+            \Log::error('Erreur de validation Excel: ' . json_encode($e->errors()));
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur de validation des données : ' . implode(', ', $e->errors())
             ], 422);
         } catch (\Exception $e) {
+            \Log::error('Erreur générale lors de l\'importation: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Une erreur est survenue lors de l\'importation: ' . $e->getMessage()
             ], 500);
         }
+    } catch (\Exception $e) {
+        \Log::error('Erreur d\'importation: ' . $e->getMessage(), [
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'Une erreur est survenue: ' . $e->getMessage()
+        ], 500);
     }
-    
+}
     public function export(Request $request)
     {
         try {

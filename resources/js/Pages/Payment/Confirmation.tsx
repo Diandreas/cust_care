@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
@@ -32,19 +32,23 @@ export default function Confirmation({
     duration = 'monthly',
 }: PageProps<ConfirmationProps>) {
     const { t } = useTranslation();
-    const { post, processing } = useForm();
+    const [processing, setProcessing] = React.useState(false);
 
     const handleConfirmPayment = () => {
+        setProcessing(true);
+
         if (plan) {
-            post(route('payment.subscription', plan.id), {
+            router.post(route('payment.subscription', plan.id), {
                 payment_method: paymentMethod,
                 duration: duration,
+                simulation_mode: true,
             });
         } else if (addonType) {
-            post(route('payment.addon'), {
+            router.post(route('payment.addon'), {
                 addon_type: addonType,
                 quantity: quantity,
                 payment_method: paymentMethod,
+                simulation_mode: true,
             });
         }
     };
@@ -139,6 +143,7 @@ export default function Confirmation({
                                             <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Mode de test</h3>
                                             <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
                                                 <p>Cette plateforme est actuellement en mode de test. Aucun paiement réel ne sera prélevé.</p>
+                                                <p className="mt-1 font-semibold">En cliquant sur "Confirmer", votre abonnement sera automatiquement activé sans passer par le processus de paiement.</p>
                                             </div>
                                         </div>
                                     </div>
@@ -156,7 +161,7 @@ export default function Confirmation({
                                         disabled={processing}
                                         className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 dark:bg-indigo-500 dark:hover:bg-indigo-600"
                                     >
-                                        {processing ? 'Traitement en cours...' : 'Confirmer le paiement'}
+                                        {processing ? 'Traitement en cours...' : 'Activer mon abonnement'}
                                     </button>
                                 </div>
                             </div>

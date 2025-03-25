@@ -12,6 +12,8 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\TagController;
+use App\Http\Middleware\CheckClientLimit;
+use App\Http\Middleware\EnsureUserHasActiveSubscription;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -31,14 +33,21 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Tableau de bord
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
-    // Clients
-    Route::resource('clients', ClientController::class);
-    Route::middleware('client.limit')->post('/clients/import', [ClientController::class, 'import'])->name('clients.import');
+    // IMPORTANT: Les routes spécifiques doivent être placées AVANT la route resource
+    // Route d'exportation des clients
     Route::get('/clients/export', [ClientController::class, 'export'])->name('clients.export');
+    
+    // Route d'importation des clients
+    Route::middleware(CheckClientLimit::class)->post('/clients/import', [ClientController::class, 'import'])->name('clients.import');
+    
+    // Route de suppression en masse des clients
     Route::delete('/clients/bulk-destroy', [ClientController::class, 'bulkDestroy'])->name('clients.bulkDestroy');
     
-    // Corriger la route clients.store pour appliquer le middleware client.limit
-    Route::middleware('client.limit')->post('/clients', [ClientController::class, 'store'])->name('clients.store');
+    // Route de création avec middleware client.limit
+    Route::middleware(CheckClientLimit::class)->post('/clients', [ClientController::class, 'store'])->name('clients.store');
+    
+    // Resource clients SANS la méthode store (définie manuellement ci-dessus)
+    Route::resource('clients', ClientController::class)->except('store');
     
     // Tags
     Route::resource('tags', TagController::class);
@@ -48,12 +57,14 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     
     // Abonnement
     Route::get('subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
+    Route::post('subscription/topup', [SubscriptionController::class, 'topup'])->name('subscription.top-up');
     Route::get('subscription/invoices', [SubscriptionController::class, 'invoices'])->name('subscription.invoices');
     
     // Plans d'abonnement
-    Route::get('subscription/plans', [SubscriptionPlanController::class, 'index'])->name('subscription.plans');
-    Route::get('subscription/plans/{plan}', [SubscriptionPlanController::class, 'show'])->name('subscription.plans.show');
+    Route::get('subscription/plans', [SubscriptionController::class, 'plans'])->name('subscription.plans');
+    Route::post('subscription/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
     Route::post('subscription/plans/{plan}/subscribe', [SubscriptionPlanController::class, 'subscribe'])->name('subscription.plans.subscribe');
+
     Route::get('subscription/addons', [SubscriptionController::class, 'addons'])->name('subscription.addons.index');
     Route::post('subscription/addons', [SubscriptionPlanController::class, 'purchaseAddons'])->name('subscription.addons');
     
@@ -63,7 +74,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::post('payment/addon', [PaymentController::class, 'processAddonPayment'])->name('payment.addon');
     
     // Routes nécessitant un abonnement actif
-    Route::middleware(['subscription'])->group(function () {
+    Route::middleware([EnsureUserHasActiveSubscription::class])->group(function () {
         // Campagnes
         Route::resource('campaigns', CampaignController::class);
         Route::put('campaigns/{campaign}/status', [CampaignController::class, 'changeStatus'])->name('campaigns.status');

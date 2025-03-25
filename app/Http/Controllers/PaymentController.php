@@ -16,25 +16,44 @@ class PaymentController extends Controller
      */
     public function processSubscriptionPayment(Request $request, SubscriptionPlan $plan)
     {
+        // Capturer toutes les données reçues pour débogage
+        Log::debug('Données reçues pour activation abonnement', [
+            'all_request_data' => $request->all(),
+            'headers' => $request->headers->all(),
+        ]);
+        
         $validated = $request->validate([
             'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer',
             'duration' => 'required|string|in:monthly,annual',
+            'simulation_mode' => 'nullable|boolean',
         ]);
         
         $duration = $validated['duration'];
         $amount = $duration === 'annual' ? $plan->annual_price : $plan->price;
+        $simulationMode = $validated['simulation_mode'] ?? false;
         
-        // Simuler un traitement de paiement
-        Log::info('Paiement pour abonnement traité', [
+        // En mode simulation/test, on active directement l'abonnement sans vérifier le paiement
+        Log::info('Activation directe de l\'abonnement en mode simulation', [
             'user_id' => Auth::id(),
             'plan_id' => $plan->id,
             'amount' => $amount,
             'payment_method' => $validated['payment_method'],
             'duration' => $duration,
+            'simulation_mode' => $simulationMode,
         ]);
         
-        // En mode test, on considère que le paiement est toujours réussi
-        return $this->handleSuccessfulPayment($plan, $duration);
+        try {
+            // Activer l'abonnement directement
+            $result = $this->handleSuccessfulPayment($plan, $duration);
+            Log::info('Résultat de l\'activation', ['result' => 'success']);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'activation de l\'abonnement', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de l\'activation de votre abonnement: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -42,15 +61,23 @@ class PaymentController extends Controller
      */
     public function processAddonPayment(Request $request)
     {
+        // Capturer toutes les données reçues pour débogage
+        Log::debug('Données reçues pour activation d\'options', [
+            'all_request_data' => $request->all(),
+            'headers' => $request->headers->all(),
+        ]);
+        
         $request->validate([
             'addon_type' => 'required|in:sms,clients',
             'quantity' => 'required|integer|min:1|max:100',
             'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer',
+            'simulation_mode' => 'nullable|boolean',
         ]);
         
         $addonType = $request->addon_type;
         $quantity = $request->quantity;
         $amount = 0;
+        $simulationMode = $request->simulation_mode ?? false;
         
         // Calculer le montant à payer
         if ($addonType === 'sms') {
@@ -61,17 +88,28 @@ class PaymentController extends Controller
             $amount = $quantity * 2000;
         }
         
-        // Simuler un traitement de paiement
-        Log::info('Paiement pour addon traité', [
+        // En mode simulation/test, on active directement l'option sans vérifier le paiement
+        Log::info('Activation directe de l\'option complémentaire en mode simulation', [
             'user_id' => Auth::id(),
             'addon_type' => $addonType,
             'quantity' => $quantity,
             'amount' => $amount,
             'payment_method' => $request->payment_method,
+            'simulation_mode' => $simulationMode,
         ]);
         
-        // En mode test, on considère que le paiement est toujours réussi
-        return $this->handleSuccessfulAddonPayment($addonType, $quantity);
+        try {
+            // Activer l'option directement
+            $result = $this->handleSuccessfulAddonPayment($addonType, $quantity);
+            Log::info('Résultat de l\'activation de l\'addon', ['result' => 'success']);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'activation de l\'option', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->back()->with('error', 'Une erreur est survenue lors de l\'activation de votre option: ' . $e->getMessage());
+        }
     }
     
     /**
@@ -80,6 +118,11 @@ class PaymentController extends Controller
     private function handleSuccessfulPayment(SubscriptionPlan $plan, string $duration = 'monthly')
     {
         $user = Auth::user();
+        
+        if (!$user) {
+            return redirect()->route('login');
+        }
+        
         $existingSubscription = $user->subscription;
         
         // Déterminer la date d'expiration en fonction de la durée
@@ -103,22 +146,23 @@ class PaymentController extends Controller
             return redirect()->route('subscription.index')->with('success', "Votre abonnement $durationType a été mis à jour avec succès!");
         } else {
             // Créer un nouvel abonnement
-            $user->subscription()->create([
-                'plan_id' => $plan->id,
-                'plan' => $plan->name,
-                'status' => 'active',
-                'duration' => $duration,
-                'starts_at' => now(),
-                'expires_at' => $expiresAt,
-                'clients_limit' => $plan->max_clients,
-                'campaigns_limit' => $plan->max_campaigns_per_month,
-                'campaign_sms_limit' => $plan->total_campaign_sms,
-                'personal_sms_quota' => $plan->monthly_sms_quota,
-                'sms_used' => 0,
-                'campaigns_used' => 0,
-                'next_renewal_date' => $expiresAt,
-                'is_auto_renew' => true,
-            ]);
+            $subscription = new Subscription();
+            $subscription->user_id = $user->id;
+            $subscription->plan_id = $plan->id;
+            $subscription->plan = $plan->name;
+            $subscription->status = 'active';
+            $subscription->duration = $duration;
+            $subscription->starts_at = now();
+            $subscription->expires_at = $expiresAt;
+            $subscription->clients_limit = $plan->max_clients;
+            $subscription->campaigns_limit = $plan->max_campaigns_per_month;
+            $subscription->campaign_sms_limit = $plan->total_campaign_sms;
+            $subscription->personal_sms_quota = $plan->monthly_sms_quota;
+            $subscription->sms_used = 0;
+            $subscription->campaigns_used = 0;
+            $subscription->next_renewal_date = $expiresAt;
+            $subscription->is_auto_renew = true;
+            $subscription->save();
             
             $durationType = $duration === 'annual' ? 'annuel' : 'mensuel';
             return redirect()->route('subscription.index')->with('success', "Votre abonnement $durationType a été activé avec succès!");
@@ -197,5 +241,34 @@ class PaymentController extends Controller
             'paymentMethod' => $data['payment_method'],
             'duration' => $duration,
         ]);
+    }
+    
+    /**
+     * Activer directement un abonnement en mode simulation
+     */
+    public function directActivation(SubscriptionPlan $plan, string $duration = 'monthly')
+    {
+        if (!in_array($duration, ['monthly', 'annual'])) {
+            $duration = 'monthly';
+        }
+        
+        Log::info('Activation directe de l\'abonnement via URL spéciale', [
+            'user_id' => Auth::id(),
+            'plan_id' => $plan->id,
+            'duration' => $duration,
+        ]);
+        
+        try {
+            // Activer l'abonnement directement
+            $result = $this->handleSuccessfulPayment($plan, $duration);
+            Log::info('Résultat de l\'activation directe', ['result' => 'success']);
+            return $result;
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'activation directe de l\'abonnement', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return redirect()->route('subscription.plans')->with('error', 'Une erreur est survenue lors de l\'activation de votre abonnement: ' . $e->getMessage());
+        }
     }
 }
