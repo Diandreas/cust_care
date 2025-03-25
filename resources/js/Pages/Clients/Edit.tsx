@@ -4,6 +4,7 @@ import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/utils/toast';
 
 interface Client {
     id: number;
@@ -12,7 +13,9 @@ interface Client {
     email: string | null;
     category_id: number | null;
     birthday: string | null;
+    address: string | null;
     notes: string | null;
+    tags: Tag[];
 }
 
 interface Category {
@@ -20,17 +23,27 @@ interface Category {
     name: string;
 }
 
+interface Tag {
+    id: number;
+    name: string;
+}
+
 interface EditClientProps {
     client: Client;
     categories: Category[];
+    tags: Tag[];
+    selectedTags: number[];
 }
 
 export default function EditClient({
     auth,
     client,
     categories,
+    tags,
+    selectedTags,
 }: PageProps<EditClientProps>) {
     const { t } = useTranslation();
+    const { success, error } = useToast();
 
     const { data, setData, patch, processing, errors } = useForm({
         name: client.name || '',
@@ -38,12 +51,21 @@ export default function EditClient({
         email: client.email || '',
         category_id: client.category_id || '',
         birthday: client.birthday || '',
+        address: client.address || '',
         notes: client.notes || '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        patch(route('clients.update', client.id));
+
+        patch(route('clients.update', client.id), {
+            onSuccess: () => {
+                success('clients.updateSuccess');
+            },
+            onError: () => {
+                error('common.error');
+            }
+        });
     };
 
     return (
@@ -149,6 +171,23 @@ export default function EditClient({
                                         />
                                         {errors.birthday && (
                                             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.birthday}</p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            {t('common.address')}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="address"
+                                            name="address"
+                                            value={data.address}
+                                            onChange={(e) => setData('address', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        />
+                                        {errors.address && (
+                                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
                                         )}
                                     </div>
                                 </div>

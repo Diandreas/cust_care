@@ -27,15 +27,18 @@ Route::get('/', function () {
 });
 
 // Routes nécessitant une authentification
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Tableau de bord
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Clients
     Route::resource('clients', ClientController::class);
-    Route::post('/clients/import', [ClientController::class, 'import'])->name('clients.import');
+    Route::middleware('client.limit')->post('/clients/import', [ClientController::class, 'import'])->name('clients.import');
     Route::get('/clients/export', [ClientController::class, 'export'])->name('clients.export');
     Route::delete('/clients/bulk-destroy', [ClientController::class, 'bulkDestroy'])->name('clients.bulkDestroy');
+    
+    // Corriger la route clients.store pour appliquer le middleware client.limit
+    Route::middleware('client.limit')->post('/clients', [ClientController::class, 'store'])->name('clients.store');
     
     // Tags
     Route::resource('tags', TagController::class);

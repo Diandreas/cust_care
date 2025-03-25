@@ -13,6 +13,9 @@ import DangerButton from '@/Components/DangerButton';
 import Dropdown from '@/Components/Dropdown';
 import Checkbox from '@/Components/Checkbox';
 import { Transition } from '@headlessui/react';
+import { useToast } from '@/utils/toast';
+import { toast } from 'sonner';
+import axios from 'axios';
 
 interface Client {
     id: number;
@@ -80,7 +83,7 @@ export default function ClientsIndex({
     filters,
     stats,
     subscription,
-}: PageProps<ClientsIndexProps>) {
+}: PageProps<Record<string, unknown>>) {
     const { t } = useTranslation();
     const [selectedClients, setSelectedClients] = useState<number[]>([]);
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
@@ -92,6 +95,7 @@ export default function ClientsIndex({
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewData, setPreviewData] = useState<any[]>([]);
     const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
+    const { success, error } = useToast();
 
     // État pour la recherche et les filtres
     const { data, setData, get, processing } = useForm({
@@ -167,49 +171,100 @@ export default function ClientsIndex({
         }
     };
 
+    // Fonction pour gérer les réponses d'importation
+    const handleImportResponse = (response: Response) => {
+        if (!response.ok) {
+            if (response.status === 403) {
+                error('subscription.limit.upgradeRequired');
+                return;
+            }
+
+            // Traiter la réponse comme un JSON pour obtenir le message d'erreur
+            response.json().then(data => {
+                error('common.importError', { details: data.message });
+            }).catch(() => {
+                error('common.importError');
+            });
+
+            return;
+        }
+
+        response.json().then(data => {
+            if (data.success) {
+                success('import.success');
+                // Recharger la page
+                window.location.reload();
+            } else {
+                error('common.importError', { details: data.message || '' });
+            }
+        }).catch(() => {
+            error('common.importError');
+        });
+    };
+
+    // Modifier la fonction handleImport pour utiliser selectedFile correctement
     const handleImport = () => {
-        if (!selectedFile) return;
+        if (!selectedFile) {
+            error('import.fileRequired');
+            return;
+        }
 
         const formData = new FormData();
         formData.append('file', selectedFile);
         formData.append('mapping', JSON.stringify(fieldMapping));
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
 
-        fetch(route('clients.import'), {
-            method: 'POST',
-            body: formData,
+        axios.post(route('clients.import'), formData, {
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-            },
+                'Content-Type': 'multipart/form-data',
+            }
         })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    setShowImportModal(false);
-                    // Reload page or update clients list
-                    window.location.reload();
-                } else {
-                    alert(data.message || t('common.importError'));
-                }
+            .then(response => {
+                success('import.success');
+                setShowImportModal(false);
+                // Recharger la page pour afficher les clients importés
+                window.location.reload();
             })
-            .catch(error => {
-                console.error('Import error:', error);
-                alert(t('common.importError'));
+            .catch(err => {
+                if (err.response && err.response.status === 403) {
+                    error('subscription.limit.upgradeRequired');
+                } else {
+                    error('common.importError', { details: err.response?.data?.message || 'Erreur inconnue' });
+                }
             });
     };
 
     const handleExport = (format: 'csv' | 'excel') => {
+        // Pour l'exportation, nous allons créer une URL avec les paramètres, puis y naviguer
         const params = new URLSearchParams();
-        params.append('format', format);
-        Object.entries(data).forEach(([key, value]) => {
-            if (value) params.append(key, value.toString());
-        });
 
+        // Ajouter les filtres actuels
+        if (data.search) params.append('search', data.search);
+        if (data.category_id) params.append('category_id', data.category_id);
+        if (data.tag_id) params.append('tag_id', data.tag_id);
+        if (data.date_range) params.append('date_range', data.date_range);
+        if (data.birthday_month) params.append('birthday_month', data.birthday_month);
+
+        // Si des clients sont sélectionnés, les exporter spécifiquement
         if (selectedClients.length > 0) {
             selectedClients.forEach(id => params.append('selected[]', id.toString()));
         }
 
-        window.location.href = `${route('clients.export')}?${params.toString()}`;
-        setShowExportModal(false);
+        // Ajouter le format d'exportation
+        params.append('format', format);
+
+        // Créer l'URL complète
+        const exportUrl = `${route('clients.export')}?${params.toString()}`;
+
+        // Créer un token temporaire en cas de problème CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        // Ouvrir dans un nouvel onglet avec un cookie CSRF rafraîchi
+        axios.get('/sanctum/csrf-cookie').then(() => {
+            window.open(exportUrl, '_blank');
+        }).catch(err => {
+            error('export.error', { details: err.message });
+        });
     };
 
     const toggleAllClients = (checked: boolean) => {
@@ -232,22 +287,24 @@ export default function ClientsIndex({
         if (selectedClients.length === 0) return;
 
         if (action === 'delete') {
+            // Utiliser SweetAlert ou un autre système de confirmation au lieu de confirm()
             if (confirm(t('clients.confirmBulkDelete'))) {
-                fetch(route('clients.bulkDestroy'), {
-                    method: 'DELETE',
+                axios.delete(route('clients.bulkDestroy'), {
+                    data: { ids: selectedClients },
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                    },
-                    body: JSON.stringify({ ids: selectedClients }),
+                    }
                 })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
+                    .then(response => {
+                        if (response.data.success) {
+                            success('clients.deleteSuccess');
                             window.location.reload();
                         } else {
-                            alert(data.message || t('common.error'));
+                            error('common.error');
                         }
+                    })
+                    .catch(err => {
+                        error('common.error', { details: err.message });
                     });
             }
         } else if (action === 'category') {

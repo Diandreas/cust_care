@@ -4,6 +4,7 @@ import { Head } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@inertiajs/react';
 
 // Types pour les statistiques
 interface DashboardStats {
@@ -42,6 +43,8 @@ interface DashboardStats {
         campaigns_usage_percent: number;
         sms_quota_low: boolean;
         sms_quota_exhausted: boolean;
+        isFreePlan: boolean;
+        clientsCount: number;
     } | null;
 }
 
@@ -174,38 +177,80 @@ export default function Dashboard({ auth, stats }: PageProps<{ stats: DashboardS
                         </div>
                     </div>
 
-                    {/* Abonnement */}
+                    {/* Subscription Info */}
                     {stats.subscription && (
-                        <div className="mb-6 overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800">
+                        <div className="mb-6 overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
                             <div className="px-4 py-5 sm:p-6">
-                                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">{t('dashboard.subscription.yourSubscription')}</h3>
-                                <div className="mt-5 space-y-3">
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.subscription.plan')}</span>
-                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{stats.subscription.plan}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.subscription.smsUsage')}</span>
-                                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                            {stats.subscription.sms_used} / {stats.subscription.personal_sms_quota}
-                                        </span>
-                                    </div>
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <div className="relative h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                            <div
-                                                className={`absolute left-0 h-full ${stats.subscription.sms_usage_percent > 80 ? 'bg-red-500' : 'bg-green-500'}`}
-                                                style={{ width: `${stats.subscription.sms_usage_percent}%` }}
-                                            ></div>
+                                        <h3 className="text-base font-semibold leading-6 text-gray-900 dark:text-white">
+                                            {t('subscription.yourSubscription')}
+                                        </h3>
+                                        <div className="mt-2 max-w-xl text-sm text-gray-500 dark:text-gray-400">
+                                            {stats.subscription.isFreePlan ? (
+                                                <div>
+                                                    <p className="font-medium">{t('subscription.limit.freePlan')}</p>
+                                                    <p>{t('subscription.limit.freePlanLimit')}</p>
+                                                    <p className="mt-1">
+                                                        {t('stats.clientsUsed', {
+                                                            count: stats.subscription.clientsCount,
+                                                            total: stats.subscription.clients_limit,
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div>
+                                                    <p className="font-medium">{stats.subscription.plan}</p>
+                                                    <p>
+                                                        {t('stats.clientsUsed', {
+                                                            count: stats.subscription.clientsCount,
+                                                            total: stats.subscription.clients_limit,
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-sm text-gray-500 dark:text-gray-400">{t('dashboard.subscription.expiration')}</span>
-                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(stats.subscription.next_renewal_date)}</span>
+                                    <div>
+                                        {stats.subscription.isFreePlan ? (
+                                            <Link
+                                                href={route('subscription.plans')}
+                                                className="inline-flex items-center rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:from-purple-500 hover:to-indigo-500"
+                                            >
+                                                {t('subscription.upgrade')}
+                                            </Link>
+                                        ) : (
+                                            <Link
+                                                href={route('subscription.index')}
+                                                className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                            >
+                                                {t('subscription.manage')}
+                                            </Link>
+                                        )}
                                     </div>
-                                    <div className="pt-2">
-                                        <a href={route('subscription.index')} className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                                            {t('dashboard.subscription.manage')} &rarr;
-                                        </a>
+                                </div>
+
+                                {/* Progress bar for client limit */}
+                                <div className="mt-4">
+                                    <div className="relative pt-1">
+                                        <div className="mb-1 flex items-center justify-between">
+                                            <div>
+                                                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                                                    {Math.round((stats.subscription.clientsCount / stats.subscription.clients_limit) * 100)}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="mb-4 h-2 overflow-hidden rounded bg-gray-200 text-xs dark:bg-gray-700">
+                                            <div
+                                                style={{ width: `${Math.min((stats.subscription.clientsCount / stats.subscription.clients_limit) * 100, 100)}%` }}
+                                                className={`h-full rounded ${stats.subscription.clientsCount > stats.subscription.clients_limit * 0.9
+                                                    ? 'bg-red-500'
+                                                    : stats.subscription.clientsCount > stats.subscription.clients_limit * 0.7
+                                                        ? 'bg-yellow-500'
+                                                        : 'bg-green-500'
+                                                    }`}
+                                            ></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

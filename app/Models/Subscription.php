@@ -91,4 +91,15 @@ class Subscription extends Model
     {
         return $this->sms_used >= $this->personal_sms_quota;
     }
+
+    /**
+     * Vérifie si l'abonnement est actif
+     * 
+     * @return bool
+     */
+    public function isActive(): bool
+    {
+        // Vérifie si la date d'expiration est dans le futur et que le statut est actif
+        return $this->expires_at > now() && $this->status === 'active';
+    }
 } 

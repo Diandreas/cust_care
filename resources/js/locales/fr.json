@@ -31,6 +31,7 @@
         "email": "Email",
         "phone": "Téléphone",
         "birthday": "Date de naissance",
+        "address": "Adresse",
         "notes": "Notes",
         "description": "Description",
         "category": "Catégorie",
@@ -42,16 +43,74 @@
         "status": "Statut",
         "type": "Type",
         "add": "Ajouter",
+        "addClient": "Ajouter un client",
         "search": "Rechercher",
+        "searchClients": "Rechercher des clients...",
         "allCategories": "Toutes les catégories",
+        "all": "Tous",
         "noResults": "Aucun résultat trouvé",
+        "noNotes": "Aucune note disponible",
         "active": "Actif",
         "inactive": "Inactif",
-        "send": "Envoyer"
+        "send": "Envoyer",
+        "sendMessage": "Envoyer un message",
+        "moreActions": "Plus d'actions",
+        "resetFilters": "Réinitialiser les filtres",
+        "applyFilters": "Appliquer les filtres",
+        "contact": "Contact",
+        "activity": "Activité",
+        "tableView": "Tableau",
+        "gridView": "Grille",
+        "cardsView": "Cartes",
+        "never": "Jamais",
+        "import": "Importer",
+        "export": "Exporter",
+        "filters": "Filtres",
+        "lastContact": "Dernier contact",
+        "totalSms": "Total SMS",
+        "lastSms": "Dernier SMS",
+        "dateAdded": "Date d'ajout",
+        "tags": "Tags",
+        "importError": "Erreur lors de l'importation"
     },
     "auth": {
         "login": "Connexion",
         "register": "Inscription"
+    },
+    "stats": {
+        "totalClients": "Total Clients",
+        "thisMonth": "ce mois-ci",
+        "activeClients": "Clients Actifs",
+        "ofTotal": "du total",
+        "smsSent": "SMS Envoyés",
+        "smsRemaining": "restants",
+        "subscription": "Abonnement",
+        "clientsUsed": "clients utilisés"
+    },
+    "filters": {
+        "tags": "Tags",
+        "dateRange": "Période",
+        "birthdayMonth": "Mois d'anniversaire",
+        "sortBy": "Trier par",
+        "today": "Aujourd'hui",
+        "thisWeek": "Cette semaine",
+        "thisMonth": "Ce mois",
+        "last30Days": "30 derniers jours",
+        "thisYear": "Cette année"
+    },
+    "months": {
+        "january": "Janvier",
+        "february": "Février",
+        "march": "Mars",
+        "april": "Avril",
+        "may": "Mai",
+        "june": "Juin",
+        "july": "Juillet",
+        "august": "Août",
+        "september": "Septembre",
+        "october": "Octobre",
+        "november": "Novembre",
+        "december": "Décembre"
     },
     "pagination": {
         "showing": "Affichage de",
@@ -92,7 +151,73 @@
         "create": "Créer un client",
         "edit": "Modifier le client",
         "selectCategory": "Sélectionner une catégorie",
-        "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce client ?"
+        "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce client ?",
+        "confirmBulkDelete": "Êtes-vous sûr de vouloir supprimer les clients sélectionnés ?",
+        "selectedClients": "clients sélectionnés",
+        "sendMessage": "Envoyer Message",
+        "updateCategory": "Modifier Catégorie",
+        "exportSelected": "Exporter la sélection",
+        "deleteSelected": "Supprimer la sélection",
+        "deleteSuccess": "Clients supprimés avec succès!",
+        "createSuccess": "Client créé avec succès!",
+        "updateSuccess": "Client mis à jour avec succès!"
+    },
+    "import": {
+        "title": "Importer des Clients",
+        "description": "Importez des clients depuis un fichier CSV ou Excel. Vous pouvez associer les colonnes de votre fichier aux champs des clients.",
+        "selectFile": "Sélectionner un fichier",
+        "preview": "Aperçu",
+        "fieldMapping": "Association des champs",
+        "fieldMappingDescription": "Associez les colonnes de votre fichier aux champs de notre système",
+        "ignore": "Ignorer ce champ",
+        "import": "Importer",
+        "importError": "Une erreur est survenue pendant l'importation",
+        "success": "Clients importés avec succès!",
+        "fileRequired": "Veuillez sélectionner un fichier à importer.",
+        "invalidFormat": "Format de fichier non valide. Utilisez CSV, Excel ou TXT."
+    },
+    "export": {
+        "title": "Exporter des Clients",
+        "selectedDescription": "Exporter {count} clients sélectionnés",
+        "description": "Exporter tous les clients correspondant aux filtres actuels",
+        "csv": "Fichier CSV",
+        "excel": "Fichier Excel",
+        "includeFields": "Champs à inclure",
+        "export": "Exporter",
+        "success": "Clients exportés avec succès!",
+        "error": "Une erreur est survenue pendant l'exportation: {details}"
+    },
+    "bulk": {
+        "sendSms": "Envoyer SMS à plusieurs clients",
+        "sendSmsDescription": "Vous êtes sur le point d'envoyer un message à {count} clients",
+        "messageTemplate": "Modèle de message",
+        "selectTemplate": "Sélectionner un modèle...",
+        "messageContent": "Contenu du message",
+        "messagePlaceholder": "Saisissez votre message ici. Vous pouvez utiliser des tags comme {{name}} pour personnaliser le message.",
+        "availableTags": "Tags disponibles",
+        "scheduleMessage": "Programmer l'envoi",
+        "scheduleDate": "Date",
+        "scheduleTime": "Heure",
+        "summary": "Résumé",
+        "recipients": "Destinataires",
+        "estimatedCost": "Coût estimé",
+        "remaining": "Solde après envoi",
+        "send": "Envoyer"
+    },
+    "client": {
+        "contactInformation": "Informations de contact",
+        "smsActivity": "Activité SMS",
+        "totalSms": "Total SMS",
+        "lastSms": "Dernier SMS",
+        "lastContact": "Dernier contact",
+        "recentMessages": "Messages récents",
+        "notes": "Notes",
+        "tags": "Tags",
+        "noTags": "Aucun tag",
+        "noNotes": "Aucune note disponible",
+        "plannedCampaigns": "Campagnes prévues",
+        "messageHistory": "Historique des messages",
+        "sent": "Envoyé"
     },
     "campaigns": {
         "create": "Créer une campagne",
@@ -144,7 +269,10 @@
         "nameRequired": "Le nom de la campagne est obligatoire",
         "messageRequired": "Le contenu du message est obligatoire",
         "recipientsRequired": "Vous devez sélectionner au moins un destinataire",
-        "filterByStatus": "Filtrer par statut"
+        "filterByStatus": "Filtrer par statut",
+        "birthday": "Vœux d'anniversaire",
+        "active": "Active",
+        "nextSend": "Prochain envoi"
     },
     "messages": {
         "send": "Envoyer un message",
@@ -167,7 +295,13 @@
             "promotional": "Promotionnel",
             "personal": "Personnel",
             "automatic": "Automatique"
-        }
+        },
+        "date": "Date",
+        "message": "Message",
+        "status": "Statut",
+        "campaign": "Campagne",
+        "actions": "Actions",
+        "delivered": "Livré"
     },
     "categories": {
         "create": "Créer une catégorie",
@@ -185,7 +319,11 @@
         "yourTemplates": "Vos modèles",
         "noTemplates": "Aucun modèle trouvé",
         "confirmDelete": "Êtes-vous sûr de vouloir supprimer ce modèle ?",
-        "global": "Global"
+        "global": "Global",
+        "promotion": "Promotion",
+        "reminder": "Rappel de rendez-vous",
+        "birthday": "Vœux d'anniversaire",
+        "holiday": "Vœux pour les fêtes"
     },
     "automatic-events": {
         "title": "Événements automatiques",
@@ -242,7 +380,19 @@
                 "a3": "Vous pouvez acheter des crédits SMS supplémentaires à tout moment. Votre forfait de base sera renouvelé avec l'allocation standard au début de chaque cycle de facturation."
             }
         },
-        "noSubscription": "Vous n'avez pas d'abonnement actif"
+        "noSubscription": "Vous n'avez pas d'abonnement actif",
+        "yourSubscription": "Votre Abonnement",
+        "plan": "Forfait",
+        "smsUsage": "Utilisation SMS",
+        "expiration": "Expiration",
+        "manage": "Gérer l'abonnement",
+        "limit": {
+            "freePlan": "Plan Gratuit",
+            "freePlanLimit": "Limité à 50 clients",
+            "upgradeRequired": "Vous avez atteint la limite de clients pour votre plan gratuit. Veuillez souscrire à un abonnement pour ajouter plus de clients.",
+            "importOverLimit": "L'importation dépasserait la limite de clients pour votre plan. Vous pouvez importer au maximum {count} clients.",
+            "subscriptionRequired": "Vous devez avoir un abonnement actif pour accéder à cette fonctionnalité."
+        }
     },
     "settings": {
         "title": "Paramètres",
@@ -383,5 +533,6 @@
             "contact": "Contact",
             "rights": "Tous droits réservés."
         }
-    }
+    },
+    "error": "Une erreur est survenue"
 }

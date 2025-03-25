@@ -31,6 +31,7 @@
         "email": "Email",
         "phone": "Phone",
         "birthday": "Birthday",
+        "address": "Address",
         "notes": "Notes",
         "description": "Description",
         "category": "Category",
@@ -42,16 +43,73 @@
         "status": "Status",
         "type": "Type",
         "add": "Add",
+        "addClient": "Add Client",
         "search": "Search",
+        "searchClients": "Search clients...",
         "allCategories": "All Categories",
+        "all": "All",
         "noResults": "No results found",
+        "noNotes": "No notes available",
         "active": "Active",
         "inactive": "Inactive",
-        "send": "Send"
+        "send": "Send",
+        "sendMessage": "Send Message",
+        "moreActions": "More Actions",
+        "resetFilters": "Reset Filters",
+        "applyFilters": "Apply Filters",
+        "contact": "Contact",
+        "activity": "Activity",
+        "tableView": "Table",
+        "gridView": "Grid",
+        "cardsView": "Cards",
+        "never": "Never",
+        "import": "Import",
+        "export": "Export",
+        "filters": "Filters",
+        "lastContact": "Last Contact",
+        "totalSms": "Total SMS",
+        "lastSms": "Last SMS",
+        "dateAdded": "Date Added",
+        "tags": "Tags"
     },
     "auth": {
         "login": "Log in",
         "register": "Register"
+    },
+    "stats": {
+        "totalClients": "Total Clients",
+        "thisMonth": "this month",
+        "activeClients": "Active Clients",
+        "ofTotal": "of total",
+        "smsSent": "SMS Sent",
+        "smsRemaining": "remaining",
+        "subscription": "Subscription",
+        "clientsUsed": "clients used"
+    },
+    "filters": {
+        "tags": "Tags",
+        "dateRange": "Date Range",
+        "birthdayMonth": "Birthday Month",
+        "sortBy": "Sort By",
+        "today": "Today",
+        "thisWeek": "This Week",
+        "thisMonth": "This Month",
+        "last30Days": "Last 30 Days",
+        "thisYear": "This Year"
+    },
+    "months": {
+        "january": "January",
+        "february": "February",
+        "march": "March",
+        "april": "April",
+        "may": "May",
+        "june": "June",
+        "july": "July",
+        "august": "August",
+        "september": "September",
+        "october": "October",
+        "november": "November",
+        "december": "December"
     },
     "pagination": {
         "showing": "Showing",
@@ -92,7 +150,65 @@
         "create": "Create Client",
         "edit": "Edit Client",
         "selectCategory": "Select a category",
-        "confirmDelete": "Are you sure you want to delete this client?"
+        "confirmDelete": "Are you sure you want to delete this client?",
+        "confirmBulkDelete": "Are you sure you want to delete the selected clients?",
+        "selectedClients": "clients selected",
+        "sendMessage": "Send Message",
+        "updateCategory": "Update Category",
+        "exportSelected": "Export Selected",
+        "deleteSelected": "Delete Selected"
+    },
+    "import": {
+        "title": "Import Clients",
+        "description": "Import clients from a CSV or Excel file. You can map columns from your file to client fields.",
+        "selectFile": "Select File",
+        "preview": "Preview",
+        "fieldMapping": "Field Mapping",
+        "fieldMappingDescription": "Map columns from your file to fields in our system",
+        "ignore": "Ignore this field",
+        "import": "Import",
+        "importError": "An error occurred during import"
+    },
+    "export": {
+        "title": "Export Clients",
+        "selectedDescription": "Export {count} selected clients",
+        "description": "Export all clients matching your current filters",
+        "csv": "CSV File",
+        "excel": "Excel File",
+        "includeFields": "Fields to include",
+        "export": "Export"
+    },
+    "bulk": {
+        "sendSms": "Send SMS to Multiple Clients",
+        "sendSmsDescription": "You are about to send a message to {count} clients",
+        "messageTemplate": "Message Template",
+        "selectTemplate": "Select a template...",
+        "messageContent": "Message Content",
+        "messagePlaceholder": "Enter your message here. You can use tags like {{name}} to personalize the message.",
+        "availableTags": "Available tags",
+        "scheduleMessage": "Schedule Message",
+        "scheduleDate": "Date",
+        "scheduleTime": "Time",
+        "summary": "Summary",
+        "recipients": "Recipients",
+        "estimatedCost": "Estimated Cost",
+        "remaining": "Remaining After Sending",
+        "send": "Send"
+    },
+    "client": {
+        "contactInformation": "Contact Information",
+        "smsActivity": "SMS Activity",
+        "totalSms": "Total SMS",
+        "lastSms": "Last SMS",
+        "lastContact": "Last Contact",
+        "recentMessages": "Recent Messages",
+        "notes": "Notes",
+        "tags": "Tags",
+        "noTags": "No tags",
+        "noNotes": "No notes available",
+        "plannedCampaigns": "Planned Campaigns",
+        "messageHistory": "Message History",
+        "sent": "Sent"
     },
     "campaigns": {
         "create": "Create Campaign",
@@ -144,7 +260,10 @@
         "nameRequired": "Campaign name is required",
         "messageRequired": "Message content is required",
         "recipientsRequired": "You must select at least one recipient",
-        "filterByStatus": "Filter by status"
+        "filterByStatus": "Filter by status",
+        "birthday": "Birthday Wishes",
+        "active": "Active",
+        "nextSend": "Next Send"
     },
     "messages": {
         "send": "Send Message",
@@ -167,7 +286,13 @@
             "promotional": "Promotional",
             "personal": "Personal",
             "automatic": "Automatic"
-        }
+        },
+        "date": "Date",
+        "message": "Message",
+        "status": "Status",
+        "campaign": "Campaign",
+        "actions": "Actions",
+        "delivered": "Delivered"
     },
     "categories": {
         "create": "Create Category",
@@ -185,7 +310,11 @@
         "yourTemplates": "Your Templates",
         "noTemplates": "No templates found",
         "confirmDelete": "Are you sure you want to delete this template?",
-        "global": "Global"
+        "global": "Global",
+        "promotion": "Promotion",
+        "reminder": "Appointment Reminder",
+        "birthday": "Birthday Wishes",
+        "holiday": "Holiday Greetings"
     },
     "automatic-events": {
         "title": "Automatic Events",
@@ -383,5 +512,6 @@
             "contact": "Contact",
             "rights": "All rights reserved."
         }
-    }
+    },
+    "error": "An error occurred"
 }

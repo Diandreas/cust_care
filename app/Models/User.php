@@ -4,18 +4,21 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $fillable = [
         'name',
@@ -26,7 +29,7 @@ class User extends Authenticatable
     /**
      * The attributes that should be hidden for serialization.
      *
-     * @var list<string>
+     * @var array<int, string>
      */
     protected $hidden = [
         'password',
@@ -34,44 +37,68 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * The attributes that should be cast.
      *
-     * @return array<string, string>
+     * @var array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+    ];
 
-    public function clients()
+    /**
+     * Get the clients associated with the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function clients(): HasMany
     {
         return $this->hasMany(Client::class);
     }
 
-    public function categories()
+    /**
+     * Get the categories associated with the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function categories(): HasMany
     {
         return $this->hasMany(Category::class);
     }
 
-    public function campaigns()
+    /**
+     * Get the tags associated with the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function tags(): HasMany
     {
-        return $this->hasMany(Campaign::class);
+        return $this->hasMany(Tag::class);
     }
 
-    public function messages()
+    /**
+     * Get the messages associated with the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
     }
 
     /**
-     * Relation avec les tags
+     * Get the subscription associated with the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
-    public function tags()
+    public function subscription(): HasOne
     {
-        return $this->hasMany(Tag::class);
+        return $this->hasOne(Subscription::class);
+    }
+
+    public function campaigns()
+    {
+        return $this->hasMany(Campaign::class);
     }
 
     public function templates()
@@ -82,10 +109,5 @@ class User extends Authenticatable
     public function automaticEvents()
     {
         return $this->hasMany(AutomaticEvent::class);
-    }
-
-    public function subscription()
-    {
-        return $this->hasOne(Subscription::class)->latest();
     }
 }

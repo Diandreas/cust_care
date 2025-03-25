@@ -2,10 +2,13 @@
 import '../css/app.css';
 import './bootstrap';
 import './i18n'; // Import i18n configuration
+// Importer les styles de Sonner
+import 'sonner/dist/styles.css';
 
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
+import { Toaster } from './Components/Toaster';
 
 // Script d'initialisation du thème qui s'exécute immédiatement
 (function initializeTheme() {
@@ -31,7 +34,12 @@ createInertiaApp({
         ),
     setup({ el, App, props }) {
         const root = createRoot(el);
-        root.render(<App {...props} />);
+        root.render(
+            <>
+                <App {...props} />
+                <Toaster />
+            </>
+        );
     },
     progress: {
         color: '#8A2BE2',

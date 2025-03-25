@@ -4,21 +4,21 @@ import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/utils/toast';
 
 interface Category {
     id: number;
     name: string;
 }
 
-interface CreateClientProps {
-    categories: Category[];
+interface Tag {
+    id: number;
+    name: string;
 }
 
-export default function CreateClient({
-    auth,
-    categories,
-}: PageProps<CreateClientProps>) {
+export default function Create({ auth, categories, tags }: PageProps<{ categories: Category[], tags: Tag[] }>) {
     const { t } = useTranslation();
+    const { success, error } = useToast();
 
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
@@ -26,13 +26,26 @@ export default function CreateClient({
         email: '',
         category_id: '',
         birthday: '',
+        address: '',
         notes: '',
+        tags: [] as number[]
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
         post(route('clients.store'), {
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                success('clients.createSuccess');
+                reset();
+            },
+            onError: (errors) => {
+                if (errors.limit) {
+                    error('subscription.limit.upgradeRequired');
+                } else {
+                    error('common.error');
+                }
+            }
         });
     };
 
