@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ export default function Plans({
     const { data, setData, post, processing, errors } = useForm({
         payment_method: 'mobile_money',
         duration: 'monthly',
+        simulation_mode: false,
     });
 
     const formatPrice = (price: number) => {
@@ -185,14 +186,12 @@ export default function Plans({
                                                         <option value="bank_transfer">Virement bancaire</option>
                                                     </select>
                                                 </div>
+
+                                                {/* Bouton pour choisir normalement le plan */}
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        router.post(route('payment.subscription', plan.id), {
-                                                            payment_method: data.payment_method,
-                                                            duration: data.duration,
-                                                            simulation_mode: true
-                                                        });
+                                                        post(route('subscription.plans.subscribe', plan.id));
                                                     }}
                                                     disabled={currentPlanId === plan.id || processing}
                                                     className={`mt-8 block w-full rounded-lg px-4 py-3 text-center text-sm font-semibold  
@@ -205,6 +204,24 @@ export default function Plans({
                                                 >
                                                     {currentPlanId === plan.id ? 'Abonnement actuel' : 'Choisir ce plan'}
                                                 </button>
+
+                                                {/* Bouton pour activer en mode test (sans paiement) */}
+                                                {currentPlanId !== plan.id && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            post(route('payment.subscription', [plan.id]), {
+                                                                payment_method: data.payment_method,
+                                                                duration: duration,
+                                                                simulation_mode: true
+                                                            });
+                                                        }}
+                                                        disabled={processing}
+                                                        className="mt-2 block w-full rounded-lg border border-indigo-600 bg-white px-4 py-2 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:border-indigo-400 dark:bg-transparent dark:text-indigo-400 dark:hover:bg-gray-800"
+                                                    >
+                                                        Activer en mode test (sans paiement)
+                                                    </button>
+                                                )}
                                             </form>
                                         </div>
                                     </div>
@@ -222,4 +239,4 @@ export default function Plans({
             </div>
         </AuthenticatedLayout>
     );
-} 
+}

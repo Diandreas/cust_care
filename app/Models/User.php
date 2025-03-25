@@ -110,4 +110,21 @@ class User extends Authenticatable
     {
         return $this->hasMany(AutomaticEvent::class);
     }
+
+
+/**
+ * Get all user transactions.
+ */
+public function transactions()
+{
+    return $this->hasMany(Transaction::class);
+}
+
+/**
+ * Obtenir les configurations d'événements de l'utilisateur
+ */
+public function eventConfigs()
+{
+    return $this->hasMany(UserEventConfig::class);
+}
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -11,29 +12,72 @@ use Inertia\Inertia;
 class SubscriptionController extends Controller
 {
     /**
-     * Afficher la page d'abonnement de l'utilisateur
+     * Afficher le tableau de bord d'abonnement de l'utilisateur
      */
-    public function index()
+    public function dashboard()
     {
         $user = Auth::user();
         $subscription = $user->subscription;
         
+        // Format subscription data for frontend
+        $formattedSubscription = null;
         if ($subscription) {
-            // Calcul des statistiques d'utilisation
-            $smsUsagePercent = $subscription->sms_usage_percent;
-            $campaignsUsagePercent = $subscription->campaigns_usage_percent;
-            $smsQuotaLow = $subscription->sms_quota_low;
-            $smsQuotaExhausted = $subscription->sms_quota_exhausted;
-            
-            // Charger le plan associé
-            $subscription->load('plan');
+            // Format des donnés d'abonnement pour le frontend
+            $formattedSubscription = [
+                'id' => $subscription->id,
+                'plan' => $subscription->plan,
+                'status' => $subscription->status,
+                'current_period_start' => $subscription->starts_at,
+                'current_period_end' => $subscription->expires_at,
+                'cancel_at_period_end' => ($subscription->status === 'cancelled'),
+                'duration' => $subscription->duration ?? 'monthly',
+                'is_auto_renew' => $subscription->is_auto_renew ?? true,
+                'next_renewal_date' => $subscription->expires_at,
+                'sms_usage' => [
+                    'used' => $subscription->sms_used ?? 0,
+                    'total' => $subscription->sms_allowed ?? 0,
+                ],
+                'limits' => [
+                    'clients' => $subscription->clients_limit ?? 0,
+                    'campaigns' => $subscription->campaigns_limit ?? 0,
+                ],
+                'campaigns_used' => $subscription->campaigns_used ?? 0,
+            ];
         }
         
-        return Inertia::render('Subscription/Index', [
-            'subscription' => $subscription
+        // Récupérer les transactions récentes
+        $transactions = Transaction::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function ($transaction) {
+                return [
+                    'id' => $transaction->id,
+                    'description' => $transaction->description,
+                    'amount' => $transaction->amount,
+                    'date' => $transaction->created_at,
+                    'type' => $transaction->type,
+                    'status' => $transaction->status,
+                ];
+            });
+        
+        return Inertia::render('Subscription/Dashboard', [
+            'subscription' => $formattedSubscription,
+            'transactions' => $transactions,
         ]);
     }
     
+    /**
+     * Afficher l'ancienne page d'abonnement (pour compatibilité)
+     */
+    public function index()
+    {
+        return redirect()->route('subscription.dashboard');
+    }
+    
+    /**
+     * Afficher la liste des plans d'abonnement
+     */
     public function plans()
     {
         $currentSubscription = Auth::user()->subscription;
@@ -121,6 +165,9 @@ class SubscriptionController extends Controller
         ]);
     }
     
+    /**
+     * Souscrire à un abonnement
+     */
     public function subscribe(Request $request)
     {
         $validated = $request->validate([
@@ -176,8 +223,14 @@ class SubscriptionController extends Controller
                 'campaigns_limit' => $planLimits[$plan]['campaigns_limit'],
                 'personal_sms_quota' => $planLimits[$plan]['personal_sms_limit'],
                 'sms_used' => 0, // Réinitialiser l'utilisation
+                'campaigns_used' => 0, // Réinitialiser l'utilisation
                 'status' => 'active',
+                'duration' => $validated['duration'],
+                'is_auto_renew' => true,
             ]);
+            
+            $transactionType = 'addon';
+            $description = 'Changement de plan d\'abonnement vers ' . ucfirst($plan);
         } else {
             // Créer un nouvel abonnement
             Subscription::create([
@@ -188,6 +241,7 @@ class SubscriptionController extends Controller
                 'expires_at' => $expiresAt,
                 'sms_allowed' => $planLimits[$plan]['sms_allowed'],
                 'sms_used' => 0,
+                'campaigns_used' => 0,
                 'clients_limit' => $planLimits[$plan]['clients_limit'],
                 'campaigns_limit' => $planLimits[$plan]['campaigns_limit'],
                 'personal_sms_quota' => $planLimits[$plan]['personal_sms_limit'],
@@ -195,122 +249,291 @@ class SubscriptionController extends Controller
                 'duration' => $validated['duration'],
                 'is_auto_renew' => true,
             ]);
+            
+            $transactionType = 'subscription';
+            $description = 'Nouvel abonnement ' . ucfirst($plan) . ' (' . $validated['duration'] . ')';
         }
         
-        return redirect()->route('subscription.index')->with('success', 'Abonnement souscrit avec succès.');
-    }
-    
-    public function topup(Request $request)
-    {
-        $validated = $request->validate([
-            'sms_amount' => 'required|integer|min:100|max:5000',
+        // Créer une nouvelle transaction
+        Transaction::create([
+            'user_id' => $user->id,
+            'description' => $description,
+            'amount' => $price,
+            'type' => $transactionType,
+            'status' => 'completed',
         ]);
         
-        $subscription = Auth::user()->subscription;
-        
-        if (!$subscription || $subscription->status !== 'active') {
-            return redirect()->back()->with('error', 'Vous devez avoir un abonnement actif pour acheter des SMS supplémentaires.');
-        }
-        
-        // Ajouter les SMS à l'abonnement actuel
-        $subscription->personal_sms_quota += $validated['sms_amount'];
-        $subscription->save();
-        
-        return redirect()->back()->with('success', 'SMS supplémentaires ajoutés avec succès.');
+        return redirect()->route('subscription.dashboard')->with('success', 'Abonnement souscrit avec succès.');
     }
     
     /**
-     * Afficher les addons disponibles
+     * Afficher la page de recharge SMS
      */
-    public function addons()
+    public function topUp()
     {
-        $subscription = Auth::user()->subscription;
+        $user = Auth::user();
+        $subscription = $user->subscription;
         
         if (!$subscription || $subscription->status !== 'active') {
             return redirect()->route('subscription.plans')
-                ->with('error', 'Vous devez avoir un abonnement actif pour acheter des options complémentaires.');
+                ->with('error', 'Vous devez avoir un abonnement actif pour acheter des SMS supplémentaires.');
         }
         
-        $smsAddons = [
+        $smsPackages = [
             [
-                'id' => 'sms_100',
-                'name' => '100 SMS supplémentaires',
-                'description' => 'Idéal pour les petites campagnes',
+                'id' => 1,
+                'amount' => 100,
                 'price' => 1000,
-                'quantity' => 1,
-                'unit' => 'lot de 100 SMS'
             ],
             [
-                'id' => 'sms_500',
-                'name' => '500 SMS supplémentaires',
-                'description' => 'Bon rapport qualité/prix',
+                'id' => 2,
+                'amount' => 500,
                 'price' => 4500,
-                'quantity' => 5,
-                'unit' => 'lots de 100 SMS'
             ],
             [
-                'id' => 'sms_1000',
-                'name' => '1000 SMS supplémentaires',
-                'description' => 'Économique pour des volumes importants',
+                'id' => 3,
+                'amount' => 1000,
                 'price' => 8000,
-                'quantity' => 10,
-                'unit' => 'lots de 100 SMS'
-            ]
-        ];
-        
-        $clientsAddons = [
-            [
-                'id' => 'clients_100',
-                'name' => '+100 clients',
-                'description' => 'Étendez votre base de données clients',
-                'price' => 2000,
-                'quantity' => 1,
-                'unit' => 'lot de 100 clients'
             ],
             [
-                'id' => 'clients_500',
-                'name' => '+500 clients',
-                'description' => 'Idéal pour les entreprises en croissance',
-                'price' => 8000,
-                'quantity' => 5,
-                'unit' => 'lots de 100 clients'
-            ]
+                'id' => 4,
+                'amount' => 5000,
+                'price' => 35000,
+            ],
         ];
         
-        return Inertia::render('Subscription/Addons', [
-            'subscription' => $subscription,
-            'smsAddons' => $smsAddons,
-            'clientsAddons' => $clientsAddons
+        return Inertia::render('Subscription/TopUp', [
+            'smsPackages' => $smsPackages,
+            'subscription' => [
+                'id' => $subscription->id,
+                'sms_usage' => [
+                    'used' => $subscription->sms_used ?? 0,
+                    'total' => $subscription->sms_allowed ?? 0,
+                ],
+            ],
         ]);
     }
     
     /**
-     * Affiche l'historique des factures
+     * Traiter l'achat de SMS supplémentaires
      */
-    public function invoices()
+    public function processTopUp(Request $request)
+    {
+        $validated = $request->validate([
+            'sms_amount' => 'required|integer|min:100|max:5000',
+            'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer',
+        ]);
+        
+        $user = Auth::user();
+        $subscription = $user->subscription;
+        
+        if (!$subscription || $subscription->status !== 'active') {
+            return redirect()->route('subscription.plans')
+                ->with('error', 'Vous devez avoir un abonnement actif pour acheter des SMS supplémentaires.');
+        }
+        
+        // Calculer le prix en fonction du montant de SMS
+        $price = 0;
+        if ($validated['sms_amount'] <= 100) {
+            $price = 1000;
+        } elseif ($validated['sms_amount'] <= 500) {
+            $price = 4500;
+        } elseif ($validated['sms_amount'] <= 1000) {
+            $price = 8000;
+        } else {
+            $price = 35000;
+        }
+        
+        // Ajouter les SMS à l'abonnement
+        $subscription->sms_allowed += $validated['sms_amount'];
+        $subscription->save();
+        
+        // Créer une transaction
+        Transaction::create([
+            'user_id' => $user->id,
+            'description' => 'Achat de ' . $validated['sms_amount'] . ' SMS supplémentaires',
+            'amount' => $price,
+            'type' => 'addon',
+            'status' => 'completed',
+        ]);
+        
+        return redirect()->route('subscription.dashboard')
+            ->with('success', $validated['sms_amount'] . ' SMS supplémentaires ont été ajoutés à votre compte.');
+    }
+    
+    /**
+     * Afficher la page d'augmentation de limite de clients
+     */
+    public function increaseLimit()
+    {
+        $user = Auth::user();
+        $subscription = $user->subscription;
+        
+        if (!$subscription || $subscription->status !== 'active') {
+            return redirect()->route('subscription.plans')
+                ->with('error', 'Vous devez avoir un abonnement actif pour augmenter vos limites.');
+        }
+        
+        $clientPackages = [
+            [
+                'id' => 1,
+                'amount' => 100,
+                'price' => 2000,
+            ],
+            [
+                'id' => 2,
+                'amount' => 500,
+                'price' => 8000,
+            ],
+            [
+                'id' => 3,
+                'amount' => 1000,
+                'price' => 15000,
+            ],
+        ];
+        
+        return Inertia::render('Subscription/IncreaseLimit', [
+            'clientPackages' => $clientPackages,
+            'subscription' => [
+                'id' => $subscription->id,
+                'clients_limit' => $subscription->clients_limit,
+            ],
+        ]);
+    }
+    
+    /**
+     * Traiter l'augmentation de limite de clients
+     */
+    public function processIncreaseLimit(Request $request)
+    {
+        $validated = $request->validate([
+            'clients_amount' => 'required|integer|min:100|max:1000',
+            'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer',
+        ]);
+        
+        $user = Auth::user();
+        $subscription = $user->subscription;
+        
+        if (!$subscription || $subscription->status !== 'active') {
+            return redirect()->route('subscription.plans')
+                ->with('error', 'Vous devez avoir un abonnement actif pour augmenter vos limites.');
+        }
+        
+        // Calculer le prix en fonction du nombre de clients
+        $price = 0;
+        if ($validated['clients_amount'] <= 100) {
+            $price = 2000;
+        } elseif ($validated['clients_amount'] <= 500) {
+            $price = 8000;
+        } else {
+            $price = 15000;
+        }
+        
+        // Augmenter la limite de clients
+        $subscription->clients_limit += $validated['clients_amount'];
+        $subscription->save();
+        
+        // Créer une transaction
+        Transaction::create([
+            'user_id' => $user->id,
+            'description' => 'Augmentation de la limite de clients de ' . $validated['clients_amount'],
+            'amount' => $price,
+            'type' => 'addon',
+            'status' => 'completed',
+        ]);
+        
+        return redirect()->route('subscription.dashboard')
+            ->with('success', 'Votre limite de clients a été augmentée de ' . $validated['clients_amount'] . '.');
+    }
+    
+    /**
+     * Afficher l'historique des transactions
+     */
+    public function transactions(Request $request)
     {
         $user = Auth::user();
         
-        // En mode test, nous allons simuler quelques factures
-        $invoices = [
-            [
-                'id' => 'INV-001',
-                'date' => now()->subDays(30)->format('Y-m-d'),
-                'amount' => 5000,
-                'status' => 'paid',
-                'description' => 'Abonnement Pack Starter - 1 mois'
-            ],
-            [
-                'id' => 'INV-002',
-                'date' => now()->subDays(15)->format('Y-m-d'),
-                'amount' => 1000,
-                'status' => 'paid',
-                'description' => 'Achat de 100 SMS supplémentaires'
-            ]
-        ];
+        $transactions = Transaction::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->through(function ($transaction) {
+                return [
+                    'id' => $transaction->id,
+                    'description' => $transaction->description,
+                    'amount' => $transaction->amount,
+                    'date' => $transaction->created_at,
+                    'type' => $transaction->type,
+                    'status' => $transaction->status,
+                ];
+            });
         
-        return Inertia::render('Subscription/Invoices', [
-            'invoices' => $invoices
+        return Inertia::render('Subscription/Transactions', [
+            'transactions' => $transactions,
         ]);
+    }
+    
+    /**
+     * Basculer l'état du renouvellement automatique
+     */
+    public function toggleAutoRenew(Request $request)
+    {
+        $user = Auth::user();
+        $subscription = $user->subscription;
+        
+        if (!$subscription) {
+            return redirect()->back()->with('error', 'Aucun abonnement actif trouvé.');
+        }
+        
+        $subscription->is_auto_renew = !$subscription->is_auto_renew;
+        $subscription->save();
+        
+        $message = $subscription->is_auto_renew 
+            ? 'Le renouvellement automatique a été activé.'
+            : 'Le renouvellement automatique a été désactivé.';
+        
+        return redirect()->back()->with('success', $message);
+    }
+    
+    /**
+     * Annuler l'abonnement à la fin de la période
+     */
+    public function cancelAtPeriodEnd(Request $request)
+    {
+        $user = Auth::user();
+        $subscription = $user->subscription;
+        
+        if (!$subscription || $subscription->status !== 'active') {
+            return redirect()->back()->with('error', 'Aucun abonnement actif trouvé.');
+        }
+        
+        $subscription->status = 'cancelled';
+        $subscription->save();
+        
+        // Créer un enregistrement de l'annulation
+        Transaction::create([
+            'user_id' => $user->id,
+            'description' => 'Annulation d\'abonnement - Prendra fin le ' . $subscription->expires_at->format('d/m/Y'),
+            'amount' => 0,
+            'type' => 'subscription',
+            'status' => 'completed',
+        ]);
+        
+        return redirect()->back()->with('success', 'Votre abonnement a été annulé et prendra fin le ' . $subscription->expires_at->format('d/m/Y'));
+    }
+    
+    /**
+     * Afficher l'ancienne page d'options complémentaires (pour compatibilité)
+     */
+    public function addons()
+    {
+        return redirect()->route('subscription.dashboard');
+    }
+    
+    /**
+     * Afficher l'ancienne page de factures (remplacée par les transactions)
+     */
+    public function invoices()
+    {
+        return redirect()->route('subscription.transactions');
     }
 }
