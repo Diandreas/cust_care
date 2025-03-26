@@ -13,6 +13,7 @@ use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\CampaignRetryController;
+use App\Http\Controllers\EventCalendarController;
 use App\Http\Middleware\CheckClientLimit;
 use App\Http\Middleware\EnsureUserHasActiveSubscription;
 use Illuminate\Foundation\Application;
@@ -34,6 +35,11 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Tableau de bord
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/campaigns/{campaign}/retry', [CampaignController::class, 'retry'])->name('campaigns.retry');
+    
+    // Calendrier des événements
+    Route::get('/event-calendar', [EventCalendarController::class, 'index'])->name('event-calendar.index');
+    Route::post('/event-calendar/bulk-toggle', [EventCalendarController::class, 'bulkToggle'])->name('event-calendar.bulk-toggle');
+    
     // IMPORTANT: Les routes spécifiques doivent être placées AVANT la route resource
     // Route d'exportation des clients
     Route::get('/clients/export', [ClientController::class, 'export'])->name('clients.export');

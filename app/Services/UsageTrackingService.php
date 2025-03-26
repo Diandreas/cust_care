@@ -2,144 +2,126 @@
 
 namespace App\Services;
 
-use App\Models\Subscription;
 use App\Models\User;
+use App\Models\Subscription;
+use App\Models\EventType;
 use Illuminate\Support\Facades\Log;
 
 class UsageTrackingService
 {
     /**
-     * Suivre l'utilisation de SMS
-     *
-     * @param User $user L'utilisateur
-     * @param int $smsCount Nombre de SMS envoyés
-     * @return bool True si l'opération a réussi, false sinon
+     * Suivre l'utilisation des SMS pour un utilisateur
      */
-    public function trackSmsUsage(User $user, int $smsCount): bool
+    public function trackSmsUsage(User $user, int $smsCount)
     {
+        // Obtenir l'abonnement actif de l'utilisateur
         $subscription = $user->subscription;
-        
-        if (!$subscription || $subscription->status !== 'active') {
-            Log::warning('Tentative d\'envoi de SMS sans abonnement actif', [
+
+        if (!$subscription) {
+            Log::warning('Tentative de suivre l\'utilisation des SMS pour un utilisateur sans abonnement', [
                 'user_id' => $user->id,
                 'sms_count' => $smsCount
             ]);
             return false;
         }
-        
-        // Vérifier si l'utilisateur a assez de SMS
-        $remainingSms = $subscription->personal_sms_quota - $subscription->sms_used;
-        
-        if ($remainingSms < $smsCount) {
-            Log::warning('Quota SMS insuffisant pour l\'envoi', [
-                'user_id' => $user->id,
-                'remaining_sms' => $remainingSms,
-                'requested_sms' => $smsCount
-            ]);
-            return false;
-        }
-        
-        // Mettre à jour l'utilisation
+
+        // Mettre à jour le compteur d'utilisation
         $subscription->sms_used += $smsCount;
         $subscription->save();
-        
-        // Vérifier si le quota est presque épuisé (80% ou plus)
-        $this->checkLowSmsQuota($subscription);
-        
+
+        // Vérifier si l'utilisateur approche de sa limite
+        $this->checkQuotaWarnings($subscription);
+
         return true;
     }
-    
+
     /**
-     * Suivre l'utilisation de campagnes
-     *
-     * @param User $user L'utilisateur
-     * @return bool True si l'opération a réussi, false sinon
+     * Vérifier si l'utilisateur doit être averti de son utilisation
      */
-    public function trackCampaignUsage(User $user): bool
+    private function checkQuotaWarnings(Subscription $subscription)
     {
-        $subscription = $user->subscription;
-        
-        if (!$subscription || $subscription->status !== 'active') {
-            Log::warning('Tentative de création de campagne sans abonnement actif', [
-                'user_id' => $user->id
-            ]);
-            return false;
-        }
-        
-        // Vérifier si l'utilisateur a atteint sa limite de campagnes
-        if ($subscription->campaigns_used >= $subscription->campaigns_limit) {
-            Log::warning('Limite de campagnes atteinte', [
-                'user_id' => $user->id,
-                'campaigns_used' => $subscription->campaigns_used,
-                'campaigns_limit' => $subscription->campaigns_limit
-            ]);
-            return false;
-        }
-        
-        // Mettre à jour l'utilisation
-        $subscription->campaigns_used += 1;
-        $subscription->save();
-        
-        return true;
-    }
-    
-    /**
-     * Vérifier si le quota SMS est faible et enregistrer cette information
-     *
-     * @param Subscription $subscription
-     * @return void
-     */
-    private function checkLowSmsQuota(Subscription $subscription): void
-    {
-        $usagePercent = ($subscription->sms_used / $subscription->personal_sms_quota) * 100;
-        
-        if ($usagePercent >= 80 && $usagePercent < 100) {
-            Log::info('Quota SMS faible détecté', [
-                'user_id' => $subscription->user_id,
-                'usage_percent' => $usagePercent
-            ]);
-        } else if ($usagePercent >= 100) {
-            Log::warning('Quota SMS épuisé', [
-                'user_id' => $subscription->user_id,
-                'sms_used' => $subscription->sms_used,
-                'sms_quota' => $subscription->personal_sms_quota
-            ]);
+        // Calculer le pourcentage d'utilisation
+        $totalQuota = $subscription->personal_sms_quota;
+        if ($totalQuota <= 0) return;
+
+        $usedPercentage = ($subscription->sms_used / $totalQuota) * 100;
+
+        // Définir les seuils d'avertissement (75%, 90%, 95%)
+        $warnThresholds = [75, 90, 95];
+
+        // Journaliser uniquement si un seuil est atteint
+        foreach ($warnThresholds as $threshold) {
+            if ($usedPercentage >= $threshold && $usedPercentage < ($threshold + 1)) {
+                Log::info('Avertissement de quota SMS pour l\'utilisateur', [
+                    'user_id' => $subscription->user_id,
+                    'usage_percentage' => round($usedPercentage, 2),
+                    'threshold' => $threshold,
+                    'used' => $subscription->sms_used,
+                    'total' => $totalQuota
+                ]);
+
+                // Ici, on pourrait déclencher une notification
+                break;
+            }
         }
     }
-    
+
     /**
-     * Vérifier si l'utilisateur peut envoyer des SMS
-     *
-     * @param User $user L'utilisateur
-     * @param int $smsCount Nombre de SMS à envoyer
-     * @return bool True si l'utilisateur peut envoyer les SMS, false sinon
+     * Vérifier si l'utilisateur peut envoyer un certain nombre de SMS
      */
     public function canSendSms(User $user, int $smsCount): bool
     {
         $subscription = $user->subscription;
-        
-        if (!$subscription || $subscription->status !== 'active') {
+
+        if (!$subscription) {
             return false;
         }
-        
-        $remainingSms = $subscription->personal_sms_quota - $subscription->sms_used;
-        return $remainingSms >= $smsCount;
+
+        $availableSms = $subscription->personal_sms_quota - $subscription->sms_used;
+        return $availableSms >= $smsCount;
     }
-    
+
     /**
-     * Vérifier si l'utilisateur peut créer une campagne
-     *
-     * @param User $user L'utilisateur
-     * @return bool True si l'utilisateur peut créer une campagne, false sinon
+     * Vérifier si l'utilisateur peut activer un événement automatique
      */
-    public function canCreateCampaign(User $user): bool
+    public function canActivateEvent(User $user, EventType $eventType): bool
     {
-        $subscription = $user->subscription;
-        
-        if (!$subscription || $subscription->status !== 'active') {
+        // Vérifier si l'utilisateur a un abonnement actif
+        if (!$user->subscription || !$user->subscription->is_active) {
             return false;
         }
-        
-        return $subscription->campaigns_used < $subscription->campaigns_limit;
+
+        // Pour les événements qui ne consomment pas de SMS
+        if ($eventType->category === 'notification') {
+            return true;
+        }
+
+        // Pour les événements qui consomment des SMS, estimer l'utilisation
+        $estimatedUsage = $this->estimateEventSmsUsage($user, $eventType);
+        return $this->canSendSms($user, $estimatedUsage);
     }
-} 
+
+    /**
+     * Estimer l'utilisation de SMS pour un événement
+     */
+    private function estimateEventSmsUsage(User $user, EventType $eventType): int
+    {
+        // Cette méthode devrait être implémentée en fonction de la logique métier
+        // spécifique à votre application
+
+        // Version simplifiée pour l'exemple
+        $clientCount = $user->clients()->count();
+
+        if ($eventType->audience_logic === 'all') {
+            return $clientCount;
+        } elseif (in_array($eventType->audience_logic, ['male', 'female'])) {
+            return ceil($clientCount / 2);
+        } elseif ($eventType->code === 'birthday') {
+            // Estimation : environ 1/365 des clients ont leur anniversaire un jour donné
+            return max(1, ceil($clientCount / 365));
+        }
+
+        // Par défaut, estimer à 10% des clients
+        return ceil($clientCount / 10);
+    }
+}
