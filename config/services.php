@@ -27,7 +27,10 @@ return [
     'resend' => [
         'key' => env('RESEND_KEY'),
     ],
-
+    'sms' => [
+        'api_key' => env('SMS_API_KEY', ''),
+        'api_url' => env('SMS_API_URL', 'https://api.yoursmsservice.com/v1/send'),
+    ],
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

@@ -15,7 +15,7 @@ interface Campaign {
     id: number;
     name: string;
     message_content: string;
-    status: 'draft' | 'scheduled' | 'sent' | 'paused';
+    status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'failed';
     scheduled_at: string | null;
     recipients_count: number;
     delivered_count: number;
@@ -29,9 +29,9 @@ interface CampaignShowProps {
 }
 
 export default function CampaignShow({
-    auth,
-    campaign,
-}: PageProps<CampaignShowProps>) {
+                                         auth,
+                                         campaign,
+                                     }: PageProps<CampaignShowProps>) {
     const { t } = useTranslation();
 
     const formatDate = (dateString: string | null) => {
@@ -45,10 +45,14 @@ export default function CampaignShow({
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
             case 'scheduled':
                 return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+            case 'sending':
+                return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
             case 'sent':
                 return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
             case 'paused':
                 return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+            case 'failed':
+                return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
             default:
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
@@ -60,10 +64,14 @@ export default function CampaignShow({
                 return t('campaigns.status.draft');
             case 'scheduled':
                 return t('campaigns.status.scheduled');
+            case 'sending':
+                return t('campaigns.status.sending');
             case 'sent':
                 return t('campaigns.status.sent');
             case 'paused':
                 return t('campaigns.status.paused');
+            case 'failed':
+                return t('campaigns.status.failed');
             default:
                 return status;
         }
@@ -96,6 +104,36 @@ export default function CampaignShow({
                         </div>
 
                         <div className="px-4 py-5 sm:p-6">
+                            {/* Indicateur de progression pour campagnes en cours d'envoi */}
+                            {campaign.status === 'sending' && (
+                                <div className="mb-8 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-700">
+                                    <div className="flex items-center mb-2">
+                                        <div className="mr-2 h-4 w-4 text-indigo-600 animate-spin">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        </div>
+                                        <span className="text-gray-800 dark:text-gray-200">{t('campaigns.status.sending')}</span>
+                                    </div>
+
+                                    <div className="mb-1">
+                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            {Math.round(((campaign.delivered_count + campaign.failed_count) / campaign.recipients_count) * 100)}% {t('campaigns.completed')}
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-600">
+                                        <div
+                                            className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
+                                            style={{ width: `${((campaign.delivered_count + campaign.failed_count) / campaign.recipients_count) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        {campaign.delivered_count} {t('campaigns.delivered')}, {campaign.failed_count} {t('campaigns.failed')}
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Statistiques de la campagne */}
                             <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-3">
                                 <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-700">
@@ -105,7 +143,7 @@ export default function CampaignShow({
                                 <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-700">
                                     <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('campaigns.delivered')}</div>
                                     <div className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">
-                                        {campaign.status === 'sent' ? campaign.delivered_count : '-'}
+                                        {campaign.status === 'sent' || campaign.status === 'sending' || campaign.status === 'failed' ? campaign.delivered_count : '-'}
                                     </div>
                                 </div>
                                 <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-700">
@@ -127,18 +165,18 @@ export default function CampaignShow({
                                 </div>
                             </div>
 
-                            {/* Taux de livraison (si envoyé) */}
-                            {campaign.status === 'sent' && (
+                            {/* Taux de livraison (pour les campagnes envoyées, en cours ou échouées) */}
+                            {(campaign.status === 'sent' || campaign.status === 'sending' || campaign.status === 'failed') && (
                                 <div className="mb-8">
                                     <h4 className="mb-2 text-base font-medium text-gray-900 dark:text-white">{t('campaigns.deliveryRate')}</h4>
                                     <div className="mb-1 flex items-center">
                                         <span className="mr-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {Math.round((campaign.delivered_count / campaign.recipients_count) * 100)}%
+                                            {Math.round((campaign.delivered_count / (campaign.delivered_count + campaign.failed_count || 1)) * 100)}%
                                         </span>
                                         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-600">
                                             <div
                                                 className="h-2 rounded-full bg-green-500"
-                                                style={{ width: `${(campaign.delivered_count / campaign.recipients_count) * 100}%` }}
+                                                style={{ width: `${(campaign.delivered_count / (campaign.delivered_count + campaign.failed_count || 1)) * 100}%` }}
                                             ></div>
                                         </div>
                                     </div>
@@ -154,26 +192,26 @@ export default function CampaignShow({
                                 <div className="overflow-x-auto">
                                     <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                         <thead className="bg-gray-50 dark:bg-gray-700">
-                                            <tr>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                    {t('common.name')}
-                                                </th>
-                                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                    {t('common.phone')}
-                                                </th>
-                                            </tr>
+                                        <tr>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                                                {t('common.name')}
+                                            </th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                                                {t('common.phone')}
+                                            </th>
+                                        </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                                            {campaign.recipients.map((client) => (
-                                                <tr key={client.id}>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                                                        {client.name}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                        {client.phone}
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                        {campaign.recipients.map((client) => (
+                                            <tr key={client.id}>
+                                                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                                                    {client.name}
+                                                </td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    {client.phone}
+                                                </td>
+                                            </tr>
+                                        ))}
                                         </tbody>
                                     </table>
                                 </div>
@@ -198,24 +236,65 @@ export default function CampaignShow({
                                         </Link>
                                     )}
                                     {campaign.status === 'scheduled' && (
+                                        <>
+                                            <Link
+                                                href={route('campaigns.status', campaign.id)}
+                                                method="put"
+                                                data={{ status: 'paused' }}
+                                                as="button"
+                                                className="inline-flex items-center rounded-md border border-transparent bg-yellow-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 dark:bg-yellow-700 dark:hover:bg-yellow-600"
+                                            >
+                                                {t('campaigns.pause')}
+                                            </Link>
+                                            <Link
+                                                href={route('campaigns.destroy', campaign.id)}
+                                                method="delete"
+                                                as="button"
+                                                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
+                                                onClick={(e) => {
+                                                    if (!confirm(t('campaigns.confirmDelete'))) {
+                                                        e.preventDefault();
+                                                    }
+                                                }}
+                                            >
+                                                {t('common.delete')}
+                                            </Link>
+                                        </>
+                                    )}
+                                    {campaign.status === 'paused' && (
+                                        <>
+                                            <Link
+                                                href={route('campaigns.status', campaign.id)}
+                                                method="put"
+                                                data={{ status: 'scheduled' }}
+                                                as="button"
+                                                className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:bg-green-700 dark:hover:bg-green-600"
+                                            >
+                                                {t('campaigns.resume')}
+                                            </Link>
+                                            <Link
+                                                href={route('campaigns.destroy', campaign.id)}
+                                                method="delete"
+                                                as="button"
+                                                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
+                                                onClick={(e) => {
+                                                    if (!confirm(t('campaigns.confirmDelete'))) {
+                                                        e.preventDefault();
+                                                    }
+                                                }}
+                                            >
+                                                {t('common.delete')}
+                                            </Link>
+                                        </>
+                                    )}
+                                    {campaign.status === 'failed' && (
                                         <Link
-                                            href={route('campaigns.status', campaign.id)}
-                                            method="put"
-                                            data={{ status: 'paused' }}
+                                            href={route('campaigns.retry', campaign.id)}
+                                            method="post"
                                             as="button"
-                                            className="inline-flex items-center rounded-md border border-transparent bg-yellow-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 dark:bg-yellow-700 dark:hover:bg-yellow-600"
-
-                                            href={route('campaigns.destroy', campaign.id)}
-                                            method="delete"
-                                            as="button"
-                                            className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
-                                            onClick={(e) => {
-                                                if (!confirm(t('campaigns.confirmDelete'))) {
-                                                    e.preventDefault();
-                                                }
-                                            }}
+                                            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
                                         >
-                                            {t('common.delete')}
+                                            {t('campaigns.retry')}
                                         </Link>
                                     )}
                                 </div>
