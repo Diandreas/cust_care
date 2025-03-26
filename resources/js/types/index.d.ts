@@ -29,3 +29,16 @@ export type PageProps<
         routes: Record<string, string>;
     };
 };
+
+export interface Campaign {
+    id: number;
+    name: string;
+    message_content: string;
+    status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'partially_sent' | 'paused' | 'failed' | 'cancelled';
+    scheduled_at: string | null;
+    recipients_count: number;
+    delivered_count: number;
+    failed_count: number;
+    created_at: string;
+    recipients?: Client[];
+}

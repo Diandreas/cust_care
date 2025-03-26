@@ -4,17 +4,7 @@ import { Head, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
-
-interface Campaign {
-    id: number;
-    name: string;
-    status: 'draft' | 'scheduled' | 'sent' | 'paused';
-    scheduled_at: string | null;
-    recipients_count: number;
-    delivered_count: number;
-    failed_count: number;
-    created_at: string;
-}
+import { Campaign } from '@/types';
 
 interface CampaignsIndexProps {
     campaigns: {
@@ -22,6 +12,7 @@ interface CampaignsIndexProps {
         links: any[];
         total: number;
     };
+    [key: string]: unknown;
 }
 
 export default function CampaignsIndex({
@@ -42,10 +33,18 @@ export default function CampaignsIndex({
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
             case 'scheduled':
                 return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+            case 'sending':
+                return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
             case 'sent':
                 return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+            case 'partially_sent':
+                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
             case 'paused':
                 return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
+            case 'failed':
+                return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+            case 'cancelled':
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
             default:
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
@@ -57,10 +56,18 @@ export default function CampaignsIndex({
                 return t('campaigns.status.draft');
             case 'scheduled':
                 return t('campaigns.status.scheduled');
+            case 'sending':
+                return t('campaigns.status.sending');
             case 'sent':
                 return t('campaigns.status.sent');
+            case 'partially_sent':
+                return t('campaigns.status.partiallySent');
             case 'paused':
                 return t('campaigns.status.paused');
+            case 'failed':
+                return t('campaigns.status.failed');
+            case 'cancelled':
+                return t('campaigns.status.cancelled');
             default:
                 return status;
         }

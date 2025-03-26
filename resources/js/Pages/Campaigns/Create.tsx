@@ -1,20 +1,33 @@
 // resources/js/Pages/Campaigns/Create.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
+import AdvancedRecipientSelector from '@/Components/AdvancedRecipientSelector';
+import MessagePreview from '@/Components/MessagePreview';
 
 interface Client {
     id: number;
     name: string;
     phone: string;
+    email?: string;
+    category_id?: number;
+    tags: { id: number; name: string }[];
+    last_message_date?: string;
+}
+
+interface Tag {
+    id: number;
+    name: string;
+    clients_count: number;
 }
 
 interface Category {
     id: number;
     name: string;
-    clients: Client[];
+    clients_count: number;
+    clients?: Client[];
 }
 
 interface Template {
@@ -26,17 +39,26 @@ interface Template {
 interface CreateCampaignProps {
     categories: Category[];
     templates: Template[];
+    tags: Tag[];
+    clients: Client[];
+    [key: string]: unknown;
 }
 
 export default function CreateCampaign({
     auth,
     categories,
     templates,
+    tags,
+    clients,
 }: PageProps<CreateCampaignProps>) {
     const { t } = useTranslation();
     const [step, setStep] = useState(1);
     const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
     const [remainingChars, setRemainingChars] = useState(160);
+    const [selectionMethod, setSelectionMethod] = useState('advanced');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showSelectedClients, setShowSelectedClients] = useState(false);
+    const [previewClient, setPreviewClient] = useState<Client | null>(null);
 
     const { data, setData, post, processing, errors } = useForm({
         name: '',
@@ -46,6 +68,7 @@ export default function CreateCampaign({
         client_ids: [] as number[],
         selected_all_clients: false,
         selected_categories: [] as number[],
+        filter_criteria: {} as any,
     });
 
     // Gérer le changement de template
@@ -65,36 +88,54 @@ export default function CreateCampaign({
         setRemainingChars(remainingChars);
     };
 
-    // Gérer la sélection des clients
+    // Gérer la sélection des clients avec le sélecteur avancé
+    const handleAdvancedClientSelection = (selectedClientIds: number[]) => {
+        setData('client_ids', selectedClientIds);
+
+        // Recalculer les catégories sélectionnées
+        const newSelectedCategories = categories
+            .filter(category =>
+                category.clients &&
+                category.clients.every(client =>
+                    selectedClientIds.includes(client.id)
+                )
+            )
+            .map(category => category.id);
+
+        setData('selected_categories', newSelectedCategories);
+    };
+
+    // Gérer la sélection individuelle d'un client
     const handleClientSelection = (clientId: number) => {
         if (data.client_ids.includes(clientId)) {
-            setData('client_ids', data.client_ids.filter((id) => id !== clientId));
+            setData('client_ids', data.client_ids.filter(id => id !== clientId));
         } else {
             setData('client_ids', [...data.client_ids, clientId]);
         }
     };
 
-    // Gérer la sélection d'une catégorie (tous les clients)
+    // Gérer la sélection d'une catégorie entière
     const handleCategorySelection = (categoryId: number) => {
         let newSelectedCategories = [...data.selected_categories];
         let newClientIds = [...data.client_ids];
 
+        const categoryClients = categories
+            .find(cat => cat.id === categoryId)?.clients || [];
+
         if (newSelectedCategories.includes(categoryId)) {
             // Désélectionner la catégorie
-            newSelectedCategories = newSelectedCategories.filter((id) => id !== categoryId);
+            newSelectedCategories = newSelectedCategories.filter(id => id !== categoryId);
 
             // Retirer tous les clients de cette catégorie
-            const categoryClients = categories.find((cat) => cat.id === categoryId)?.clients || [];
-            newClientIds = newClientIds.filter((clientId) =>
-                !categoryClients.some((client) => client.id === clientId)
+            newClientIds = newClientIds.filter(clientId =>
+                !categoryClients.some(client => client.id === clientId)
             );
         } else {
             // Sélectionner la catégorie
             newSelectedCategories.push(categoryId);
 
             // Ajouter tous les clients de cette catégorie
-            const categoryClients = categories.find((cat) => cat.id === categoryId)?.clients || [];
-            categoryClients.forEach((client) => {
+            categoryClients.forEach(client => {
                 if (!newClientIds.includes(client.id)) {
                     newClientIds.push(client.id);
                 }
@@ -104,7 +145,7 @@ export default function CreateCampaign({
         setData({
             ...data,
             selected_categories: newSelectedCategories,
-            client_ids: newClientIds,
+            client_ids: newClientIds
         });
     };
 
@@ -115,7 +156,19 @@ export default function CreateCampaign({
     };
 
     // Récupérer tous les clients disponibles
-    const allClients = categories.flatMap((category) => category.clients);
+    const allClients = clients || [];
+
+    // Filtrer les clients pour la recherche manuelle
+    const filteredClients = searchTerm
+        ? allClients.filter(client =>
+            client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            client.phone.includes(searchTerm))
+        : allClients;
+
+    // Détails des clients sélectionnés pour l'aperçu
+    const selectedClientsDetails = allClients.filter(client =>
+        data.client_ids.includes(client.id)
+    );
 
     // Suivant du formulaire multi-étapes
     const handleNext = () => {
@@ -247,6 +300,74 @@ export default function CreateCampaign({
                                             </span>
                                         </div>
                                     </div>
+
+                                    {/* Variables disponibles */}
+                                    <div className="mb-6">
+                                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                            {t('campaigns.availableVariables')}
+                                        </h5>
+                                        <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-4">
+                                            {[
+                                                { id: 'client.name', label: t('campaigns.variables.clientName') },
+                                                { id: 'client.phone', label: t('campaigns.variables.clientPhone') },
+                                                { id: 'client.email', label: t('campaigns.variables.clientEmail') },
+                                                { id: 'date', label: t('campaigns.variables.date') },
+                                                { id: 'time', label: t('campaigns.variables.time') }
+                                            ].map(variable => (
+                                                <button
+                                                    key={variable.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const newContent = data.message_content + `{{${variable.id}}}`;
+                                                        setData('message_content', newContent);
+                                                        updateRemainingChars(newContent);
+                                                    }}
+                                                    className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                                >
+                                                    {variable.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Prévisualisation du message */}
+                                    <div className="mb-6">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                {t('campaigns.messagePreview')}
+                                            </h5>
+                                            {clients.length > 0 && (
+                                                <div className="flex items-center">
+                                                    <label htmlFor="preview_client" className="mr-2 text-sm text-gray-500 dark:text-gray-400">
+                                                        {t('campaigns.previewAs')}:
+                                                    </label>
+                                                    <select
+                                                        id="preview_client"
+                                                        value={previewClient?.id || ''}
+                                                        onChange={(e) => {
+                                                            const clientId = Number(e.target.value);
+                                                            const client = clients.find(c => c.id === clientId) || null;
+                                                            setPreviewClient(client);
+                                                        }}
+                                                        className="text-sm rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                    >
+                                                        <option value="">{t('campaigns.selectClient')}</option>
+                                                        {clients.slice(0, 10).map(client => (
+                                                            <option key={client.id} value={client.id}>
+                                                                {client.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <MessagePreview
+                                            messageContent={data.message_content}
+                                            selectedClient={previewClient}
+                                            className="mt-4"
+                                        />
+                                    </div>
                                 </div>
                             )}
 
@@ -256,60 +377,200 @@ export default function CreateCampaign({
                                     <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">{t('campaigns.step3Title')}</h4>
 
                                     <div className="mb-4">
-                                        <h5 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaigns.selectByCategory')}</h5>
-                                        <div className="space-y-2">
-                                            {categories.map((category) => (
-                                                <div key={category.id} className="flex items-center">
-                                                    <input
-                                                        id={`category-${category.id}`}
-                                                        name={`category-${category.id}`}
-                                                        type="checkbox"
-                                                        checked={data.selected_categories.includes(category.id)}
-                                                        onChange={() => handleCategorySelection(category.id)}
-                                                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                                                    />
-                                                    <label htmlFor={`category-${category.id}`} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                                                        {category.name} ({category.clients.length} {t('common.clients')})
-                                                    </label>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="mb-6">
-                                        <div className="flex justify-between">
-                                            <h5 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaigns.selectIndividualClients')}</h5>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaigns.selectRecipients')}</h5>
                                             <span className="text-sm text-gray-500 dark:text-gray-400">
                                                 {data.client_ids.length} {t('campaigns.clientsSelected')}
                                             </span>
                                         </div>
-                                        <div className="max-h-60 overflow-y-auto rounded border border-gray-300 p-2 dark:border-gray-600">
-                                            {allClients.length > 0 ? (
-                                                <div className="space-y-2">
-                                                    {allClients.map((client) => (
-                                                        <div key={client.id} className="flex items-center">
-                                                            <input
-                                                                id={`client-${client.id}`}
-                                                                name={`client-${client.id}`}
-                                                                type="checkbox"
-                                                                checked={data.client_ids.includes(client.id)}
-                                                                onChange={() => handleClientSelection(client.id)}
-                                                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                                                            />
-                                                            <label htmlFor={`client-${client.id}`} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                                                                {client.name} ({client.phone})
-                                                            </label>
+
+                                        {/* Onglets de méthode de sélection */}
+                                        <div className="border-b border-gray-200 mb-4">
+                                            <nav className="-mb-px flex" aria-label="Tabs">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectionMethod('categories')}
+                                                    className={`${selectionMethod === 'categories'
+                                                        ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                                                        } w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+                                                >
+                                                    {t('campaigns.byCategory')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectionMethod('advanced')}
+                                                    className={`${selectionMethod === 'advanced'
+                                                        ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                                                        } w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+                                                >
+                                                    {t('campaigns.advancedFilters')}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setSelectionMethod('manual')}
+                                                    className={`${selectionMethod === 'manual'
+                                                        ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                                                        } w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+                                                >
+                                                    {t('campaigns.manualSelection')}
+                                                </button>
+                                            </nav>
+                                        </div>
+
+                                        {/* Contenu selon la méthode sélectionnée */}
+                                        {selectionMethod === 'categories' && (
+                                            <div className="space-y-4">
+                                                <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                                                    {t('campaigns.selectCategoriesDescription')}
+                                                </div>
+                                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                                    {categories.map((category) => (
+                                                        <div key={category.id} className="border rounded-lg p-4 dark:border-gray-700">
+                                                            <div className="flex items-center mb-2">
+                                                                <input
+                                                                    id={`category-${category.id}`}
+                                                                    name={`category-${category.id}`}
+                                                                    type="checkbox"
+                                                                    checked={data.selected_categories.includes(category.id)}
+                                                                    onChange={() => handleCategorySelection(category.id)}
+                                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                                                />
+                                                                <label htmlFor={`category-${category.id}`} className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                                    {category.name}
+                                                                </label>
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                                                                {category.clients_count} {t('common.clients')}
+                                                            </div>
                                                         </div>
                                                     ))}
                                                 </div>
-                                            ) : (
-                                                <div className="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                                                    {t('campaigns.noClientsAvailable')}
+                                            </div>
+                                        )}
+
+                                        {selectionMethod === 'advanced' && (
+                                            <AdvancedRecipientSelector
+                                                clients={allClients}
+                                                tags={tags}
+                                                categories={categories}
+                                                onSelectionChange={(selectedIds) => setData('client_ids', selectedIds)}
+                                            />
+                                        )}
+
+                                        {selectionMethod === 'manual' && (
+                                            <div className="space-y-4">
+                                                <div className="relative mb-4">
+                                                    <input
+                                                        type="text"
+                                                        value={searchTerm}
+                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                        placeholder={t('campaigns.searchClients')}
+                                                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                                    />
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+
+                                                <div className="max-h-80 overflow-y-auto border border-gray-300 rounded-md dark:border-gray-600">
+                                                    <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                                                        {filteredClients.map((client) => (
+                                                            <li key={client.id} className="px-4 py-3 flex items-center hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                                <input
+                                                                    id={`client-${client.id}`}
+                                                                    name={`client-${client.id}`}
+                                                                    type="checkbox"
+                                                                    checked={data.client_ids.includes(client.id)}
+                                                                    onChange={() => handleClientSelection(client.id)}
+                                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                                                />
+                                                                <label htmlFor={`client-${client.id}`} className="ml-3 block">
+                                                                    <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">{client.name}</span>
+                                                                    <span className="block text-sm text-gray-500 dark:text-gray-400">{client.phone}</span>
+                                                                </label>
+                                                                {client.category_id && (
+                                                                    <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                                        {categories.find(c => c.id === client.category_id)?.name}
+                                                                    </span>
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                        {filteredClients.length === 0 && (
+                                                            <li className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                                                                {searchTerm ? t('campaigns.noSearchResults') : t('campaigns.noClientsAvailable')}
+                                                            </li>
+                                                        )}
+                                                    </ul>
+                                                </div>
+
+                                                <div className="flex justify-between">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setData('client_ids', [])}
+                                                        className="text-sm text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300"
+                                                    >
+                                                        {t('campaigns.deselectAll')}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setData('client_ids', allClients.map(c => c.id))}
+                                                        className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                    >
+                                                        {t('campaigns.selectAll')}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Récapitulatif des clients sélectionnés */}
+                                    {data.client_ids.length > 0 && (
+                                        <div className="mt-6 bg-gray-50 p-4 rounded-md dark:bg-gray-700">
+                                            <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                {t('campaigns.selectedRecipients')}
+                                            </h5>
+
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-sm text-gray-500 dark:text-gray-400">
+                                                    {data.client_ids.length} {t('common.clients')}
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowSelectedClients(!showSelectedClients)}
+                                                    className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                >
+                                                    {showSelectedClients ? t('campaigns.hideList') : t('campaigns.showList')}
+                                                </button>
+                                            </div>
+
+                                            {showSelectedClients && (
+                                                <div className="mt-2 max-h-60 overflow-y-auto">
+                                                    <ul className="divide-y divide-gray-200 dark:divide-gray-600">
+                                                        {selectedClientsDetails.map(client => (
+                                                            <li key={client.id} className="py-2 flex justify-between items-center">
+                                                                <div className="text-sm text-gray-800 dark:text-gray-200">
+                                                                    {client.name} <span className="text-gray-500 dark:text-gray-400">({client.phone})</span>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleClientSelection(client.id)}
+                                                                    className="text-sm text-red-600 hover:text-red-500 dark:text-red-400 dark:hover:text-red-300"
+                                                                >
+                                                                    {t('common.remove')}
+                                                                </button>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
                                                 </div>
                                             )}
                                         </div>
-                                        {errors.client_ids && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.client_ids}</p>}
-                                    </div>
+                                    )}
                                 </div>
                             )}
 
@@ -341,7 +602,7 @@ export default function CreateCampaign({
                                                         name="send_timing"
                                                         type="radio"
                                                         checked={!data.send_now}
-                                                        onChange={() => setData('send_now', false)}
+                                                        onChange={() => setData('send_now', false as any)}
                                                         className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600"
                                                     />
                                                     <label htmlFor="send_later" className="ml-2 text-sm text-gray-700 dark:text-gray-300">

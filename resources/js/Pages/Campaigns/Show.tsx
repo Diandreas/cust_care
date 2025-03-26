@@ -1,7 +1,7 @@
 // resources/js/Pages/Campaigns/Show.tsx
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { PageProps } from '@/types';
+import { PageProps, Campaign } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 
@@ -11,27 +11,15 @@ interface Client {
     phone: string;
 }
 
-interface Campaign {
-    id: number;
-    name: string;
-    message_content: string;
-    status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'failed';
-    scheduled_at: string | null;
-    recipients_count: number;
-    delivered_count: number;
-    failed_count: number;
-    created_at: string;
-    recipients: Client[];
-}
-
 interface CampaignShowProps {
     campaign: Campaign;
+    [key: string]: unknown;
 }
 
 export default function CampaignShow({
-                                         auth,
-                                         campaign,
-                                     }: PageProps<CampaignShowProps>) {
+    auth,
+    campaign,
+}: PageProps<CampaignShowProps>) {
     const { t } = useTranslation();
 
     const formatDate = (dateString: string | null) => {
@@ -53,6 +41,8 @@ export default function CampaignShow({
                 return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
             case 'failed':
                 return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+            case 'partially_sent':
+                return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
             default:
                 return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
         }
@@ -72,6 +62,8 @@ export default function CampaignShow({
                 return t('campaigns.status.paused');
             case 'failed':
                 return t('campaigns.status.failed');
+            case 'partially_sent':
+                return t('campaigns.status.partially_sent');
             default:
                 return status;
         }
@@ -143,7 +135,7 @@ export default function CampaignShow({
                                 <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-700">
                                     <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('campaigns.delivered')}</div>
                                     <div className="mt-1 text-3xl font-semibold text-gray-900 dark:text-white">
-                                        {campaign.status === 'sent' || campaign.status === 'sending' || campaign.status === 'failed' ? campaign.delivered_count : '-'}
+                                        {campaign.status === 'sent' || campaign.status === 'sending' || campaign.status === 'failed' || campaign.status === 'partially_sent' ? campaign.delivered_count : '-'}
                                     </div>
                                 </div>
                                 <div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-700">
@@ -166,7 +158,7 @@ export default function CampaignShow({
                             </div>
 
                             {/* Taux de livraison (pour les campagnes envoyées, en cours ou échouées) */}
-                            {(campaign.status === 'sent' || campaign.status === 'sending' || campaign.status === 'failed') && (
+                            {(campaign.status === 'sent' || campaign.status === 'sending' || campaign.status === 'failed' || campaign.status === 'partially_sent') && (
                                 <div className="mb-8">
                                     <h4 className="mb-2 text-base font-medium text-gray-900 dark:text-white">{t('campaigns.deliveryRate')}</h4>
                                     <div className="mb-1 flex items-center">
@@ -188,30 +180,37 @@ export default function CampaignShow({
 
                             {/* Liste des destinataires */}
                             <div>
-                                <h4 className="mb-2 text-base font-medium text-gray-900 dark:text-white">{t('campaigns.recipientsList')}</h4>
+                                <h4 className="mb-2 text-base font-medium text-gray-900 dark:text-white">{t('campaigns.recipients')}</h4>
                                 <div className="overflow-x-auto">
-                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                        <thead className="bg-gray-50 dark:bg-gray-700">
-                                        <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                {t('common.name')}
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                {t('common.phone')}
-                                            </th>
-                                        </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                                        {campaign.recipients.map((client) => (
-                                            <tr key={client.id}>
-                                                <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                                                    {client.name}
-                                                </td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                    {client.phone}
-                                                </td>
+                                    <table className="min-w-full divide-y divide-gray-300 dark:divide-gray-700">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                    {t('common.name')}
+                                                </th>
+                                                <th scope="col" className="px-3 py-3.5 text-left text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                    {t('common.phone')}
+                                                </th>
                                             </tr>
-                                        ))}
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                            {campaign.recipients?.map((client) => (
+                                                <tr key={client.id}>
+                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 dark:text-white">
+                                                        {client.name}
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                        {client.phone}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {campaign.recipients?.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={2} className="px-3 py-4 text-sm text-gray-500 text-center dark:text-gray-400">
+                                                        {t('campaigns.noRecipients')}
+                                                    </td>
+                                                </tr>
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
