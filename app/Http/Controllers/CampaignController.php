@@ -217,80 +217,104 @@ class CampaignController extends Controller
 
     public function update(Request $request, Campaign $campaign)
     {
-        $this->authorize('update', $campaign);
-
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'message_content' => 'required|string',
-            'scheduled_at' => 'nullable|date',
-            'client_ids' => 'required|array',
-            'client_ids.*' => 'exists:clients,id',
-            'filter_criteria' => 'nullable|array'
-        ]);
-
-        // Vérifier que la campagne n'est pas déjà en cours d'envoi ou terminée
-        if (in_array($campaign->status, ['sending', 'sent'])) {
-            return redirect()->back()->with('error', 'Impossible de modifier une campagne déjà envoyée ou en cours d\'envoi.');
-        }
-
-        // Déterminer les IDs clients en fonction des critères de filtre si fournis
-        $clientIds = $validated['client_ids'];
-        if (!empty($validated['filter_criteria'])) {
-            $query = Client::where('user_id', Auth::id());
-            
-            // Appliquer les filtres
-            if (!empty($validated['filter_criteria']['tags'])) {
-                $query->whereHas('tags', function($q) use ($validated) {
-                    $q->whereIn('tags.id', $validated['filter_criteria']['tags']);
-                });
-            }
-            
-            if (!empty($validated['filter_criteria']['categories'])) {
-                $query->whereIn('category_id', $validated['filter_criteria']['categories']);
-            }
-            
-            $clientIds = $query->pluck('id')->toArray();
-        }
-        
-        DB::beginTransaction();
         try {
-            $campaign->name = $validated['name'];
-            $campaign->message_content = $validated['message_content'];
-            $campaign->scheduled_at = $validated['scheduled_at'] ?? null;
-            $campaign->status = $validated['scheduled_at'] ? 'scheduled' : 'draft';
-            $campaign->recipients_count = count($clientIds);
-            $campaign->save();
-
-            $campaign->recipients()->sync($clientIds);
+            $this->authorize('update', $campaign);
             
-            // Si la campagne doit être envoyée immédiatement
-            if (empty($validated['scheduled_at']) && $request->input('send_now', false)) {
-                ProcessCampaignJob::dispatch($campaign);
-                $campaign->status = 'sending';
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'message_content' => 'required|string',
+                'scheduled_at' => 'nullable|date',
+                'client_ids' => 'required|array',
+                'client_ids.*' => 'exists:clients,id',
+                'filter_criteria' => 'nullable|array'
+            ]);
+
+            // Déterminer les IDs clients en fonction des critères de filtre si fournis
+            $clientIds = $validated['client_ids'];
+            if (!empty($validated['filter_criteria'])) {
+                $query = Client::where('user_id', Auth::id());
+                
+                // Appliquer les filtres
+                if (!empty($validated['filter_criteria']['tags'])) {
+                    $query->whereHas('tags', function($q) use ($validated) {
+                        $q->whereIn('tags.id', $validated['filter_criteria']['tags']);
+                    });
+                }
+                
+                if (!empty($validated['filter_criteria']['categories'])) {
+                    $query->whereIn('category_id', $validated['filter_criteria']['categories']);
+                }
+                
+                // Autres filtres...
+                
+                $clientIds = $query->pluck('id')->toArray();
+            }
+
+            $user = Auth::user();
+            $clientsCount = count($clientIds);
+
+            // Vérifier les quotas si le nombre de destinataires a augmenté
+            if ($clientsCount > $campaign->recipients_count && !$this->usageTracker->canSendSms($user, $clientsCount - $campaign->recipients_count)) {
+                return redirect()->back()->with('error', 'Votre quota SMS est insuffisant pour cette campagne. Veuillez acheter des SMS supplémentaires.');
+            }
+
+            // Mettre à jour en transaction
+            DB::beginTransaction();
+            try {
+                $campaign->name = $validated['name'];
+                $campaign->message_content = $validated['message_content'];
+                $campaign->scheduled_at = $validated['scheduled_at'] ?? null;
+                $campaign->status = $validated['scheduled_at'] ? 'scheduled' : 'draft';
+                $campaign->recipients_count = $clientsCount;
                 $campaign->save();
+
+                // Mettre à jour les destinataires
+                $campaign->recipients()->sync($clientIds);
+
+                // Si la campagne doit être envoyée immédiatement
+                if (empty($validated['scheduled_at']) && $request->input('send_now', false)) {
+                    ProcessCampaignJob::dispatch($campaign);
+                    $campaign->status = 'sending';
+                    $campaign->save();
+                }
+
+                DB::commit();
+
+                return redirect()->route('campaigns.show', $campaign->id)->with('success', 'Campagne mise à jour avec succès.');
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de la campagne: ' . $e->getMessage());
+            }
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            // Gestion spécifique pour les erreurs d'autorisation
+            if (in_array($campaign->status, ['sent', 'sending', 'partially_sent'])) {
+                return redirect()->route('campaigns.show', $campaign)->with('error', 
+                    'Impossible de modifier cette campagne car elle a déjà été envoyée ou est en cours d\'envoi.');
             }
             
-            DB::commit();
-            
-            return redirect()->route('campaigns.index')->with('success', 'Campagne mise à jour avec succès.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour de la campagne: ' . $e->getMessage());
+            return redirect()->route('campaigns.index')->with('error', 
+                'Vous n\'êtes pas autorisé à modifier cette campagne.');
         }
     }
 
     public function destroy(Campaign $campaign)
     {
-        $this->authorize('delete', $campaign);
-
-        // Vérifier que la campagne n'est pas déjà en cours d'envoi ou terminée
-        if (in_array($campaign->status, ['sending', 'sent'])) {
-            return redirect()->back()->with('error', 'Impossible de supprimer une campagne déjà envoyée ou en cours d\'envoi.');
+        try {
+            $this->authorize('delete', $campaign);
+            
+            $campaign->delete();
+            
+            return redirect()->route('campaigns.index')->with('success', 'Campagne supprimée avec succès.');
+        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
+            // Gestion spécifique pour les erreurs d'autorisation
+            if (in_array($campaign->status, ['sent', 'sending', 'partially_sent'])) {
+                return redirect()->route('campaigns.index')->with('error', 
+                    'Impossible de supprimer cette campagne car elle a déjà été envoyée ou est en cours d\'envoi.');
+            }
+            
+            return redirect()->route('campaigns.index')->with('error', 
+                'Vous n\'êtes pas autorisé à supprimer cette campagne.');
         }
-
-        $campaign->delete();
-
-        return redirect()->route('campaigns.index')->with('success', 'Campagne supprimée avec succès.');
     }
 
     public function changeStatus(Request $request, Campaign $campaign)

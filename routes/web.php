@@ -12,6 +12,7 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\TagController;
+use App\Http\Controllers\CampaignRetryController;
 use App\Http\Middleware\CheckClientLimit;
 use App\Http\Middleware\EnsureUserHasActiveSubscription;
 use Illuminate\Foundation\Application;
@@ -83,6 +84,11 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         // Campagnes
         Route::resource('campaigns', CampaignController::class);
         Route::put('campaigns/{campaign}/status', [CampaignController::class, 'changeStatus'])->name('campaigns.status');
+        
+        // Diagnostics et retries pour les campagnes échouées
+        Route::get('campaigns/{campaign}/diagnostics', [CampaignRetryController::class, 'diagnostics'])->name('campaigns.diagnostics');
+        Route::post('campaigns/{campaign}/retry-failed', [CampaignRetryController::class, 'retryFailed'])->name('campaigns.retry.failed');
+        Route::post('campaigns/{campaign}/retry-all', [CampaignRetryController::class, 'retryAll'])->name('campaigns.retry.all');
 
         // Messages
         Route::resource('messages', MessageController::class)->except(['edit', 'update', 'destroy']);

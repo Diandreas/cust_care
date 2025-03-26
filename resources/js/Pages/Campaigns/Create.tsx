@@ -59,6 +59,7 @@ export default function CreateCampaign({
     const [searchTerm, setSearchTerm] = useState('');
     const [showSelectedClients, setShowSelectedClients] = useState(false);
     const [previewClient, setPreviewClient] = useState<Client | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { data, setData, post, processing, errors } = useForm({
         name: '',
@@ -149,10 +150,53 @@ export default function CreateCampaign({
         });
     };
 
-    // Gérer la soumission du formulaire
+    // Gérer la soumission du formulaire - MODIFIÉ
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('campaigns.store'));
+
+        // Empêcher les soumissions multiples
+        if (isSubmitting || processing) {
+            return;
+        }
+
+        // Vérifier que nous sommes bien à l'étape 4
+        if (step !== 4) {
+            setStep(4);
+            return;
+        }
+
+        // Vérifications des champs obligatoires
+        if (!data.name) {
+            alert(t('campaigns.nameRequired'));
+            setStep(1);
+            return;
+        }
+
+        if (!data.message_content) {
+            alert(t('campaigns.messageRequired'));
+            setStep(2);
+            return;
+        }
+
+        if (data.client_ids.length === 0) {
+            alert(t('campaigns.recipientsRequired'));
+            setStep(3);
+            return;
+        }
+
+        // Vérifier la programmation si l'envoi n'est pas immédiat
+        if (!data.send_now && !data.scheduled_at) {
+            alert(t('campaigns.scheduleRequired'));
+            return;
+        }
+
+        // Demander confirmation avant création de la campagne
+        if (confirm(t('campaigns.confirmCreation'))) {
+            setIsSubmitting(true);
+            post(route('campaigns.store'), {
+                onFinish: () => setIsSubmitting(false)
+            });
+        }
     };
 
     // Récupérer tous les clients disponibles
@@ -677,9 +721,8 @@ export default function CreateCampaign({
                                     <button
                                         type="button"
                                         onClick={handlePrevious}
-                                        disabled={step === 1}
-                                        className={`inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${step === 1 ? 'cursor-not-allowed opacity-50' : ''
-                                            }`}
+                                        disabled={step === 1 || processing || isSubmitting}
+                                        className={`inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 ${(step === 1 || processing || isSubmitting) ? 'cursor-not-allowed opacity-50' : ''}`}
                                     >
                                         {t('common.previous')}
                                     </button>
@@ -694,10 +737,20 @@ export default function CreateCampaign({
                                     ) : (
                                         <button
                                             type="submit"
-                                            disabled={processing}
+                                            disabled={processing || isSubmitting}
                                             className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
                                         >
-                                            {t('campaigns.createCampaign')}
+                                            {(processing || isSubmitting) ? (
+                                                <>
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    {t('common.processing')}
+                                                </>
+                                            ) : (
+                                                t('campaigns.createCampaign')
+                                            )}
                                         </button>
                                     )}
                                 </div>

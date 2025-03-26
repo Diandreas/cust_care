@@ -226,14 +226,33 @@ export default function CampaignShow({
                                     {t('common.back')}
                                 </Link>
                                 <div className="flex space-x-2">
-                                    {campaign.status === 'draft' && (
-                                        <Link
-                                            href={route('campaigns.edit', campaign.id)}
-                                            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
-                                        >
-                                            {t('common.edit')}
-                                        </Link>
+                                    {/* Afficher les boutons d'action uniquement si le statut le permet */}
+                                    {!['sent', 'sending', 'partially_sent'].includes(campaign.status) && (
+                                        <>
+                                            <Link
+                                                href={route('campaigns.edit', campaign.id)}
+                                                className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                                            >
+                                                {t('common.edit')}
+                                            </Link>
+
+                                            <Link
+                                                href={route('campaigns.destroy', campaign.id)}
+                                                method="delete"
+                                                as="button"
+                                                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
+                                                onClick={(e) => {
+                                                    if (!confirm(t('campaigns.confirmDelete'))) {
+                                                        e.preventDefault();
+                                                    }
+                                                }}
+                                            >
+                                                {t('common.delete')}
+                                            </Link>
+                                        </>
                                     )}
+
+                                    {/* Boutons spécifiques pour les campagnes planifiées */}
                                     {campaign.status === 'scheduled' && (
                                         <>
                                             <Link
@@ -245,55 +264,39 @@ export default function CampaignShow({
                                             >
                                                 {t('campaigns.pause')}
                                             </Link>
-                                            <Link
-                                                href={route('campaigns.destroy', campaign.id)}
-                                                method="delete"
-                                                as="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
-                                                onClick={(e) => {
-                                                    if (!confirm(t('campaigns.confirmDelete'))) {
-                                                        e.preventDefault();
-                                                    }
-                                                }}
-                                            >
-                                                {t('common.delete')}
-                                            </Link>
                                         </>
                                     )}
+
+                                    {/* Boutons spécifiques pour les campagnes en pause */}
                                     {campaign.status === 'paused' && (
-                                        <>
-                                            <Link
-                                                href={route('campaigns.status', campaign.id)}
-                                                method="put"
-                                                data={{ status: 'scheduled' }}
-                                                as="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:bg-green-700 dark:hover:bg-green-600"
-                                            >
-                                                {t('campaigns.resume')}
-                                            </Link>
-                                            <Link
-                                                href={route('campaigns.destroy', campaign.id)}
-                                                method="delete"
-                                                as="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
-                                                onClick={(e) => {
-                                                    if (!confirm(t('campaigns.confirmDelete'))) {
-                                                        e.preventDefault();
-                                                    }
-                                                }}
-                                            >
-                                                {t('common.delete')}
-                                            </Link>
-                                        </>
+                                        <Link
+                                            href={route('campaigns.status', campaign.id)}
+                                            method="put"
+                                            data={{ status: 'scheduled' }}
+                                            as="button"
+                                            className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:bg-green-700 dark:hover:bg-green-600"
+                                        >
+                                            {t('campaigns.resume')}
+                                        </Link>
                                     )}
+
+                                    {/* Boutons spécifiques pour les campagnes échouées */}
                                     {campaign.status === 'failed' && (
                                         <Link
-                                            href={route('campaigns.retry', campaign.id)}
-                                            method="post"
-                                            as="button"
+                                            href={route('campaigns.diagnostics', campaign.id)}
                                             className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
                                         >
-                                            {t('campaigns.retry')}
+                                            {t('campaigns.viewDiagnostics')}
+                                        </Link>
+                                    )}
+
+                                    {/* Boutons spécifiques pour les campagnes partiellement envoyées */}
+                                    {campaign.status === 'partially_sent' && (
+                                        <Link
+                                            href={route('campaigns.diagnostics', campaign.id)}
+                                            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                                        >
+                                            {t('campaigns.viewDiagnostics')}
                                         </Link>
                                     )}
                                 </div>

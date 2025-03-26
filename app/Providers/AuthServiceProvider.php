@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Models\Tag;
 use App\Models\Client;
+use App\Models\Campaign;
 use App\Policies\TagPolicy;
 use App\Policies\ClientPolicy;
+use App\Policies\CampaignPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
 class AuthServiceProvider extends ServiceProvider
@@ -18,6 +20,7 @@ class AuthServiceProvider extends ServiceProvider
     protected $policies = [
         Tag::class => TagPolicy::class,
         Client::class => ClientPolicy::class,
+        Campaign::class => CampaignPolicy::class,
     ];
 
     /**
