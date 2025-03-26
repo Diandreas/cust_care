@@ -34,16 +34,19 @@ interface Subscription {
     campaigns_used?: number;
 }
 
-interface SubscriptionDashboardProps {
+interface DashboardProps {
     subscription?: Subscription;
     transactions?: Transaction[];
+    clients_count: number;
+    [key: string]: unknown;
 }
 
 export default function SubscriptionDashboard({
     auth,
     subscription,
     transactions = [],
-}: PageProps<SubscriptionDashboardProps>) {
+    clients_count = 0,
+}: PageProps<DashboardProps>) {
     const { t } = useTranslation();
 
     const getPlanName = (plan: Subscription['plan']) => {
@@ -106,15 +109,17 @@ export default function SubscriptionDashboard({
         return new Date(dateString).toLocaleDateString();
     };
 
-    const smsUsagePercentage = subscription?.sms_usage?.used != null && subscription?.sms_usage?.total != null
+    const smsUsagePercentage = subscription?.sms_usage?.used != null && subscription?.sms_usage?.total != null && subscription.sms_usage.total > 0
         ? Math.round((subscription.sms_usage.used / subscription.sms_usage.total) * 100)
         : 0;
 
-    const campaignsUsagePercentage = subscription?.campaigns_used != null && subscription?.limits?.campaigns != null
+    const campaignsUsagePercentage = subscription?.campaigns_used != null && subscription?.limits?.campaigns != null && subscription.limits.campaigns > 0
         ? Math.round((subscription.campaigns_used / subscription.limits.campaigns) * 100)
         : 0;
 
-    const clientsPercentage = subscription?.limits?.clients ? 0 : 0; // This would need actual client count data
+    const clientsPercentage = subscription?.limits?.clients != null && subscription.limits.clients > 0
+        ? Math.round((clients_count / subscription.limits.clients) * 100)
+        : 0;
 
     return (
         <AuthenticatedLayout
@@ -396,8 +401,8 @@ export default function SubscriptionDashboard({
                                                 <button
                                                     type="button"
                                                     className={`inline-flex items-center rounded-md border ${subscription.is_auto_renew
-                                                            ? 'border-transparent bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 dark:bg-red-700 dark:hover:bg-red-600'
-                                                            : 'border-transparent bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-600'
+                                                        ? 'border-transparent bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 dark:bg-red-700 dark:hover:bg-red-600'
+                                                        : 'border-transparent bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 dark:bg-green-700 dark:hover:bg-green-600'
                                                         } px-4 py-2 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2`}
                                                 >
                                                     {subscription.is_auto_renew

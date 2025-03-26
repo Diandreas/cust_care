@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class SubscriptionController extends Controller
 {
@@ -19,9 +20,22 @@ class SubscriptionController extends Controller
         $user = Auth::user();
         $subscription = $user->subscription;
         
+        // Récupérer les statistiques
+        $clientsQuery = DB::table('clients')->where('user_id', $user->id);
+        $clientsCount = $clientsQuery->count();
+        
+        $messagesQuery = DB::table('messages')->where('user_id', $user->id);
+        $messagesSent = $messagesQuery->count();
+        
+        $campaignsCount = DB::table('campaigns')->where('user_id', $user->id)->count();
+        
         // Format subscription data for frontend
         $formattedSubscription = null;
         if ($subscription) {
+            // Assurer que les valeurs des SMS ne sont pas nulles ou zéro
+            $smsAllowed = $subscription->sms_allowed > 0 ? $subscription->sms_allowed : ($subscription->personal_sms_quota ?? 0);
+            $smsUsed = $subscription->sms_used ?? $messagesSent;
+            
             // Format des donnés d'abonnement pour le frontend
             $formattedSubscription = [
                 'id' => $subscription->id,
@@ -34,14 +48,15 @@ class SubscriptionController extends Controller
                 'is_auto_renew' => $subscription->is_auto_renew ?? true,
                 'next_renewal_date' => $subscription->expires_at,
                 'sms_usage' => [
-                    'used' => $subscription->sms_used ?? 0,
-                    'total' => $subscription->sms_allowed ?? 0,
+                    'used' => $smsUsed,
+                    'total' => $smsAllowed,
                 ],
                 'limits' => [
                     'clients' => $subscription->clients_limit ?? 0,
                     'campaigns' => $subscription->campaigns_limit ?? 0,
                 ],
-                'campaigns_used' => $subscription->campaigns_used ?? 0,
+                'campaigns_used' => $subscription->campaigns_used ?? $campaignsCount,
+                'clients_count' => $clientsCount,
             ];
         }
         
@@ -64,6 +79,8 @@ class SubscriptionController extends Controller
         return Inertia::render('Subscription/Dashboard', [
             'subscription' => $formattedSubscription,
             'transactions' => $transactions,
+            'clients_count' => $clientsCount,
+            'messages_sent' => $messagesSent,
         ]);
     }
     
