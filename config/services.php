@@ -38,4 +38,17 @@ return [
         ],
     ],
 
+    'notchpay' => [
+        'public_key' => env('NOTCHPAY_PUBLIC_KEY'),
+        'secret_key' => env('NOTCHPAY_SECRET_KEY'),
+        'webhook_secret' => env('NOTCHPAY_WEBHOOK_SECRET'),
+        'sandbox' => env('NOTCHPAY_SANDBOX', true),
+    ],
+
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID'),
+        'client_secret' => env('PAYPAL_CLIENT_SECRET'),
+        'mode' => env('PAYPAL_MODE', 'sandbox'),
+    ],
+
 ];

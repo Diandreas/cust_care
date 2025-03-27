@@ -85,6 +85,29 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::post('payment/subscription/{plan}', [PaymentController::class, 'processSubscriptionPayment'])->name('payment.subscription');
     Route::post('payment/addon', [PaymentController::class, 'processAddonPayment'])->name('payment.addon');
 
+    // Routes pour les paiements d'abonnement
+    Route::post('api/notchpay/subscribe', [App\Http\Controllers\Payment\NotchPayController::class, 'initializeSubscriptionPayment'])
+        ->name('subscription.notchpay.initialize')
+        ->middleware('auth');
+
+    Route::get('subscription/notchpay/callback', [App\Http\Controllers\Payment\NotchPayController::class, 'handleSubscriptionCallback'])
+        ->name('subscription.notchpay.callback');
+
+    Route::post('api/notchpay/addon', [App\Http\Controllers\Payment\NotchPayController::class, 'initializeAddonPayment'])
+        ->name('addon.notchpay.initialize')
+        ->middleware('auth');
+
+    Route::get('addon/notchpay/callback', [App\Http\Controllers\Payment\NotchPayController::class, 'handleAddonCallback'])
+        ->name('addon.notchpay.callback');
+
+    Route::post('api/paypal/subscribe', [App\Http\Controllers\Payment\PayPalController::class, 'captureSubscriptionPayment'])
+        ->name('subscription.paypal.capture')
+        ->middleware('auth');
+
+    Route::post('api/paypal/addon', [App\Http\Controllers\Payment\PayPalController::class, 'captureAddonPayment'])
+        ->name('addon.paypal.capture')
+        ->middleware('auth');
+
     // Routes nécessitant un abonnement actif
     Route::middleware([EnsureUserHasActiveSubscription::class])->group(function () {
         // Campagnes
