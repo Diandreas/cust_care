@@ -423,8 +423,8 @@ export default function EventCalendar({
                                 <div
                                     key={event.id}
                                     className={`p-3 rounded-lg border ${event.is_active
-                                            ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/30'
-                                            : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50'
+                                        ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/30'
+                                        : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/50'
                                         } flex justify-between items-center`}
                                 >
                                     <div>
@@ -465,8 +465,8 @@ export default function EventCalendar({
                                                 is_active: !event.is_active
                                             })}
                                             className={`p-2 rounded-full ${event.is_active
-                                                    ? 'hover:bg-red-100 dark:hover:bg-red-900/50'
-                                                    : 'hover:bg-green-100 dark:hover:bg-green-900/50'
+                                                ? 'hover:bg-red-100 dark:hover:bg-red-900/50'
+                                                : 'hover:bg-green-100 dark:hover:bg-green-900/50'
                                                 }`}
                                             title={event.is_active ? "Désactiver" : "Activer"}
                                             disabled={!event.is_active && !canActivateEvent(event)}
@@ -588,8 +588,8 @@ export default function EventCalendar({
                     <button
                         onClick={() => setSelectedCategory(null)}
                         className={`px-3 py-1.5 rounded-md text-sm ${selectedCategory === null
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                             }`}
                     >
                         Tous
@@ -600,8 +600,8 @@ export default function EventCalendar({
                             key={key}
                             onClick={() => setSelectedCategory(selectedCategory === key ? null : key)}
                             className={`px-3 py-1.5 rounded-md text-sm ${selectedCategory === key
-                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                                 }`}
                         >
                             {eventCategories[key].name}
@@ -718,7 +718,7 @@ export default function EventCalendar({
                                 {errors.custom_template && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.custom_template}</p>}
 
                                 <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                    Variables disponibles: {{ client.name }}, {{ client.phone }}, {{ date }}, {{ year }}
+                                    Variables disponibles: {"{client.name}"}, {"{client.phone}"}, {"{date}"}, {"{year}"}
                                 </div>
                             </div>
 

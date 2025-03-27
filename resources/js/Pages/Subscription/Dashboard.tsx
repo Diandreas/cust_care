@@ -361,7 +361,9 @@ export default function SubscriptionDashboard({
                                                             {formatDate(transaction.date)}
                                                         </td>
                                                         <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900 dark:text-gray-200">
-                                                            ${transaction.amount.toFixed(2)}
+                                                            ${typeof transaction.amount === 'number'
+                                                                ? transaction.amount.toFixed(2)
+                                                                : parseFloat(String(transaction.amount)).toFixed(2)}
                                                         </td>
                                                         <td className="whitespace-nowrap px-6 py-4 text-sm">
                                                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getTransactionStatusBadgeClass(transaction.status)}`}>

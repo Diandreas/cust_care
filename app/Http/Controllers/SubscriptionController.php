@@ -66,10 +66,17 @@ class SubscriptionController extends Controller
             ->limit(5)
             ->get()
             ->map(function ($transaction) {
+                // S'assurer que le montant est un nombre avant de l'envoyer au frontend
+                $amount = $transaction->amount;
+                if (!is_numeric($amount)) {
+                    // Tenter de convertir en nombre
+                    $amount = floatval($amount);
+                }
+                
                 return [
                     'id' => $transaction->id,
                     'description' => $transaction->description,
-                    'amount' => $transaction->amount,
+                    'amount' => $amount,
                     'date' => $transaction->created_at,
                     'type' => $transaction->type,
                     'status' => $transaction->status,

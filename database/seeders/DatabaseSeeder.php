@@ -25,9 +25,9 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
-//            SubscriptionPlanSeeder::class,
-//            CalendarEventsSeeder::class,
-            EventTypesSeeder::class
+        //    SubscriptionPlanSeeder::class,
+           CalendarEventsSeeder::class,
+            // EventTypesSeeder::class
         ]);
     }
 }
