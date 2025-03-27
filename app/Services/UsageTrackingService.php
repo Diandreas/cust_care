@@ -117,11 +117,39 @@ class UsageTrackingService
         } elseif (in_array($eventType->audience_logic, ['male', 'female'])) {
             return ceil($clientCount / 2);
         } elseif ($eventType->code === 'birthday') {
-            // Estimation : environ 1/365 des clients ont leur anniversaire un jour donné
+            // Estimation : environ 1/365 des clients ont leur anniversaire un jour donné
             return max(1, ceil($clientCount / 365));
         }
 
         // Par défaut, estimer à 10% des clients
         return ceil($clientCount / 10);
+    }
+
+    /**
+     * Suivre l'utilisation des campagnes pour un utilisateur
+     * 
+     * @param User $user L'utilisateur à vérifier
+     * @return bool True si l'utilisateur peut encore créer des campagnes, false sinon
+     */
+    public function trackCampaignUsage(User $user): bool
+    {
+        $subscription = $user->subscription;
+
+        if (!$subscription) {
+            return false;
+        }
+
+        // Vérifier si l'utilisateur a atteint sa limite mensuelle de campagnes
+        $campaignsThisMonth = $user->campaigns()
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
+
+        // Vérifier si l'utilisateur peut encore créer des campagnes
+        if ($subscription->campaigns_limit > 0 && $campaignsThisMonth >= $subscription->campaigns_limit) {
+            return false;
+        }
+
+        return true;
     }
 }

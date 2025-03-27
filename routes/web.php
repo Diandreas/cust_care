@@ -7,7 +7,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
-use App\Http\Controllers\AutomaticEventController;
+use App\Http\Controllers\AutomaticEventsController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\PaymentController;
@@ -126,7 +126,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::resource('templates', TemplateController::class)->except(['create', 'edit', 'show']);
 
         // Événements automatiques
-        Route::resource('automatic-events', AutomaticEventController::class)->except(['create', 'edit', 'show']);
+        Route::resource('automatic-events', AutomaticEventsController::class)->except(['create', 'edit', 'show']);
     });
     // Pour le développement seulement - Activation directe d'abonnement
 Route::get('payment/direct-activation/{plan}/{duration?}', [PaymentController::class, 'directActivation'])

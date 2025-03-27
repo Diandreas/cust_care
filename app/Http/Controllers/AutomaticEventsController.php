@@ -90,8 +90,65 @@ class AutomaticEventsController extends Controller
             }
         }
         
+        // Compter les événements par statut
+        $activeEvents = 0;
+        $upcomingEvents = 0;
+        $totalEvents = 0;
+        
+        foreach ($eventCategories as $category) {
+            foreach ($category['events'] as $event) {
+                $totalEvents++;
+                if ($event['is_active']) {
+                    $activeEvents++;
+                    
+                    // Si l'événement a une date future ou récurrente
+                    if (in_array($event['code'], ['birthday', 'holiday', 'recurring'])) {
+                        $upcomingEvents++;
+                    }
+                }
+            }
+        }
+        
+        // Récupérer les informations de l'abonnement de l'utilisateur
+        $subscription = $user->subscription;
+        $smsQuota = [
+            'total' => $subscription ? $subscription->personal_sms_quota : 0,
+            'used' => $subscription ? $subscription->sms_used : 0,
+            'available' => $subscription ? ($subscription->personal_sms_quota - $subscription->sms_used) : 0
+        ];
+        
+        // Récupérer les statistiques des clients
+        $totalClients = $user->clients()->count();
+        $clientsWithBirthday = $user->clients()->whereNotNull('birthdate')->count();
+        
+        // Récupérer les catégories de clients avec leur nombre
+        $clientCategories = $user->categories()
+            ->withCount('clients')
+            ->get()
+            ->map(function($category) {
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'count' => $category->clients_count
+                ];
+            });
+        
+        // Statistiques complètes
+        $stats = [
+            'total_events' => $totalEvents,
+            'active_events' => $activeEvents,
+            'upcoming_events' => $upcomingEvents,
+            'sms_quota' => $smsQuota,
+            'clients' => [
+                'total' => $totalClients,
+                'with_birthday' => $clientsWithBirthday,
+                'categories' => $clientCategories
+            ]
+        ];
+        
         return Inertia::render('AutomaticEvents/Index', [
-            'eventCategories' => $eventCategories
+            'eventCategories' => $eventCategories,
+            'stats' => $stats
         ]);
     }
     
