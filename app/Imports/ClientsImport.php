@@ -144,17 +144,38 @@ class ClientsImport implements ToModel, WithHeadingRow
      */
     private function formatDate($dateString)
     {
-        // Tester différents formats de date
+        // Si vide ou null, retourner null
+        if (empty($dateString)) {
+            return null;
+        }
+        
+        // Liste étendue des formats à tester
         $formats = [
             'd/m/Y', 'm/d/Y', 'Y-m-d', 'd-m-Y', 'm-d-Y',
             'd.m.Y', 'm.d.Y', 'Y.m.d',
-            'j F Y', 'F j Y', 'Y F j'
+            'j F Y', 'F j Y', 'Y F j', 
+            'j/n/Y', 'n/j/Y',          // Formats sans zéros
+            'j-n-Y', 'n-j-Y',
+            'j.n.Y', 'n.j.Y',
+            'Y/m/d', 'Y/n/j'           // Formats asiatiques
         ];
-
+        
+        // Tester des formats spécifiques d'abord
         foreach ($formats as $format) {
             $date = \DateTime::createFromFormat($format, $dateString);
             if ($date !== false && $date->format($format) === $dateString) {
                 return $date->format('Y-m-d');
+            }
+        }
+        
+        // Essayer de nettoyer la chaîne si elle contient des caractères non standards
+        $cleanedString = preg_replace('/[^\d\s\/\.\-]/', '', $dateString);
+        if ($cleanedString !== $dateString) {
+            foreach ($formats as $format) {
+                $date = \DateTime::createFromFormat($format, $cleanedString);
+                if ($date !== false) {
+                    return $date->format('Y-m-d');
+                }
             }
         }
 
@@ -162,6 +183,10 @@ class ClientsImport implements ToModel, WithHeadingRow
         try {
             return Carbon::parse($dateString)->format('Y-m-d');
         } catch (\Exception $e) {
+            // Journaliser l'erreur pour debugging
+            Log::warning("Impossible de convertir la date: $dateString", [
+                'exception' => $e->getMessage()
+            ]);
             return null;
         }
     }

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Log;
 
 class CampaignController extends Controller
 {
@@ -99,37 +100,22 @@ class CampaignController extends Controller
             'name' => 'required|string|max:255',
             'message_content' => 'required|string',
             'scheduled_at' => 'nullable|date',
-            'client_ids' => 'required|array',
+            'client_ids' => 'required_without:filter_criteria|array',
             'client_ids.*' => 'exists:clients,id',
-            'filter_criteria' => 'nullable|array'
+            'filter_criteria' => 'required_without:client_ids|array'
         ]);
 
         $user = Auth::user();
         
-        // Déterminer les IDs clients en fonction des critères de filtre si fournis
-        $clientIds = $validated['client_ids'];
-        if (!empty($validated['filter_criteria'])) {
-            $query = Client::where('user_id', $user->id);
-            
-            // Appliquer les filtres
-            if (!empty($validated['filter_criteria']['tags'])) {
-                $query->whereHas('tags', function($q) use ($validated) {
-                    $q->whereIn('tags.id', $validated['filter_criteria']['tags']);
-                });
-            }
-            
-            if (!empty($validated['filter_criteria']['categories'])) {
-                $query->whereIn('category_id', $validated['filter_criteria']['categories']);
-            }
-            
-            // Autres filtres...
-            
-            $clientIds = $query->pluck('id')->toArray();
-        }
+        // 1. D'abord extraire et valider les critères de filtre
+        $filterCriteria = $request->input('filter_criteria', []);
         
+        // 2. Puis déterminer précisément la liste des clients
+        $clientIds = $this->resolveClientIds($filterCriteria, $request->input('client_ids', []));
+        
+        // 3. Ensuite vérifier les quotas (après avoir déterminé le nombre exact)
         $clientsCount = count($clientIds);
-
-        // Vérifier les quotas
+        
         if (!$this->usageTracker->canSendSms($user, $clientsCount)) {
             return redirect()->back()->with('error', 'Votre quota SMS est insuffisant pour cette campagne. Veuillez acheter des SMS supplémentaires.');
         }
@@ -138,7 +124,7 @@ class CampaignController extends Controller
             return redirect()->route('subscription.index')->with('error', 'Vous avez atteint votre limite de campagnes pour ce mois-ci. Veuillez mettre à jour votre abonnement pour continuer.');
         }
 
-        // Créer la campagne en transaction pour garantir l'intégrité
+        // 4. Utiliser une transaction pour éviter les états inconsistants
         DB::beginTransaction();
         try {
             $campaign = new Campaign();
@@ -164,8 +150,36 @@ class CampaignController extends Controller
             return redirect()->route('campaigns.index')->with('success', 'Campagne créée avec succès.');
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Campaign creation failed', ['error' => $e->getMessage()]);
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la création de la campagne: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Extraire la logique de résolution des clients dans une méthode privée
+     */
+    private function resolveClientIds(array $filterCriteria, array $explicitIds): array 
+    {
+        if (empty($filterCriteria)) {
+            return $explicitIds;
+        }
+        
+        $query = Client::where('user_id', Auth::id());
+        
+        // Appliquer tous les filtres nécessaires
+        if (!empty($filterCriteria['tags'])) {
+            $query->whereHas('tags', function($q) use ($filterCriteria) {
+                $q->whereIn('tags.id', $filterCriteria['tags']);
+            });
+        }
+        
+        if (!empty($filterCriteria['categories'])) {
+            $query->whereIn('category_id', $filterCriteria['categories']);
+        }
+        
+        // Autres filtres...
+        
+        return $query->pluck('id')->toArray();
     }
 
     public function show(Campaign $campaign)

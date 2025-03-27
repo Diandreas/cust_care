@@ -52,80 +52,160 @@ class SendCampaignChunkJob implements ShouldQueue
         $user = $this->campaign->user;
         $recipients = Client::whereIn('id', $this->recipientIds)->get();
 
-        $deliveredCount = 0;
-        $failedCount = 0;
-
-        // Création d'un tableau de messages pour insertion groupée
-        $messages = [];
+        // 1. Préparation des données des messages
+        $messageData = [];
+        $messagesToSend = [];
 
         foreach ($recipients as $recipient) {
+            // Personnaliser le message
+            $personalizedMessage = $this->personalizeMessage(
+                $this->campaign->message_content,
+                $recipient
+            );
+            
+            // Préparer une entrée pour l'envoi au service SMS
+            $messagesToSend[] = [
+                'to' => $recipient->phone,
+                'content' => $personalizedMessage,
+                'client_id' => $recipient->id
+            ];
+            
+            // Préparer les données pour insertion en base
+            $messageData[] = [
+                'user_id' => $user->id,
+                'client_id' => $recipient->id,
+                'campaign_id' => $this->campaign->id,
+                'content' => $personalizedMessage,
+                'type' => 'promotional',
+                'status' => 'pending', // Statut initial en attente
+                'sent_at' => now(),
+            ];
+        }
+        
+        // Aucun message à envoyer
+        if (empty($messageData)) {
+            Log::warning("Aucun destinataire valide dans le chunk #{$this->chunkIndex} de la campagne #{$this->campaign->id}");
+            return;
+        }
+        
+        // 2. Insertion en masse des messages
+        $createdMessages = [];
+        DB::transaction(function() use ($messageData, &$createdMessages) {
+            $createdMessages = Message::insert($messageData);
+            return true;
+        });
+        
+        // 3. Envoi des SMS
+        $results = [
+            'success' => [],
+            'failed' => []
+        ];
+        
+        foreach ($messagesToSend as $index => $message) {
             try {
-                // Personnaliser le message
-                $personalizedMessage = $this->personalizeMessage(
-                    $this->campaign->message_content,
-                    $recipient
-                );
-
-                // Envoyer le SMS (intégration réelle)
-                $result = $smsService->send($recipient->phone, $personalizedMessage);
-
-                // Préparer l'entrée du message
-                $messageData = [
-                    'user_id' => $user->id,
-                    'client_id' => $recipient->id,
-                    'campaign_id' => $this->campaign->id,
-                    'content' => $personalizedMessage,
-                    'status' => $result->isSuccess() ? 'delivered' : 'failed',
-                    'type' => 'promotional',
-                    'sent_at' => now(),
-                    'delivered_at' => $result->isSuccess() ? now() : null,
-                ];
-
-                $messages[] = $messageData;
-
-                $result->isSuccess() ? $deliveredCount++ : $failedCount++;
+                // Envoyer le SMS
+                $result = $smsService->send($message['to'], $message['content']);
+                
+                if ($result->isSuccess()) {
+                    $results['success'][$index] = [
+                        'message_id' => $result->getMessageId(),
+                        'client_id' => $message['client_id']
+                    ];
+                } else {
+                    $results['failed'][$index] = [
+                        'error' => $result->getError(),
+                        'client_id' => $message['client_id']
+                    ];
+                }
             } catch (\Exception $e) {
                 Log::error("Erreur d'envoi SMS", [
                     'error' => $e->getMessage(),
-                    'client_id' => $recipient->id,
+                    'client_id' => $message['client_id'],
                     'campaign_id' => $this->campaign->id
                 ]);
-
-                $failedCount++;
+                
+                $results['failed'][$index] = [
+                    'error' => $e->getMessage(),
+                    'client_id' => $message['client_id']
+                ];
             }
         }
-
-        // Traiter les messages en lot
-        if (!empty($messages)) {
-            DB::beginTransaction();
-            try {
-                // Insertion groupée des messages pour de meilleures performances
-                Message::insert($messages);
-
-                // Mettre à jour les compteurs de la campagne de façon atomique
-                Campaign::where('id', $this->campaign->id)->update([
-                    'delivered_count' => DB::raw("delivered_count + $deliveredCount"),
-                    'failed_count' => DB::raw("failed_count + $failedCount"),
+        
+        // 4. Mise à jour des statuts en masse
+        $this->updateMessageStatuses($messageData, $results);
+        
+        // 5. Mise à jour des compteurs de la campagne
+        $deliveredCount = count($results['success']);
+        $failedCount = count($results['failed']);
+        
+        Campaign::where('id', $this->campaign->id)->update([
+            'delivered_count' => DB::raw("delivered_count + $deliveredCount"),
+            'failed_count' => DB::raw("failed_count + $failedCount"),
+        ]);
+        
+        // 6. Suivi d'utilisation
+        $usageTracker->trackSmsUsage($user, $deliveredCount, 'campaign');
+        
+        Log::info("Chunk #{$this->chunkIndex} de la campagne #{$this->campaign->id} traité", [
+            'delivered' => $deliveredCount,
+            'failed' => $failedCount
+        ]);
+    }
+    
+    /**
+     * Méthode auxiliaire pour mise à jour des statuts des messages
+     */
+    private function updateMessageStatuses(array $messages, array $results): void
+    {
+        // Conversion des index en identifiants pour les messages réussis
+        $successMessageIds = [];
+        foreach ($results['success'] as $index => $result) {
+            $client_id = $result['client_id'];
+            // Trouver le message correspondant
+            foreach ($messages as $key => $message) {
+                if ($message['client_id'] == $client_id) {
+                    $messageId = $message['id'] ?? null;
+                    if ($messageId) {
+                        $successMessageIds[$messageId] = $result['message_id'];
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Mise à jour en masse des messages réussis si nous avons des IDs
+        if (!empty($successMessageIds)) {
+            foreach ($successMessageIds as $id => $messageId) {
+                Message::where('id', $id)->update([
+                    'status' => 'delivered',
+                    'delivered_at' => now(),
+                    'message_id' => $messageId
                 ]);
-
-                // Suivre l'utilisation
-                $usageTracker->trackSmsUsage($user, $deliveredCount);
-
-                DB::commit();
-
-                Log::info("Chunk #{$this->chunkIndex} de la campagne #{$this->campaign->id} traité", [
-                    'delivered' => $deliveredCount,
-                    'failed' => $failedCount
+            }
+        }
+        
+        // Même processus pour les messages échoués
+        $failedMessageIds = [];
+        foreach ($results['failed'] as $index => $result) {
+            $client_id = $result['client_id'];
+            foreach ($messages as $key => $message) {
+                if ($message['client_id'] == $client_id) {
+                    $messageId = $message['id'] ?? null;
+                    if ($messageId) {
+                        $failedMessageIds[$messageId] = $result['error'];
+                    }
+                    break;
+                }
+            }
+        }
+        
+        // Mise à jour en masse des messages échoués
+        if (!empty($failedMessageIds)) {
+            foreach ($failedMessageIds as $id => $error) {
+                Message::where('id', $id)->update([
+                    'status' => 'failed',
+                    'error_message' => $error
                 ]);
-            } catch (\Exception $e) {
-                DB::rollBack();
-
-                Log::error("Erreur lors de l'enregistrement des résultats pour le chunk #{$this->chunkIndex}", [
-                    'error' => $e->getMessage(),
-                    'campaign_id' => $this->campaign->id
-                ]);
-
-                throw $e; // Relancer pour que le job soit réessayé
             }
         }
     }

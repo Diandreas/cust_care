@@ -46,24 +46,57 @@ class NotchPayController extends Controller
                 'Authorization' => 'Bearer ' . config('services.notchpay.secret_key'),
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->post('https://api.notchpay.co/payments/initialize', $fields);
+            ])->timeout(15)
+              ->retry(3, 500)
+              ->post('https://api.notchpay.co/payments/initialize', $fields);
             
-            if (!$response->successful()) {
-                Log::error('Erreur NotchPay', [
-                    'status' => $response->status(),
-                    'response' => $response->json(),
+            if ($response->failed()) {
+                $statusCode = $response->status();
+                $responseBody = $response->body();
+                
+                Log::error("Erreur NotchPay ($statusCode)", [
+                    'body' => $responseBody,
+                    'fields' => $fields
+                ]);
+                
+                if ($statusCode >= 500) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Le service de paiement est temporairement indisponible. Veuillez réessayer plus tard.',
+                        'error_type' => 'service_unavailable'
+                    ], 503);
+                }
+                
+                if ($statusCode === 401 || $statusCode === 403) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Erreur d\'authentification avec le service de paiement.',
+                        'error_type' => 'authentication_error'
+                    ], 500);
+                }
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de l\'initialisation du paiement: ' . ($response->json('message') ?? 'Erreur inconnue'),
+                    'error_type' => 'api_error'
+                ], 400);
+            }
+            
+            $responseData = $response->json();
+            
+            if (!isset($responseData['authorization_url']) || empty($responseData['authorization_url'])) {
+                Log::error('Réponse NotchPay invalide', [
+                    'response' => $responseData,
                     'fields' => $fields
                 ]);
                 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de l\'initialisation du paiement'
+                    'message' => 'Réponse invalide du service de paiement',
+                    'error_type' => 'invalid_response'
                 ], 500);
             }
             
-            $responseData = $response->json();
-            
-            // Sauvegarder les informations de la transaction en attente
             $pendingTransaction = PendingTransaction::create([
                 'user_id' => $user->id,
                 'reference' => $fields['reference'],
@@ -73,7 +106,8 @@ class NotchPayController extends Controller
                 'metadata' => json_encode([
                     'plan_id' => $plan->id,
                     'duration' => $validated['duration'],
-                    'payment_method' => 'notchpay'
+                    'payment_method' => 'notchpay',
+                    'api_reference' => $responseData['reference'] ?? null
                 ])
             ]);
             
@@ -89,9 +123,24 @@ class NotchPayController extends Controller
                 'fields' => $fields
             ]);
             
+            $errorMessage = $e->getMessage();
+            $isNetworkError = strpos($errorMessage, 'cURL error 28') !== false ||
+                              strpos($errorMessage, 'cURL error 6') !== false ||
+                              strpos($errorMessage, 'cURL error 7') !== false;
+                              
+            if ($isNetworkError) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Le service de paiement est temporairement inaccessible. Veuillez réessayer plus tard.',
+                    'error_type' => 'network_error',
+                    'alternative_methods' => ['paypal', 'momo']
+                ], 503);
+            }
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de l\'initialisation du paiement: ' . $e->getMessage()
+                'message' => 'Erreur lors de l\'initialisation du paiement: ' . $e->getMessage(),
+                'error_type' => 'unknown_error'
             ], 500);
         }
     }

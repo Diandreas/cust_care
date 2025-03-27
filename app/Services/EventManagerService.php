@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\Message;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 class EventManagerService
 {
@@ -59,44 +60,56 @@ class EventManagerService
     {
         Log::info('Traitement des événements à date fixe...');
         
-        // Obtenir tous les types d'événements à date fixe
-        $eventTypes = EventType::where('date_type', 'fixed_date')
-                              ->where('is_active', true)
-                              ->get();
+        // Ajouter un verrou global pour éviter les exécutions parallèles
+        $lockKey = 'processing_fixed_date_events_' . date('Y-m-d');
+        if (Cache::has($lockKey)) {
+            Log::info('Événements à date fixe déjà en cours de traitement');
+            return 0;
+        }
         
-        $count = 0;
+        Cache::put($lockKey, true, 60); // Verrou d'une heure
         
-        foreach ($eventTypes as $eventType) {
-            // Vérifier si l'événement est applicable aujourd'hui
-            if (!$eventType->isApplicableToday()) {
-                continue;
-            }
+        try {
+            // Obtenir tous les types d'événements à date fixe
+            $eventTypes = EventType::where('date_type', 'fixed_date')
+                                  ->where('is_active', true)
+                                  ->get();
             
-            // Obtenir toutes les configurations utilisateur pour ce type d'événement
-            $userConfigs = UserEventConfig::where('event_type_id', $eventType->id)
-                                        ->where('is_active', true)
-                                        ->with('user')
-                                        ->get();
+            $count = 0;
             
-            foreach ($userConfigs as $config) {
-                // Vérifier si cet événement n'a pas déjà été traité récemment
-                if ($config->last_processed_at && $config->last_processed_at->isToday()) {
+            foreach ($eventTypes as $eventType) {
+                // Vérifier si l'événement est applicable aujourd'hui
+                if (!$eventType->isApplicableToday()) {
                     continue;
                 }
                 
-                // Traiter l'événement pour cet utilisateur
-                $messagesCount = $this->processEventForUser($config);
-                $count += $messagesCount;
+                // Obtenir toutes les configurations utilisateur pour ce type d'événement
+                $userConfigs = UserEventConfig::where('event_type_id', $eventType->id)
+                                            ->where('is_active', true)
+                                            ->where(function($query) {
+                                                $query->whereNull('last_processed_at')
+                                                      ->orWhere('last_processed_at', '<', today());
+                                            })
+                                            ->with('user')
+                                            ->get();
                 
-                // Marquer comme traité
-                if ($messagesCount > 0) {
-                    $config->markAsProcessed();
+                foreach ($userConfigs as $config) {
+                    // Traiter l'événement pour cet utilisateur
+                    $messagesCount = $this->processEventForUser($config);
+                    $count += $messagesCount;
+                    
+                    // Marquer comme traité
+                    if ($messagesCount > 0) {
+                        $config->markAsProcessed();
+                    }
                 }
             }
+            
+            Log::info("$count messages envoyés pour des événements à date fixe.");
+            return $count;
+        } finally {
+            Cache::forget($lockKey);
         }
-        
-        Log::info("$count messages envoyés pour des événements à date fixe.");
-        return $count;
     }
     
     /**
@@ -106,45 +119,57 @@ class EventManagerService
     {
         Log::info('Traitement des événements basés sur des champs client...');
         
-        // Obtenir tous les types d'événements basés sur des champs client
-        $eventTypes = EventType::where('date_type', 'client_field')
-                              ->where('is_active', true)
-                              ->get();
+        // Ajouter un verrou global pour éviter les exécutions parallèles
+        $lockKey = 'processing_client_field_events_' . date('Y-m-d');
+        if (Cache::has($lockKey)) {
+            Log::info('Événements basés sur des champs client déjà en cours de traitement');
+            return 0;
+        }
         
-        $count = 0;
+        Cache::put($lockKey, true, 60); // Verrou d'une heure
         
-        foreach ($eventTypes as $eventType) {
-            $field = $eventType->getClientField();
+        try {
+            // Obtenir tous les types d'événements basés sur des champs client
+            $eventTypes = EventType::where('date_type', 'client_field')
+                                  ->where('is_active', true)
+                                  ->get();
             
-            if (!$field) {
-                continue;
-            }
+            $count = 0;
             
-            // Obtenir toutes les configurations utilisateur pour ce type d'événement
-            $userConfigs = UserEventConfig::where('event_type_id', $eventType->id)
-                                        ->where('is_active', true)
-                                        ->with('user')
-                                        ->get();
-            
-            foreach ($userConfigs as $config) {
-                // Vérifier si cet événement n'a pas déjà été traité récemment
-                if ($config->last_processed_at && $config->last_processed_at->isToday()) {
+            foreach ($eventTypes as $eventType) {
+                $field = $eventType->getClientField();
+                
+                if (!$field) {
                     continue;
                 }
                 
-                // Trouver les clients correspondant à la condition du champ
-                $messagesCount = $this->processClientFieldEventForUser($config, $field);
-                $count += $messagesCount;
+                // Obtenir toutes les configurations utilisateur pour ce type d'événement
+                $userConfigs = UserEventConfig::where('event_type_id', $eventType->id)
+                                            ->where('is_active', true)
+                                            ->where(function($query) {
+                                                $query->whereNull('last_processed_at')
+                                                      ->orWhere('last_processed_at', '<', today());
+                                            })
+                                            ->with('user')
+                                            ->get();
                 
-                // Marquer comme traité
-                if ($messagesCount > 0) {
-                    $config->markAsProcessed();
+                foreach ($userConfigs as $config) {
+                    // Trouver les clients correspondant à la condition du champ
+                    $messagesCount = $this->processClientFieldEventForUser($config, $field);
+                    $count += $messagesCount;
+                    
+                    // Marquer comme traité
+                    if ($messagesCount > 0) {
+                        $config->markAsProcessed();
+                    }
                 }
             }
+            
+            Log::info("$count messages envoyés pour des événements basés sur des champs client.");
+            return $count;
+        } finally {
+            Cache::forget($lockKey);
         }
-        
-        Log::info("$count messages envoyés pour des événements basés sur des champs client.");
-        return $count;
     }
     
     /**

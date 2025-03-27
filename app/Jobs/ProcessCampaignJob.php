@@ -71,6 +71,7 @@ class ProcessCampaignJob implements ShouldQueue
             if ($recipients->isEmpty()) {
                 Log::warning("Campagne #{$this->campaign->id} sans destinataires");
                 $this->campaign->status = 'failed';
+                $this->campaign->error_message = 'Aucun destinataire trouvé pour cette campagne';
                 $this->campaign->save();
                 Cache::forget($lockKey);
                 return;
@@ -110,13 +111,18 @@ class ProcessCampaignJob implements ShouldQueue
                         // Si certains messages ont été envoyés
                         $this->campaign->status = 'sent';
                     }
+                    
+                    // Enregistrer les détails de l'erreur
+                    $this->campaign->error_message = "Échec durant l'envoi: " . 
+                        $batch->failedJobs . " jobs ont échoué sur " . $batch->totalJobs;
 
                     $this->campaign->save();
 
                     Log::warning("Campagne #{$this->campaign->id} terminée avec des erreurs", [
                         'delivered' => $this->campaign->delivered_count,
                         'failed' => $this->campaign->failed_count,
-                        'failed_jobs' => $batch->failedJobs
+                        'failed_jobs' => $batch->failedJobs,
+                        'total_jobs' => $batch->totalJobs
                     ]);
                     
                     Cache::forget($lockKey);
@@ -127,14 +133,23 @@ class ProcessCampaignJob implements ShouldQueue
         } catch (\Exception $e) {
             // En cas d'erreur grave, marquer la campagne comme échouée
             $this->campaign->status = 'failed';
+            $this->campaign->error_message = $e->getMessage();
             $this->campaign->save();
 
-            Log::error("Erreur fatale lors du traitement de la campagne #{$this->campaign->id}", [
+            // Log détaillé
+            Log::error('Campaign processing failed', [
+                'campaign_id' => $this->campaign->id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
             
+            // Libérer le verrou
             Cache::forget($lockKey);
+            
+            // Relancer l'exception pour que Laravel gère la tentative
+            throw $e;
         }
     }
     

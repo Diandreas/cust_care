@@ -11,26 +11,40 @@ class UsageTrackingService
 {
     /**
      * Suivre l'utilisation des SMS pour un utilisateur
+     * 
+     * @param User $user L'utilisateur dont on suit l'usage
+     * @param int $smsCount Nombre de SMS à ajouter au compteur
+     * @param string $type Type de SMS ('personal' ou 'campaign')
+     * @return bool True si l'opération a réussi, false sinon
      */
-    public function trackSmsUsage(User $user, int $smsCount)
+    public function trackSmsUsage(User $user, int $smsCount, string $type = 'personal')
     {
         // Obtenir l'abonnement actif de l'utilisateur
         $subscription = $user->subscription;
 
-        if (!$subscription) {
-            Log::warning('Tentative de suivre l\'utilisation des SMS pour un utilisateur sans abonnement', [
+        if (!$subscription || $subscription->status !== 'active') {
+            Log::warning('Tentative de suivi SMS pour un utilisateur sans abonnement actif', [
                 'user_id' => $user->id,
-                'sms_count' => $smsCount
+                'sms_count' => $smsCount,
+                'type' => $type
             ]);
             return false;
         }
 
-        // Mettre à jour le compteur d'utilisation
-        $subscription->sms_used += $smsCount;
+        // Mise à jour du compteur approprié selon le type
+        if ($type === 'campaign') {
+            // Vérifier et mettre à jour le quota de campagne
+            $subscription->campaign_sms_used += $smsCount;
+        } else {
+            // Vérifier et mettre à jour le quota personnel
+            $subscription->sms_used += $smsCount;
+        }
+        
+        // Sauvegarder les modifications
         $subscription->save();
 
         // Vérifier si l'utilisateur approche de sa limite
-        $this->checkQuotaWarnings($subscription);
+        $this->checkQuotaWarnings($subscription, $type);
 
         return true;
     }
@@ -38,13 +52,20 @@ class UsageTrackingService
     /**
      * Vérifier si l'utilisateur doit être averti de son utilisation
      */
-    private function checkQuotaWarnings(Subscription $subscription)
+    private function checkQuotaWarnings(Subscription $subscription, string $type = 'personal')
     {
-        // Calculer le pourcentage d'utilisation
-        $totalQuota = $subscription->personal_sms_quota;
+        // Déterminer le quota total et l'utilisation selon le type
+        $totalQuota = $type === 'campaign' 
+            ? $subscription->campaign_sms_limit 
+            : $subscription->personal_sms_quota;
+            
+        $usedSms = $type === 'campaign' 
+            ? $subscription->campaign_sms_used 
+            : $subscription->sms_used;
+            
         if ($totalQuota <= 0) return;
 
-        $usedPercentage = ($subscription->sms_used / $totalQuota) * 100;
+        $usedPercentage = ($usedSms / $totalQuota) * 100;
 
         // Définir les seuils d'avertissement (75%, 90%, 95%)
         $warnThresholds = [75, 90, 95];
@@ -56,8 +77,9 @@ class UsageTrackingService
                     'user_id' => $subscription->user_id,
                     'usage_percentage' => round($usedPercentage, 2),
                     'threshold' => $threshold,
-                    'used' => $subscription->sms_used,
-                    'total' => $totalQuota
+                    'used' => $usedSms,
+                    'total' => $totalQuota,
+                    'type' => $type
                 ]);
 
                 // Ici, on pourrait déclencher une notification
@@ -69,15 +91,20 @@ class UsageTrackingService
     /**
      * Vérifier si l'utilisateur peut envoyer un certain nombre de SMS
      */
-    public function canSendSms(User $user, int $smsCount): bool
+    public function canSendSms(User $user, int $smsCount, string $type = 'personal'): bool
     {
         $subscription = $user->subscription;
 
-        if (!$subscription) {
+        if (!$subscription || $subscription->status !== 'active') {
             return false;
         }
 
-        $availableSms = $subscription->personal_sms_quota - $subscription->sms_used;
+        if ($type === 'campaign') {
+            $availableSms = $subscription->campaign_sms_limit - $subscription->campaign_sms_used;
+        } else {
+            $availableSms = $subscription->personal_sms_quota - $subscription->sms_used;
+        }
+
         return $availableSms >= $smsCount;
     }
 
