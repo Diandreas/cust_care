@@ -5,6 +5,10 @@ namespace Database\Seeders;
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Database\Seeders\EventTypesSeeder;
+use Database\Seeders\CalendarEventsSeeder;
+use Database\Seeders\SubscriptionPlanSeeder;
+
 
 class DatabaseSeeder extends Seeder
 {
@@ -21,8 +25,9 @@ class DatabaseSeeder extends Seeder
         // ]);
         
         $this->call([
-            SubscriptionPlanSeeder::class,
-            CalendarEventsSeeder::class
+            // SubscriptionPlanSeeder::class,
+            CalendarEventsSeeder::class,
+            EventTypesSeeder::class
         ]);
     }
 }
