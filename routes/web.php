@@ -36,6 +36,13 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/campaigns/{campaign}/retry', [CampaignController::class, 'retry'])->name('campaigns.retry');
     
+    // API Routes
+    Route::prefix('api')->group(function () {
+        // API pour les visites clients
+        Route::post('/clients/{client}/visit', [ClientController::class, 'recordVisit']);
+        Route::get('/clients/{client}/visits', [ClientController::class, 'getVisitHistory']);
+    });
+    
     // Calendrier des événements
     Route::get('/event-calendar', [EventCalendarController::class, 'index'])->name('event-calendar.index');
     Route::post('/event-calendar/bulk-toggle', [EventCalendarController::class, 'bulkToggle'])->name('event-calendar.bulk-toggle');
@@ -49,6 +56,10 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Route de suppression en masse des clients
     Route::delete('/clients/bulk-destroy', [ClientController::class, 'bulkDestroy'])->name('clients.bulkDestroy');
+
+    // Routes pour les visites clients
+    Route::post('/clients/{client}/visit', [ClientController::class, 'recordVisit'])->name('clients.recordVisit');
+    Route::get('/clients/{client}/visits', [ClientController::class, 'getVisitHistory'])->name('clients.visits');
 
     // Route de création avec middleware client.limit
     Route::middleware(CheckClientLimit::class)->post('/clients', [ClientController::class, 'store'])->name('clients.store');

@@ -28,7 +28,8 @@ class Client extends Model
 
     protected $appends = [
         'last_message_date',
-        'is_active'
+        'is_active',
+        'last_visit_date'
     ];
 
     public function user()
@@ -47,6 +48,14 @@ class Client extends Model
     }
 
     /**
+     * Relation avec les visites
+     */
+    public function visits()
+    {
+        return $this->hasMany(Visit::class);
+    }
+
+    /**
      * Relation avec les tags (many-to-many)
      */
     public function tags()
@@ -60,6 +69,14 @@ class Client extends Model
     public function getLastMessageDateAttribute()
     {
         return $this->messages()->latest()->value('created_at');
+    }
+    
+    /**
+     * Obtenir la date de la dernière visite
+     */
+    public function getLastVisitDateAttribute()
+    {
+        return $this->visits()->latest('visit_date')->value('visit_date');
     }
     
     /**

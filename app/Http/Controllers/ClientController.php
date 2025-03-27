@@ -18,6 +18,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Visit;
 
 /**
  * @property-read User $user L'utilisateur authentifié
@@ -34,7 +35,9 @@ class ClientController extends Controller
             ->with(['category', 'tags'])
             ->withCount('messages as totalSmsCount')
             ->withMax('messages as lastSmsDate', 'created_at')
-            ->withMax('messages as lastContact', 'created_at');
+            ->withMax('messages as lastContact', 'created_at')
+            ->withMax('visits as lastVisitDate', 'visit_date')
+            ->withCount('visits as visitCount');
         
         // Filtres de base
         if ($request->has('category_id') && $request->category_id) {
@@ -93,7 +96,7 @@ class ClientController extends Controller
         $sortDirection = $request->input('sort_direction', 'asc');
         
         $allowedSortFields = [
-            'name', 'created_at', 'birthday', 'lastContact', 'totalSmsCount'
+            'name', 'created_at', 'birthday', 'lastContact', 'totalSmsCount', 'lastVisitDate', 'visitCount'
         ];
         
         if (in_array($sortBy, $allowedSortFields)) {
@@ -101,6 +104,10 @@ class ClientController extends Controller
                 $query->orderBy('lastContact', $sortDirection);
             } elseif ($sortBy === 'totalSmsCount') {
                 $query->orderBy('totalSmsCount', $sortDirection);
+            } elseif ($sortBy === 'lastVisitDate') {
+                $query->orderBy('lastVisitDate', $sortDirection);
+            } elseif ($sortBy === 'visitCount') {
+                $query->orderBy('visitCount', $sortDirection);
             } else {
                 $query->orderBy($sortBy, $sortDirection);
             }
@@ -124,6 +131,7 @@ class ClientController extends Controller
                 })
                 ->count(),
             'totalSmsSent' => $user->messages()->count(),
+            'totalVisits' => $user->clients()->withCount('visits')->get()->sum('visits_count'),
             'clientsByCategory' => $user->categories()
                 ->withCount('clients')
                 ->get()
@@ -376,86 +384,87 @@ class ClientController extends Controller
     }
     
     public function import(Request $request)
-{
-    try {
-        $request->validate([
-            'file' => 'required|file|mimes:csv,txt,xls,xlsx',
-            'mapping' => 'required|json'
-        ]);
-        
-        $user = Auth::user();
-        $subscription = $this->getUserSubscription($user);
-        $currentClientCount = $subscription['clientsCount'];
-        $clientLimit = $subscription['clientsLimit'];
-        
-        // Analyser d'abord le fichier pour compter le nombre de clients à importer
+    {
         try {
-            // Compter le nombre approximatif de lignes dans le fichier
-            $fileContent = file_get_contents($request->file('file')->getRealPath());
-            $rowCount = substr_count($fileContent, "\n");
+            $request->validate([
+                'file' => 'required|file|mimes:csv,txt,xls,xlsx',
+                'mapping' => 'required|json'
+            ]);
             
-            // Vérifier si l'importation dépasserait la limite
-            if ($currentClientCount + $rowCount > $clientLimit) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "L'importation dépasserait la limite de clients pour votre plan. Vous pouvez importer au maximum " . 
-                                ($clientLimit - $currentClientCount) . " clients."
-                ], 403);
-            }
+            $user = Auth::user();
+            $subscription = $this->getUserSubscription($user);
+            $currentClientCount = $subscription['clientsCount'];
+            $clientLimit = $subscription['clientsLimit'];
             
-            $mapping = json_decode($request->mapping, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Erreur dans le format du mapping JSON: ' . json_last_error_msg());
-            }
-            
+            // Analyser d'abord le fichier pour compter le nombre de clients à importer
             try {
-                DB::beginTransaction();
-                Excel::import(new ClientsImport($mapping, Auth::id()), $request->file('file'));
-                DB::commit();
+                // Compter le nombre approximatif de lignes dans le fichier
+                $fileContent = file_get_contents($request->file('file')->getRealPath());
+                $rowCount = substr_count($fileContent, "\n");
+                
+                // Vérifier si l'importation dépasserait la limite
+                if ($currentClientCount + $rowCount > $clientLimit) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "L'importation dépasserait la limite de clients pour votre plan. Vous pouvez importer au maximum " . 
+                                    ($clientLimit - $currentClientCount) . " clients."
+                    ], 403);
+                }
+                
+                $mapping = json_decode($request->mapping, true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \Exception('Erreur dans le format du mapping JSON: ' . json_last_error_msg());
+                }
+                
+                try {
+                    DB::beginTransaction();
+                    Excel::import(new ClientsImport($mapping, Auth::id()), $request->file('file'));
+                    DB::commit();
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Les clients ont été importés avec succès.'
+                    ]);
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    \Log::error('Erreur lors de l\'importation Excel: ' . $e->getMessage(), [
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]);
+                    
+                    throw $e;
+                }
+            } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+                \Log::error('Erreur de validation Excel: ' . json_encode($e->errors()));
                 
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Les clients ont été importés avec succès.'
-                ]);
+                    'success' => false,
+                    'message' => 'Erreur de validation des données : ' . implode(', ', $e->errors())
+                ], 422);
             } catch (\Exception $e) {
-                DB::rollBack();
-                \Log::error('Erreur lors de l\'importation Excel: ' . $e->getMessage(), [
+                \Log::error('Erreur générale lors de l\'importation: ' . $e->getMessage(), [
                     'file' => $e->getFile(),
                     'line' => $e->getLine()
                 ]);
                 
-                throw $e;
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue lors de l\'importation: ' . $e->getMessage()
+                ], 500);
             }
-        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
-            \Log::error('Erreur de validation Excel: ' . json_encode($e->errors()));
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur de validation des données : ' . implode(', ', $e->errors())
-            ], 422);
         } catch (\Exception $e) {
-            \Log::error('Erreur générale lors de l\'importation: ' . $e->getMessage(), [
+            \Log::error('Erreur d\'importation: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine()
             ]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur est survenue lors de l\'importation: ' . $e->getMessage()
+                'message' => 'Une erreur est survenue: ' . $e->getMessage()
             ], 500);
         }
-    } catch (\Exception $e) {
-        \Log::error('Erreur d\'importation: ' . $e->getMessage(), [
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ]);
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Une erreur est survenue: ' . $e->getMessage()
-        ], 500);
     }
-}
+    
     public function export(Request $request)
     {
         try {
@@ -505,5 +514,54 @@ class ClientController extends Controller
             
             return back()->withErrors(['export' => 'Une erreur est survenue lors de l\'exportation: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Enregistrer une visite pour un client
+     */
+    public function recordVisit(Request $request, Client $client)
+    {
+        $this->authorize('view', $client);
+
+        $validated = $request->validate([
+            'notes' => 'nullable|string',
+        ]);
+
+        $visit = new Visit([
+            'client_id' => $client->id,
+            'user_id' => Auth::id(),
+            'visit_date' => now(),
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        $visit->save();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Visite enregistrée avec succès',
+                'visit' => $visit
+            ]);
+        }
+
+        return redirect()->back()->with('success', 'Visite enregistrée avec succès');
+    }
+
+    /**
+     * Obtenir l'historique des visites d'un client
+     */
+    public function getVisitHistory(Client $client)
+    {
+        $this->authorize('view', $client);
+
+        $visits = $client->visits()
+            ->with('user')
+            ->orderBy('visit_date', 'desc')
+            ->paginate(10);
+
+        return Inertia::render('Clients/VisitHistory', [
+            'client' => $client,
+            'visits' => $visits
+        ]);
     }
 }
