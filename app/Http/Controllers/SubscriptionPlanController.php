@@ -150,4 +150,35 @@ class SubscriptionPlanController extends Controller
         
         return redirect()->back()->with('success', 'Your subscription has been cancelled and will end on ' . $subscription->expires_at->format('Y-m-d'));
     }
+
+    /**
+     * Subscribe to a plan
+     */
+    public function subscribe(Request $request, $planId)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer,notchpay,paypal',
+            'duration' => 'required|string|in:monthly,annual',
+            'simulation_mode' => 'nullable|boolean'
+        ]);
+
+        // Rediriger vers le contrôleur de paiement pour traiter l'abonnement
+        return app(PaymentController::class)->processSubscriptionPayment($request, $planId);
+    }
+
+    /**
+     * Purchase addons
+     */
+    public function purchaseAddons(Request $request)
+    {
+        $validated = $request->validate([
+            'addon_type' => 'required|string|in:sms,clients',
+            'quantity' => 'required|integer|min:1',
+            'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer,notchpay,paypal',
+            'simulation_mode' => 'nullable|boolean'
+        ]);
+
+        // Rediriger vers le contrôleur de paiement pour traiter l'achat d'addon
+        return app(PaymentController::class)->processAddonPayment($request);
+    }
 }

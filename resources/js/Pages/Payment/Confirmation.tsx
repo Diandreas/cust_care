@@ -37,19 +37,87 @@ export default function Confirmation({
     const handleConfirmPayment = () => {
         setProcessing(true);
 
-        if (plan) {
-            router.post(route('payment.subscription', plan.id), {
-                payment_method: paymentMethod,
-                duration: duration,
-                simulation_mode: true,
-            });
-        } else if (addonType) {
-            router.post(route('payment.addon'), {
-                addon_type: addonType,
-                quantity: quantity,
-                payment_method: paymentMethod,
-                simulation_mode: true,
-            });
+        if (paymentMethod === 'notchpay') {
+            // Rediriger vers l'initialisation NotchPay
+            if (plan) {
+                fetch('/api/notchpay/subscribe', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': decodeURIComponent(document.cookie
+                            .split('; ')
+                            .find(row => row.startsWith('XSRF-TOKEN='))
+                            ?.split('=')[1] || ''),
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        plan_id: plan.id,
+                        duration: duration,
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.authorization_url) {
+                            window.location.href = data.authorization_url;
+                        } else {
+                            throw new Error('Échec de l\'initialisation du paiement');
+                        }
+                    })
+                    .catch(error => {
+                        setProcessing(false);
+                        alert('Erreur: ' + error.message);
+                    });
+            } else if (addonType) {
+                fetch('/api/notchpay/addon', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-XSRF-TOKEN': decodeURIComponent(document.cookie
+                            .split('; ')
+                            .find(row => row.startsWith('XSRF-TOKEN='))
+                            ?.split('=')[1] || ''),
+                        'Accept': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        addon_type: addonType,
+                        quantity: quantity,
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.authorization_url) {
+                            window.location.href = data.authorization_url;
+                        } else {
+                            throw new Error('Échec de l\'initialisation du paiement');
+                        }
+                    })
+                    .catch(error => {
+                        setProcessing(false);
+                        alert('Erreur: ' + error.message);
+                    });
+            }
+        } else if (paymentMethod === 'paypal') {
+            // Rediriger vers PayPal (géré par le composant PayPal)
+            alert('Le paiement par PayPal n\'est pas encore implémenté dans cette interface');
+            setProcessing(false);
+        } else {
+            // Méthode traditionnelle avec simulation
+            if (plan) {
+                router.post(route('payment.subscription', plan.id), {
+                    payment_method: paymentMethod,
+                    duration: duration,
+                    simulation_mode: true,
+                });
+            } else if (addonType) {
+                router.post(route('payment.addon'), {
+                    addon_type: addonType,
+                    quantity: quantity,
+                    payment_method: paymentMethod,
+                    simulation_mode: true,
+                });
+            }
         }
     };
 
