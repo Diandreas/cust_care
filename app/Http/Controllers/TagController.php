@@ -27,7 +27,7 @@ class TagController extends Controller
      * Créer un nouveau tag
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
@@ -37,7 +37,15 @@ class TagController extends Controller
 
         $validated['user_id'] = Auth::id();
 
-        Tag::create($validated);
+        $tag = Tag::create($validated);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tag créé avec succès.',
+                'tag' => $tag
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Tag créé avec succès.');
     }
@@ -47,7 +55,7 @@ class TagController extends Controller
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \App\Models\Tag  $tag
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function update(Request $request, Tag $tag)
     {
@@ -59,6 +67,14 @@ class TagController extends Controller
 
         $tag->update($validated);
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tag mis à jour avec succès.',
+                'tag' => $tag
+            ]);
+        }
+
         return redirect()->back()->with('success', 'Tag mis à jour avec succès.');
     }
 
@@ -66,13 +82,20 @@ class TagController extends Controller
      * Supprimer un tag
      *
      * @param  \App\Models\Tag  $tag
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
      */
     public function destroy(Tag $tag)
     {
         $this->authorize('delete', $tag);
 
         $tag->delete();
+
+        if (request()->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tag supprimé avec succès.'
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Tag supprimé avec succès.');
     }

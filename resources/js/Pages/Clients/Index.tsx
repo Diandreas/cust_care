@@ -13,7 +13,7 @@ import DangerButton from '@/Components/DangerButton';
 import Dropdown from '@/Components/Dropdown';
 import Checkbox from '@/Components/Checkbox';
 import { Transition } from '@headlessui/react';
-import { useToast } from '@/utils/toast';
+import { useToast } from '@/Utils/toast';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -83,19 +83,21 @@ export default function ClientsIndex({
     filters,
     stats,
     subscription,
-}: PageProps<Record<string, unknown>>) {
+}: PageProps<ClientsIndexProps & Record<string, unknown>>) {
     const { t } = useTranslation();
     const [selectedClients, setSelectedClients] = useState<number[]>([]);
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [showExportModal, setShowExportModal] = useState(false);
     const [showBulkSmsModal, setShowBulkSmsModal] = useState(false);
-    const [showClientDetail, setShowClientDetail] = useState<number | null>(null);
     const [viewMode, setViewMode] = useState<'table' | 'grid' | 'cards'>('table');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewData, setPreviewData] = useState<any[]>([]);
     const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
     const { success, error } = useToast();
+    const [bulkSmsContent, setBulkSmsContent] = useState('');
+    const [selectedCategoryForBulk, setSelectedCategoryForBulk] = useState<number | null>(null);
+    const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
 
     // État pour la recherche et les filtres
     const { data, setData, get, processing } = useForm({
@@ -240,10 +242,10 @@ export default function ClientsIndex({
 
         // Ajouter les filtres actuels
         if (data.search) params.append('search', data.search);
-        if (data.category_id) params.append('category_id', data.category_id);
-        if (data.tag_id) params.append('tag_id', data.tag_id);
+        if (data.category_id) params.append('category_id', data.category_id.toString());
+        if (data.tag_id) params.append('tag_id', data.tag_id.toString());
         if (data.date_range) params.append('date_range', data.date_range);
-        if (data.birthday_month) params.append('birthday_month', data.birthday_month);
+        if (data.birthday_month) params.append('birthday_month', data.birthday_month.toString());
 
         // Si des clients sont sélectionnés, les exporter spécifiquement
         if (selectedClients.length > 0) {
@@ -308,10 +310,31 @@ export default function ClientsIndex({
                     });
             }
         } else if (action === 'category') {
-            // Implement bulk category update
+            // Ouvrir le modal pour changer de catégorie
+            setShowBulkCategoryModal(true);
         } else if (action === 'sms') {
             setShowBulkSmsModal(true);
         }
+    };
+
+    const handleBulkCategoryChange = () => {
+        if (selectedCategoryForBulk === null) {
+            error('clients.selectCategory');
+            return;
+        }
+
+        axios.post(route('clients.bulkCategory'), {
+            ids: selectedClients,
+            category_id: selectedCategoryForBulk
+        })
+            .then(response => {
+                success('clients.categoryUpdateSuccess');
+                setShowBulkCategoryModal(false);
+                window.location.reload();
+            })
+            .catch(err => {
+                error('common.error', { details: err.response?.data?.message || 'Erreur inconnue' });
+            });
     };
 
     const handleSortChange = (field: string) => {
@@ -327,6 +350,30 @@ export default function ClientsIndex({
             preserveState: true,
             replace: true,
         });
+    };
+
+    const handleBulkSms = () => {
+        if (!bulkSmsContent.trim()) {
+            error('sms.contentRequired');
+            return;
+        }
+
+        axios.post(route('messages.bulkSend'), {
+            client_ids: selectedClients,
+            content: bulkSmsContent,
+        })
+            .then(response => {
+                success('sms.sendSuccess');
+                setShowBulkSmsModal(false);
+                setBulkSmsContent('');
+            })
+            .catch(err => {
+                if (err.response && err.response.status === 403) {
+                    error('subscription.limit.upgradeRequired');
+                } else {
+                    error('common.error', { details: err.response?.data?.message || 'Erreur inconnue' });
+                }
+            });
     };
 
     return (
@@ -395,7 +442,6 @@ export default function ClientsIndex({
                                         onChange={(e) => {
                                             setData('category_id', e.target.value);
                                             get(route('clients.index'), {
-                                                data: { ...data, category_id: e.target.value },
                                                 preserveState: true,
                                                 replace: true,
                                             });
@@ -847,12 +893,12 @@ export default function ClientsIndex({
                                                     />
                                                 </td>
                                                 <td className="whitespace-nowrap px-6 py-4">
-                                                    <button
+                                                    <Link
+                                                        href={route('clients.show', client.id)}
                                                         className="text-sm font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400"
-                                                        onClick={() => setShowClientDetail(client.id)}
                                                     >
                                                         {client.name}
-                                                    </button>
+                                                    </Link>
                                                 </td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                                                     <a href={`tel:${client.phone}`} className="hover:text-indigo-600 dark:hover:text-indigo-400">
@@ -935,19 +981,19 @@ export default function ClientsIndex({
                             {clients.links && clients.links.length > 3 && (
                                 <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700 sm:px-6">
                                     <div className="flex flex-1 justify-between sm:hidden">
-                                        <a
-                                            href={clients.links[0].url}
+                                        <Link
+                                            href={clients.links[0].url || ''}
                                             className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 ${!clients.links[0].url ? 'pointer-events-none opacity-50' : ''}`}
                                         >
                                             {t('pagination.previous')}
-                                        </a>
+                                        </Link>
 
-                                        <a
-                                            href={clients.links[clients.links.length - 1].url}
+                                        <Link
+                                            href={clients.links[clients.links.length - 1].url || ''}
                                             className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 ${!clients.links[clients.links.length - 1].url ? 'pointer-events-none opacity-50' : ''}`}
                                         >
                                             {t('pagination.next')}
-                                        </a>
+                                        </Link>
                                     </div>
                                     <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                                         <div>
@@ -958,9 +1004,9 @@ export default function ClientsIndex({
                                         <div>
                                             <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                                                 {clients.links.map((link, index) => (
-                                                    <a
+                                                    <Link
                                                         key={index}
-                                                        href={link.url}
+                                                        href={link.url || ''}
                                                         className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
                                                             ? 'z-10 bg-indigo-600 text-white dark:bg-indigo-800'
                                                             : 'text-gray-500 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
@@ -993,7 +1039,7 @@ export default function ClientsIndex({
                                                 onChange={() => toggleClient(client.id)}
                                             />
                                             <button
-                                                onClick={() => setShowClientDetail(client.id)}
+                                                onClick={() => window.location.href = route('clients.show', client.id)}
                                                 className="text-lg font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400"
                                             >
                                                 {client.name}
@@ -1240,9 +1286,9 @@ export default function ClientsIndex({
                             <div>
                                 <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
                                     {clients.links.map((link, index) => (
-                                        <a
+                                        <Link
                                             key={index}
-                                            href={link.url}
+                                            href={link.url || ''}
                                             className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
                                                 ? 'z-10 bg-indigo-600 text-white dark:bg-indigo-800'
                                                 : 'text-gray-500 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
@@ -1304,7 +1350,7 @@ export default function ClientsIndex({
                                             <tr key={rowIndex}>
                                                 {Object.entries(row).map(([key, value], colIndex) => (
                                                     <td key={`${rowIndex}-${colIndex}`} className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
-                                                        {value}
+                                                        {String(value)}
                                                     </td>
                                                 ))}
                                             </tr>
@@ -1527,6 +1573,8 @@ export default function ClientsIndex({
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
                             rows={5}
                             placeholder={t('bulk.messagePlaceholder')}
+                            value={bulkSmsContent}
+                            onChange={(e) => setBulkSmsContent(e.target.value)}
                         ></textarea>
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             {t('bulk.availableTags')}: {'{{name}}, {{category}}, {{birthday}}, {{phone}}'}
@@ -1585,342 +1633,49 @@ export default function ClientsIndex({
                         <SecondaryButton onClick={() => setShowBulkSmsModal(false)}>
                             {t('common.cancel')}
                         </SecondaryButton>
-                        <PrimaryButton>
+                        <PrimaryButton onClick={handleBulkSms}>
                             {t('bulk.send')}
                         </PrimaryButton>
                     </div>
                 </div>
             </Modal>
 
-            {/* Modal de détail client */}
-            <Modal show={showClientDetail !== null} onClose={() => setShowClientDetail(null)} maxWidth="3xl">
-                {showClientDetail !== null && (
-                    <div className="p-6">
-                        {/* Trouver le client sélectionné */}
-                        {(() => {
-                            const client = clients.data.find(c => c.id === showClientDetail);
-                            if (!client) return null;
+            {/* Modal de changement de catégorie en masse */}
+            <Modal show={showBulkCategoryModal} onClose={() => setShowBulkCategoryModal(false)}>
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        {t('bulk.changeCategory')}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        {t('bulk.changeCategoryDescription', { count: selectedClients.length })}
+                    </p>
 
-                            return (
-                                <>
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                                            {client.name}
-                                        </h2>
-                                        <div className="flex space-x-3">
-                                            <Link
-                                                href={route('messages.create', { client_id: client.id })}
-                                                className="inline-flex items-center rounded-md border border-transparent bg-green-100 px-3 py-2 text-sm font-medium leading-4 text-green-700 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:bg-green-900/20 dark:text-green-400"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                </svg>
-                                                {t('common.sendMessage')}
-                                            </Link>
-                                            <Link
-                                                href={route('clients.edit', client.id)}
-                                                className="inline-flex items-center rounded-md border border-transparent bg-indigo-100 px-3 py-2 text-sm font-medium leading-4 text-indigo-700 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-900/20 dark:text-indigo-400"
-                                            >
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                                {t('common.edit')}
-                                            </Link>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
-                                        {/* Informations de contact */}
-                                        <div className="col-span-1 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                {t('client.contactInformation')}
-                                            </h3>
-                                            <div className="mt-3 space-y-3">
-                                                <div className="flex items-center">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                                    </svg>
-                                                    <div>
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400">{t('common.phone')}</div>
-                                                        <a href={`tel:${client.phone}`} className="text-sm font-medium text-gray-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400">
-                                                            {client.phone}
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                                {client.email && (
-                                                    <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                        </svg>
-                                                        <div>
-                                                            <div className="text-xs text-gray-500 dark:text-gray-400">{t('common.email')}</div>
-                                                            <a href={`mailto:${client.email}`} className="text-sm font-medium text-gray-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400">
-                                                                {client.email}
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {client.address && (
-                                                    <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                        </svg>
-                                                        <div>
-                                                            <div className="text-xs text-gray-500 dark:text-gray-400">{t('common.address')}</div>
-                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                                                {client.address}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {client.birthday && (
-                                                    <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z" />
-                                                        </svg>
-                                                        <div>
-                                                            <div className="text-xs text-gray-500 dark:text-gray-400">{t('common.birthday')}</div>
-                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                                                {formatDate(client.birthday)}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                {client.category && (
-                                                    <div className="flex items-center">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                                        </svg>
-                                                        <div>
-                                                            <div className="text-xs text-gray-500 dark:text-gray-400">{t('common.category')}</div>
-                                                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                                                {client.category.name}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Activités SMS */}
-                                        <div className="col-span-1 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                {t('client.smsActivity')}
-                                            </h3>
-                                            <div className="mt-3">
-                                                <div className="flex items-center justify-between border-b border-gray-200 pb-3 dark:border-gray-700">
-                                                    <div className="text-sm text-gray-500 dark:text-gray-400">{t('client.totalSms')}</div>
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{client.totalSmsCount || 0}</div>
-                                                </div>
-                                                <div className="flex items-center justify-between border-b border-gray-200 py-3 dark:border-gray-700">
-                                                    <div className="text-sm text-gray-500 dark:text-gray-400">{t('client.lastSms')}</div>
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                                        {client.lastSmsDate ? formatDate(client.lastSmsDate) : t('common.never')}
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-between pt-3">
-                                                    <div className="text-sm text-gray-500 dark:text-gray-400">{t('client.lastContact')}</div>
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                                        {client.lastContact ? formatDate(client.lastContact) : t('common.never')}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <h3 className="mt-6 text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                {t('client.recentMessages')}
-                                            </h3>
-                                            <div className="mt-3 space-y-3">
-                                                {/* Liste des messages récents - simulée car nous n'avons pas les vraies données */}
-                                                <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-700">
-                                                    <div className="flex justify-between">
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400">25/03/2025</div>
-                                                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                                            {t('client.sent')}
-                                                        </span>
-                                                    </div>
-                                                    <div className="mt-1 text-sm text-gray-900 dark:text-white">
-                                                        Bonjour {client.name}, nous vous informons de notre nouvelle offre...
-                                                    </div>
-                                                </div>
-                                                <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-700">
-                                                    <div className="flex justify-between">
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400">15/03/2025</div>
-                                                        <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                                            {t('client.sent')}
-                                                        </span>
-                                                    </div>
-                                                    <div className="mt-1 text-sm text-gray-900 dark:text-white">
-                                                        Cher client, n'oubliez pas votre rendez-vous du 16/03 à 14h...
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Notes & tags */}
-                                        <div className="col-span-1 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                    {t('client.notes')}
-                                                </h3>
-                                                <button
-                                                    type="button"
-                                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="mr-1 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                    </svg>
-                                                    {t('common.edit')}
-                                                </button>
-                                            </div>
-                                            <div className="mt-3 rounded-md bg-gray-50 p-3 dark:bg-gray-700">
-                                                <div className="text-sm text-gray-900 dark:text-white">
-                                                    {client.notes || t('client.noNotes')}
-                                                </div>
-                                            </div>
-
-                                            <h3 className="mt-6 text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                {t('client.tags')}
-                                            </h3>
-                                            <div className="mt-3 flex flex-wrap gap-2">
-                                                {client.tags && client.tags.length > 0 ? (
-                                                    client.tags.map(tag => (
-                                                        <span key={tag.id} className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                                            {tag.name}
-                                                        </span>
-                                                    ))
-                                                ) : (
-                                                    <span className="text-sm text-gray-500 dark:text-gray-400">{t('client.noTags')}</span>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                                >
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-
-                                            <h3 className="mt-6 text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                {t('client.plannedCampaigns')}
-                                            </h3>
-                                            <div className="mt-3 rounded-md bg-gray-50 p-3 dark:bg-gray-700">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{t('campaigns.birthday')}</div>
-                                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
-                                                        {t('campaigns.active')}
-                                                    </span>
-                                                </div>
-                                                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                    {t('campaigns.nextSend')}: {formatDate(client.birthday)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                            {t('client.messageHistory')}
-                                        </h3>
-                                        <div className="mt-4 overflow-x-auto">
-                                            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                                <thead className="bg-gray-50 dark:bg-gray-700">
-                                                    <tr>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                            {t('messages.date')}
-                                                        </th>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                            {t('messages.message')}
-                                                        </th>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                            {t('messages.status')}
-                                                        </th>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                            {t('messages.campaign')}
-                                                        </th>
-                                                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                            {t('messages.actions')}
-                                                        </th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                                                    {/* Messages récents - données simulées */}
-                                                    <tr>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                            25/03/2025 09:45
-                                                        </td>
-                                                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                            <div className="max-w-xs truncate">
-                                                                Bonjour {client.name}, nous vous informons de notre nouvelle offre...
-                                                            </div>
-                                                        </td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-sm">
-                                                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                                                {t('messages.delivered')}
-                                                            </span>
-                                                        </td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                            Promotion Mars
-                                                        </td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-sm">
-                                                            <div className="flex space-x-2">
-                                                                <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                    </svg>
-                                                                </button>
-                                                                <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                    <tr>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                            15/03/2025 14:22
-                                                        </td>
-                                                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                            <div className="max-w-xs truncate">
-                                                                Cher client, n'oubliez pas votre rendez-vous du 16/03 à 14h...
-                                                            </div>
-                                                        </td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-sm">
-                                                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900 dark:text-green-300">
-                                                                {t('messages.delivered')}
-                                                            </span>
-                                                        </td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                            Rappel RDV
-                                                        </td>
-                                                        <td className="whitespace-nowrap px-6 py-4 text-sm">
-                                                            <div className="flex space-x-2">
-                                                                <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                    </svg>
-                                                                </button>
-                                                                <button className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                                                    </svg>
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                </>
-                            );
-                        })()}
+                    <div className="mt-6">
+                        <InputLabel htmlFor="category_id" value={t('common.category')} />
+                        <select
+                            id="category_id"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                            value={selectedCategoryForBulk || ''}
+                            onChange={(e) => setSelectedCategoryForBulk(e.target.value ? parseInt(e.target.value) : null)}
+                        >
+                            <option value="">{t('clients.selectCategory')}</option>
+                            {categories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                    {category.name}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                )}
+
+                    <div className="mt-6 flex justify-end space-x-2">
+                        <SecondaryButton onClick={() => setShowBulkCategoryModal(false)}>
+                            {t('common.cancel')}
+                        </SecondaryButton>
+                        <PrimaryButton onClick={handleBulkCategoryChange}>
+                            {t('common.apply')}
+                        </PrimaryButton>
+                    </div>
+                </div>
             </Modal>
         </AuthenticatedLayout>
     );

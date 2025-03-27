@@ -127,4 +127,15 @@ public function eventConfigs()
 {
     return $this->hasMany(UserEventConfig::class);
 }
+
+/**
+ * Route pour les notifications Twilio
+ *
+ * @param  \Illuminate\Notifications\Notification  $notification
+ * @return string
+ */
+public function routeNotificationForTwilio($notification)
+{
+    return $this->phone_number;
+}
 }

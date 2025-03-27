@@ -1,10 +1,14 @@
 // resources/js/Pages/Clients/Create.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
-import { useToast } from '@/utils/toast';
+import { useToast } from '@/Utils/toast';
+import { Link } from '@inertiajs/react';
+import axios from 'axios';
+import TextInput from '@/Components/TextInput';
+import PrimaryButton from '@/Components/PrimaryButton';
 
 interface Category {
     id: number;
@@ -28,8 +32,47 @@ export default function Create({ auth, categories, tags }: PageProps<{ categorie
         birthday: '',
         address: '',
         notes: '',
+        gender: '',
         tags: [] as number[]
     });
+
+    const [selectedTags, setSelectedTags] = useState<number[]>([]);
+    const [newTagName, setNewTagName] = useState('');
+    const [isAddingTag, setIsAddingTag] = useState(false);
+
+    useEffect(() => {
+        setData('tags', selectedTags);
+    }, [selectedTags]);
+
+    const handleTagToggle = (tagId: number) => {
+        setSelectedTags(prev =>
+            prev.includes(tagId)
+                ? prev.filter(id => id !== tagId)
+                : [...prev, tagId]
+        );
+    };
+
+    const handleCreateTag = () => {
+        if (!newTagName.trim()) {
+            error(t('tags.nameRequired'));
+            return;
+        }
+
+        axios.post(route('tags.store'), {
+            name: newTagName,
+        })
+            .then(response => {
+                success(t('tags.createSuccess'));
+                setNewTagName('');
+                setIsAddingTag(false);
+                const newTag = response.data.tag;
+                handleTagToggle(newTag.id);
+                window.location.reload();
+            })
+            .catch(err => {
+                error(t('tags.createError'));
+            });
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -154,6 +197,44 @@ export default function Create({ auth, categories, tags }: PageProps<{ categorie
                                             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.birthday}</p>
                                         )}
                                     </div>
+
+                                    <div>
+                                        <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            {t('common.gender')}
+                                        </label>
+                                        <select
+                                            id="gender"
+                                            name="gender"
+                                            value={data.gender}
+                                            onChange={(e) => setData('gender', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        >
+                                            <option value="">{t('clients.selectGender')}</option>
+                                            <option value="male">{t('gender.male')}</option>
+                                            <option value="female">{t('gender.female')}</option>
+                                            <option value="other">{t('gender.other')}</option>
+                                        </select>
+                                        {errors.gender && (
+                                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.gender}</p>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            {t('common.address')}
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="address"
+                                            name="address"
+                                            value={data.address}
+                                            onChange={(e) => setData('address', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        />
+                                        {errors.address && (
+                                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.address}</p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="mb-6">
@@ -171,6 +252,64 @@ export default function Create({ auth, categories, tags }: PageProps<{ categorie
                                     {errors.notes && (
                                         <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.notes}</p>
                                     )}
+                                </div>
+
+                                <div className="mb-6">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            {t('common.tags')}
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsAddingTag(!isAddingTag)}
+                                            className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                        >
+                                            {isAddingTag ? t('common.cancel') : t('tags.createNew')}
+                                        </button>
+                                    </div>
+
+                                    {isAddingTag && (
+                                        <div className="mt-2 flex items-center gap-2">
+                                            <TextInput
+                                                value={newTagName}
+                                                onChange={(e) => setNewTagName(e.target.value)}
+                                                placeholder={t('tags.newTagPlaceholder')}
+                                                className="flex-1"
+                                            />
+                                            <PrimaryButton type="button" onClick={handleCreateTag} className="whitespace-nowrap">
+                                                {t('common.add')}
+                                            </PrimaryButton>
+                                        </div>
+                                    )}
+
+                                    <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                                        {tags.length > 0 ? (
+                                            tags.map((tag) => (
+                                                <div key={tag.id} className="flex items-center">
+                                                    <input
+                                                        id={`tag-${tag.id}`}
+                                                        type="checkbox"
+                                                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                        checked={selectedTags.includes(tag.id)}
+                                                        onChange={() => handleTagToggle(tag.id)}
+                                                    />
+                                                    <label htmlFor={`tag-${tag.id}`} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                                        {tag.name}
+                                                    </label>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">{t('tags.noTagsAvailable')}</p>
+                                        )}
+                                    </div>
+                                    <div className="mt-2">
+                                        <Link
+                                            href={route('tags.index')}
+                                            className="text-sm text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                        >
+                                            {t('tags.manageTagsLink')}
+                                        </Link>
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-end space-x-3">

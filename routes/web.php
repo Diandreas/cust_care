@@ -41,6 +41,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         // API pour les visites clients
         Route::post('/clients/{client}/visit', [ClientController::class, 'recordVisit']);
         Route::get('/clients/{client}/visits', [ClientController::class, 'getVisitHistory']);
+        
+        // Nouvelle route pour l'envoi de messages directs
+        Route::post('/clients/{client}/message', [ClientController::class, 'sendMessage']);
     });
     
     // Calendrier des événements
@@ -60,6 +63,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     // Routes pour les visites clients
     Route::post('/clients/{client}/visit', [ClientController::class, 'recordVisit'])->name('clients.recordVisit');
     Route::get('/clients/{client}/visits', [ClientController::class, 'getVisitHistory'])->name('clients.visits');
+    
+    // Nouvelle route pour l'envoi de messages directs
+    Route::post('/clients/{client}/message', [ClientController::class, 'sendMessage'])->name('clients.message');
 
     // Route de création avec middleware client.limit
     Route::middleware(CheckClientLimit::class)->post('/clients', [ClientController::class, 'store'])->name('clients.store');
@@ -139,12 +145,15 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         // Événements automatiques
         Route::resource('automatic-events', AutomaticEventsController::class)->except(['create', 'edit', 'show']);
     });
+    
     // Pour le développement seulement - Activation directe d'abonnement
-Route::get('payment/direct-activation/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
-->name('payment.direct.activation');
-// Route d'activation directe pour les tests
-Route::get('/direct-activate-plan/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
-    ->name('direct.activate.plan');
+    Route::get('payment/direct-activation/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
+        ->name('payment.direct.activation');
+        
+    // Route d'activation directe pour les tests
+    Route::get('/direct-activate-plan/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
+        ->name('direct.activate.plan');
+        
     // Profil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

@@ -51,4 +51,15 @@ return [
         'mode' => env('PAYPAL_MODE', 'sandbox'),
     ],
 
+    'twilio' => [
+        'sid' => env('TWILIO_SID'),
+        'token' => env('TWILIO_AUTH_TOKEN'),
+        'number' => env('TWILIO_NUMBER'),
+        'whatsapp_number' => env('TWILIO_WHATSAPP_NUMBER'),
+    ],
+    
+    'sendgrid' => [
+        'key' => env('SENDGRID_API_KEY'),
+    ],
+
 ];

@@ -248,10 +248,12 @@ class ClientController extends Controller
             'email' => 'nullable|email|max:255',
             'category_id' => 'nullable|exists:categories,id',
             'birthday' => 'nullable|date',
+            'gender' => 'nullable|string|in:male,female,other',
             'address' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'tags' => 'nullable|array',
-            'tags.*' => 'exists:tags,id'
+            'tags.*' => 'exists:tags,id',
+            'new_tag' => 'nullable|string|max:50' // Permettre la création d'un nouveau tag
         ]);
         
         $validated['user_id'] = Auth::id();
@@ -260,6 +262,31 @@ class ClientController extends Controller
         $tags = $request->input('tags', []);
         if (isset($validated['tags'])) {
             unset($validated['tags']);
+        }
+        
+        // Gérer la création d'un nouveau tag si nécessaire
+        if (!empty($validated['new_tag'])) {
+            $newTagName = $validated['new_tag'];
+            unset($validated['new_tag']);
+            
+            // Vérifier si le tag existe déjà
+            $existingTag = Tag::where('name', $newTagName)
+                             ->where('user_id', Auth::id())
+                             ->first();
+            
+            if (!$existingTag) {
+                // Créer le nouveau tag
+                $newTag = Tag::create([
+                    'name' => $newTagName,
+                    'user_id' => Auth::id()
+                ]);
+                
+                // Ajouter l'ID du nouveau tag à la liste des tags
+                $tags[] = $newTag->id;
+            } else {
+                // Utiliser le tag existant
+                $tags[] = $existingTag->id;
+            }
         }
         
         $client = Client::create($validated);
@@ -272,7 +299,8 @@ class ClientController extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Client ajouté avec succès.'
+                'message' => 'Client ajouté avec succès.',
+                'client' => $client->load(['category', 'tags'])
             ]);
         }
         
@@ -306,10 +334,12 @@ class ClientController extends Controller
             'email' => 'nullable|email|max:255',
             'category_id' => 'nullable|exists:categories,id',
             'birthday' => 'nullable|date',
+            'gender' => 'nullable|string|in:male,female,other',
             'address' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
             'tags' => 'nullable|array',
-            'tags.*' => 'exists:tags,id'
+            'tags.*' => 'exists:tags,id',
+            'new_tag' => 'nullable|string|max:50' // Permettre la création d'un nouveau tag
         ]);
         
         // Supprimer les tags du tableau validé pour la mise à jour
@@ -318,12 +348,45 @@ class ClientController extends Controller
             unset($validated['tags']);
         }
         
+        // Gérer la création d'un nouveau tag si nécessaire
+        if (!empty($validated['new_tag'])) {
+            $newTagName = $validated['new_tag'];
+            unset($validated['new_tag']);
+            
+            // Vérifier si le tag existe déjà
+            $existingTag = Tag::where('name', $newTagName)
+                             ->where('user_id', Auth::id())
+                             ->first();
+            
+            if (!$existingTag) {
+                // Créer le nouveau tag
+                $newTag = Tag::create([
+                    'name' => $newTagName,
+                    'user_id' => Auth::id()
+                ]);
+                
+                // Ajouter l'ID du nouveau tag à la liste des tags
+                $tags[] = $newTag->id;
+            } else {
+                // Utiliser le tag existant
+                $tags[] = $existingTag->id;
+            }
+        }
+        
         $client->update($validated);
         
         // Synchroniser les tags (supprime les anciens et ajoute les nouveaux)
         $client->tags()->sync($tags);
         
-        return redirect()->route('clients.index')->with('success', 'Client mis à jour avec succès.');
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Client mis à jour avec succès.',
+                'client' => $client->load(['category', 'tags'])
+            ]);
+        }
+        
+        return redirect()->route('clients.show', $client->id)->with('success', 'Client mis à jour avec succès.');
     }
     
     public function destroy(Client $client)
@@ -345,19 +408,38 @@ class ClientController extends Controller
     {
         $this->authorize('view', $client);
         
-        $client->load(['category', 'tags', 'messages' => function($query) {
-            $query->latest()->limit(5);
-        }]);
+        // Charger toutes les relations nécessaires
+        $client->load([
+            'category', 
+            'tags', 
+            'messages' => function($query) {
+                $query->latest('sent_at')->with('campaign');
+            },
+            'visits' => function($query) {
+                $query->latest('visit_date');
+            }
+        ]);
         
         // Calculer des statistiques pour ce client
-        $stats = [
-            'totalMessages' => $client->messages()->count(),
-            'lastContact' => $client->messages()->max('created_at'),
-        ];
+        $client->messages_count = $client->messages()->count();
+        $client->successful_messages_count = $client->messages()->where('status', 'delivered')->count();
+        
+        // Obtenir les catégories et tags pour le formulaire d'édition
+        $categories = Auth::user()->categories()->get();
+        $tags = Auth::user()->tags()->get();
+        
+        // Calculer si le client est actif (a reçu un message dans les 90 derniers jours)
+        $client->is_active = $client->messages()
+            ->where('created_at', '>=', now()->subDays(90))
+            ->exists();
+        
+        // Déterminer la dernière date de visite
+        $client->last_visit_date = $client->visits->first()?->visit_date;
         
         return Inertia::render('Clients/Show', [
             'client' => $client,
-            'stats' => $stats
+            'categories' => $categories,
+            'tags' => $tags,
         ]);
     }
     
@@ -530,7 +612,7 @@ class ClientController extends Controller
         $visit = new Visit([
             'client_id' => $client->id,
             'user_id' => Auth::id(),
-            'visit_date' => now(),
+            'visit_date' => now(), // Utiliser le bon champ visit_date
             'notes' => $validated['notes'] ?? null,
         ]);
 
@@ -545,6 +627,66 @@ class ClientController extends Controller
         }
 
         return redirect()->back()->with('success', 'Visite enregistrée avec succès');
+    }
+
+    /**
+     * Envoyer un message direct à un client
+     */
+    public function sendMessage(Request $request, Client $client)
+    {
+        $this->authorize('view', $client);
+
+        $validated = $request->validate([
+            'content' => 'required|string|max:800', // 5 SMS max (~160 caractères par SMS)
+        ]);
+
+        // Créer le message
+        $message = new Message([
+            'client_id' => $client->id,
+            'user_id' => Auth::id(),
+            'content' => $validated['content'],
+            'status' => 'pending', // Le statut sera mis à jour par le service d'envoi de SMS
+            'sent_at' => now(),
+        ]);
+
+        $message->save();
+
+        // Ici, vous pourriez appeler votre service d'envoi de SMS réel
+        // Pour l'exemple, nous allons simuler un succès d'envoi après un court délai
+        try {
+            // Simule un appel à un service externe
+            // Dans une application réelle, vous appelleriez votre service SMS ici
+            $message->status = 'delivered';
+            $message->save();
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Message envoyé avec succès',
+                    'sms' => $message
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Message envoyé avec succès');
+        } catch (\Exception $e) {
+            // En cas d'échec, mettre à jour le statut
+            $message->status = 'failed';
+            $message->save();
+
+            \Log::error('Erreur lors de l\'envoi du SMS: ' . $e->getMessage(), [
+                'client_id' => $client->id,
+                'message_id' => $message->id
+            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de l\'envoi du message'
+                ], 500);
+            }
+
+            return redirect()->back()->withErrors(['sms' => 'Erreur lors de l\'envoi du message']);
+        }
     }
 
     /**
