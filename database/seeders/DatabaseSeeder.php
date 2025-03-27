@@ -23,10 +23,10 @@ class DatabaseSeeder extends Seeder
         //     'name' => 'Test User',
         //     'email' => 'test@example.com',
         // ]);
-        
+
         $this->call([
-            // SubscriptionPlanSeeder::class,
-            CalendarEventsSeeder::class,
+//            SubscriptionPlanSeeder::class,
+//            CalendarEventsSeeder::class,
             EventTypesSeeder::class
         ]);
     }

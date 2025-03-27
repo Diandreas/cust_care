@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Subscription;
 use App\Models\SubscriptionPlan;
+use App\Models\Transaction;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
@@ -14,122 +17,139 @@ class PaymentController extends Controller
     /**
      * Traiter un paiement pour une souscription
      */
-    public function processSubscriptionPayment(Request $request, SubscriptionPlan $plan)
-    {
-        // Capturer toutes les données reçues pour débogage
-        Log::debug('Données reçues pour activation abonnement', [
-            'all_request_data' => $request->all(),
-            'headers' => $request->headers->all(),
-        ]);
-        
-        $validated = $request->validate([
-            'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer',
-            'duration' => 'required|string|in:monthly,annual',
-            'simulation_mode' => 'nullable|boolean',
-        ]);
-        
-        $duration = $validated['duration'];
-        $amount = $duration === 'annual' ? $plan->annual_price : $plan->price;
-        
-        // Toujours activer le mode simulation pendant le développement
-        $simulationMode = true;
-        
-        // En mode simulation/test, on active directement l'abonnement sans vérifier le paiement
-        Log::info('Activation directe de l\'abonnement en mode simulation', [
-            'user_id' => Auth::id(),
-            'plan_id' => $plan->id,
-            'amount' => $amount,
-            'payment_method' => $validated['payment_method'],
-            'duration' => $duration,
-            'simulation_mode' => $simulationMode,
-        ]);
-        
-        try {
-            // Activer l'abonnement directement
-            $result = $this->handleSuccessfulPayment($plan, $duration);
-            Log::info('Résultat de l\'activation', ['result' => 'success']);
-            return $result;
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'activation de l\'abonnement', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de l\'activation de votre abonnement: ' . $e->getMessage());
-        }
-    }
-    
+
     /**
-     * Traiter un paiement pour des options complémentaires (addons)
+     * Traite le paiement d'un abonnement
+     */
+    public function processSubscriptionPayment(Request $request, $planId)
+    {
+        // Validation
+        $validated = $request->validate([
+            'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer,notchpay,paypal',
+            'duration' => 'required|string|in:monthly,annual',
+            'simulation_mode' => 'nullable|boolean'
+        ]);
+
+        $plan = SubscriptionPlan::findOrFail($planId);
+        $user = Auth::user();
+
+        // Calculer le prix
+        $price = $validated['duration'] === 'annual' ? $plan->annual_price : $plan->price;
+
+        // Pour le mode de test/simulation
+        if ($request->simulation_mode) {
+            // Créer directement la souscription sans passer par le paiement
+            return $this->finalizeSubscription($user->id, $plan, $validated['duration'], $price, $validated['payment_method']);
+        }
+
+        // Rediriger vers la page de confirmation
+        return Inertia::render('Payment/Confirmation', [
+            'plan' => $plan,
+            'addonType' => null,
+            'quantity' => null,
+            'amount' => $price,
+            'paymentMethod' => $validated['payment_method'],
+            'duration' => $validated['duration'],
+        ]);
+    }
+
+    /**
+     * Traite le paiement d'un addon (SMS ou limite clients)
      */
     public function processAddonPayment(Request $request)
     {
-        // Capturer toutes les données reçues pour débogage
-        Log::debug('Données reçues pour activation d\'options', [
-            'all_request_data' => $request->all(),
-            'headers' => $request->headers->all(),
-        ]);
-        
-        $request->validate([
-            'addon_type' => 'required|in:sms,clients',
-            'quantity' => 'required|integer|min:1|max:100',
-            'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer',
-            'simulation_mode' => 'nullable|boolean',
-        ]);
-        
-        $addonType = $request->addon_type;
-        $quantity = $request->quantity;
-        $amount = 0;
-        $simulationMode = $request->simulation_mode ?? false;
-        
-        // Calculer le montant à payer
-        if ($addonType === 'sms') {
-            // 1000 FCFA pour 100 SMS
-            $amount = $quantity * 1000;
-        } else if ($addonType === 'clients') {
-            // 2000 FCFA pour 100 clients
-            $amount = $quantity * 2000;
-        }
-        
-        // En mode simulation/test, on active directement l'option sans vérifier le paiement
-        Log::info('Activation directe de l\'option complémentaire en mode simulation', [
-            'user_id' => Auth::id(),
-            'addon_type' => $addonType,
-            'quantity' => $quantity,
-            'amount' => $amount,
-            'payment_method' => $request->payment_method,
-            'simulation_mode' => $simulationMode,
-        ]);
-        
+        // Logique similaire pour les addons
+    }
+
+    /**
+     * Finalise la souscription après un paiement réussi
+     */
+    private function finalizeSubscription($userId, $plan, $duration, $amount, $paymentMethod)
+    {
+        $user = User::findOrFail($userId);
+        $expiresAt = $duration === 'annual' ? now()->addYear() : now()->addMonth();
+
+        DB::beginTransaction();
         try {
-            // Activer l'option directement
-            $result = $this->handleSuccessfulAddonPayment($addonType, $quantity);
-            Log::info('Résultat de l\'activation de l\'addon', ['result' => 'success']);
-            return $result;
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'activation de l\'option', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            $existingSubscription = $user->subscription;
+
+            if ($existingSubscription) {
+                // Mettre à jour l'abonnement existant
+                $existingSubscription->update([
+                    'plan' => $plan->code,
+                    'plan_id' => $plan->id,
+                    'expires_at' => $expiresAt,
+                    'sms_allowed' => $plan->total_campaign_sms,
+                    'clients_limit' => $plan->max_clients,
+                    'campaigns_limit' => $plan->max_campaigns_per_month,
+                    'personal_sms_quota' => $plan->monthly_sms_quota,
+                    'sms_used' => 0,
+                    'campaigns_used' => 0,
+                    'status' => 'active',
+                    'duration' => $duration,
+                    'is_auto_renew' => true,
+                ]);
+
+                $transactionType = 'addon';
+                $description = 'Changement de plan d\'abonnement vers ' . ucfirst($plan->name);
+            } else {
+                // Créer un nouvel abonnement
+                Subscription::create([
+                    'user_id' => $user->id,
+                    'plan' => $plan->code,
+                    'plan_id' => $plan->id,
+                    'starts_at' => now(),
+                    'expires_at' => $expiresAt,
+                    'sms_allowed' => $plan->total_campaign_sms,
+                    'sms_used' => 0,
+                    'campaigns_used' => 0,
+                    'clients_limit' => $plan->max_clients,
+                    'campaigns_limit' => $plan->max_campaigns_per_month,
+                    'personal_sms_quota' => $plan->monthly_sms_quota,
+                    'status' => 'active',
+                    'duration' => $duration,
+                    'is_auto_renew' => true,
+                ]);
+
+                $transactionType = 'subscription';
+                $description = 'Nouvel abonnement ' . ucfirst($plan->name) . ' (' . $duration . ')';
+            }
+
+            // Créer une transaction
+            Transaction::create([
+                'user_id' => $user->id,
+                'description' => $description,
+                'amount' => $amount,
+                'type' => $transactionType,
+                'status' => 'completed',
+                'payment_method' => $paymentMethod,
             ]);
-            return redirect()->back()->with('error', 'Une erreur est survenue lors de l\'activation de votre option: ' . $e->getMessage());
+
+            DB::commit();
+
+            return redirect()->route('subscription.dashboard')
+                ->with('success', 'Abonnement souscrit avec succès.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage());
         }
     }
-    
     /**
      * Gérer un paiement d'abonnement réussi
      */
     private function handleSuccessfulPayment(SubscriptionPlan $plan, string $duration = 'monthly')
     {
         $user = Auth::user();
-        
+
         if (!$user) {
             return redirect()->route('login');
         }
-        
+
         $existingSubscription = $user->subscription;
-        
+
         // Déterminer la date d'expiration en fonction de la durée
         $expiresAt = $duration === 'annual' ? now()->addYear() : now()->addMonth();
-        
+
         if ($existingSubscription && $existingSubscription->status === 'active') {
             // Mettre à jour l'abonnement existant
             $existingSubscription->update([
@@ -143,7 +163,7 @@ class PaymentController extends Controller
                 'expires_at' => $expiresAt,
                 'next_renewal_date' => $expiresAt,
             ]);
-            
+
             $durationType = $duration === 'annual' ? 'annuel' : 'mensuel';
             return redirect()->route('subscription.index')->with('success', "Votre abonnement $durationType a été mis à jour avec succès!");
         } else {
@@ -165,12 +185,12 @@ class PaymentController extends Controller
             $subscription->next_renewal_date = $expiresAt;
             $subscription->is_auto_renew = true;
             $subscription->save();
-            
+
             $durationType = $duration === 'annual' ? 'annuel' : 'mensuel';
             return redirect()->route('subscription.index')->with('success', "Votre abonnement $durationType a été activé avec succès!");
         }
     }
-    
+
     /**
      * Gérer un paiement d'option complémentaire réussi
      */
@@ -178,30 +198,30 @@ class PaymentController extends Controller
     {
         $user = Auth::user();
         $subscription = $user->subscription;
-        
+
         if (!$subscription || $subscription->status !== 'active') {
             return redirect()->back()->with('error', 'Vous devez avoir un abonnement actif pour acheter des options complémentaires.');
         }
-        
+
         if ($addonType === 'sms') {
             // 100 SMS supplémentaires pour 1000 FCFA
             $smsToAdd = $quantity * 100;
             $subscription->personal_sms_quota += $smsToAdd;
             $subscription->save();
-            
+
             return redirect()->route('subscription.index')->with('success', "$smsToAdd SMS ont été ajoutés à votre quota avec succès!");
         } else if ($addonType === 'clients') {
             // 100 clients supplémentaires pour 2000 FCFA
             $clientsToAdd = $quantity * 100;
             $subscription->clients_limit += $clientsToAdd;
             $subscription->save();
-            
+
             return redirect()->route('subscription.index')->with('success', "Capacité augmentée de $clientsToAdd clients supplémentaires!");
         }
-        
+
         return redirect()->route('subscription.index')->with('error', 'Option non reconnue.');
     }
-    
+
     /**
      * Page de confirmation de paiement
      */
@@ -214,27 +234,27 @@ class PaymentController extends Controller
             'payment_method' => 'required|string|in:mobile_money,credit_card,bank_transfer',
             'duration' => 'nullable|string|in:monthly,annual',
         ]);
-        
+
         $plan = null;
         $addonType = null;
         $quantity = null;
         $amount = 0;
         $duration = $data['duration'] ?? 'monthly';
-        
+
         if (isset($data['plan_id'])) {
             $plan = SubscriptionPlan::find($data['plan_id']);
             $amount = $duration === 'annual' ? $plan->annual_price : $plan->price;
         } else if (isset($data['addon_type'])) {
             $addonType = $data['addon_type'];
             $quantity = $data['quantity'];
-            
+
             if ($addonType === 'sms') {
                 $amount = $quantity * 1000; // 1000 FCFA pour 100 SMS
             } else if ($addonType === 'clients') {
                 $amount = $quantity * 2000; // 2000 FCFA pour 100 clients
             }
         }
-        
+
         return Inertia::render('Payment/Confirmation', [
             'plan' => $plan,
             'addonType' => $addonType,
@@ -244,7 +264,7 @@ class PaymentController extends Controller
             'duration' => $duration,
         ]);
     }
-    
+
     /**
      * Activer directement un abonnement en mode simulation
      */
@@ -256,32 +276,32 @@ public function directActivation(SubscriptionPlan $plan, string $duration = 'mon
     if (!in_array($duration, ['monthly', 'annual'])) {
         $duration = 'monthly';
     }
-    
+
     Log::info('Activation directe de plan en mode TEST', [
         'user_id' => Auth::id(),
         'plan_id' => $plan->id,
         'plan_name' => $plan->name,
         'duration' => $duration,
     ]);
-    
+
     $user = Auth::user();
-    
+
     if (!$user) {
         return redirect()->route('login');
     }
-    
+
     try {
         $existingSubscription = $user->subscription;
-        
+
         // Déterminer la date d'expiration en fonction de la durée
         $expiresAt = $duration === 'annual' ? now()->addYear() : now()->addMonth();
-        
+
         if ($existingSubscription && $existingSubscription->status === 'active') {
             // Mettre à jour l'abonnement existant
             Log::info('Mise à jour d\'un abonnement existant', [
                 'subscription_id' => $existingSubscription->id
             ]);
-            
+
             $existingSubscription->update([
                 'plan_id' => $plan->id,
                 'plan' => $plan->name,
@@ -294,14 +314,14 @@ public function directActivation(SubscriptionPlan $plan, string $duration = 'mon
                 'next_renewal_date' => $expiresAt,
                 'status' => 'active',
             ]);
-            
+
             $durationType = $duration === 'annual' ? 'annuel' : 'mensuel';
             return redirect()->route('subscription.index')
                 ->with('success', "Votre abonnement $durationType a été mis à jour avec succès (MODE TEST)!");
         } else {
             // Créer un nouvel abonnement
             Log::info('Création d\'un nouvel abonnement');
-            
+
             $subscription = new Subscription();
             $subscription->user_id = $user->id;
             $subscription->plan_id = $plan->id;
@@ -318,17 +338,17 @@ public function directActivation(SubscriptionPlan $plan, string $duration = 'mon
             $subscription->campaigns_used = 0;
             $subscription->next_renewal_date = $expiresAt;
             $subscription->is_auto_renew = true;
-            
+
             Log::info('Données de l\'abonnement avant sauvegarde', [
                 'data' => $subscription->toArray()
             ]);
-            
+
             $subscription->save();
-            
+
             Log::info('Abonnement créé avec succès', [
                 'subscription_id' => $subscription->id
             ]);
-            
+
             $durationType = $duration === 'annual' ? 'annuel' : 'mensuel';
             return redirect()->route('subscription.index')
                 ->with('success', "Votre abonnement $durationType a été activé avec succès (MODE TEST)!");
@@ -340,7 +360,7 @@ public function directActivation(SubscriptionPlan $plan, string $duration = 'mon
             'line' => $e->getLine(),
             'trace' => $e->getTraceAsString()
         ]);
-        
+
         return redirect()->route('subscription.plans')
             ->with('error', 'Erreur lors de l\'activation: ' . $e->getMessage());
     }

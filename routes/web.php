@@ -76,7 +76,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::get('/increase-limit', [SubscriptionController::class, 'increaseLimit'])->name('subscription.increase-limit');
         Route::post('/toggle-auto-renew', [SubscriptionController::class, 'toggleAutoRenew'])->name('subscription.toggle-auto-renew');
         Route::post('/cancel', [SubscriptionController::class, 'cancelAtPeriodEnd'])->name('subscription.cancel');
-        Route::post('/topup', [SubscriptionController::class, 'topup'])->name('subscription.top-up');
+        Route::post('/topup', [SubscriptionController::class, 'topup'])->name('subscription.topup');
         Route::get('/invoices', [SubscriptionController::class, 'invoices'])->name('subscription.invoices');
     });
 
