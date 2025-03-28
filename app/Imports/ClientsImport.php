@@ -3,41 +3,51 @@
 namespace App\Imports;
 
 use App\Models\Client;
-use App\Models\Category;
 use App\Models\Tag;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
+use Maatwebsite\Excel\Concerns\WithBatchInserts;
+use Maatwebsite\Excel\Concerns\WithChunkReading;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-class ClientsImport implements ToModel, WithHeadingRow
+class ClientsImport implements ToModel, WithHeadingRow, WithBatchInserts, WithChunkReading
 {
     protected $mapping;
     protected $userId;
-    protected $categoriesCache = [];
     protected $tagsCache = [];
+    protected $importedCount = 0;
+    protected $updatedCount = 0;
+    protected $skippedCount = 0;
+    protected $errors = [];
 
     public function __construct(array $mapping, int $userId)
     {
         $this->mapping = $mapping;
         $this->userId = $userId;
         
-        // Précharger les catégories et tags pour éviter de multiples requêtes
-        $this->preloadCategories();
+        // Précharger les tags pour éviter de multiples requêtes
         $this->preloadTags();
     }
 
-    private function preloadCategories()
+    /**
+     * Size of batch inserts
+     */
+    public function batchSize(): int
     {
-        $categories = Category::where('user_id', $this->userId)->get();
-        foreach ($categories as $category) {
-            $key = Str::slug(strtolower($category->name));
-            $this->categoriesCache[$key] = $category->id;
-        }
+        return 100;
+    }
+
+    /**
+     * Chunk size when reading
+     */
+    public function chunkSize(): int
+    {
+        return 200;
     }
 
     private function preloadTags()
@@ -63,7 +73,6 @@ class ClientsImport implements ToModel, WithHeadingRow
                 'name' => '',
                 'phone' => '',
                 'email' => null,
-                'category_id' => null,
                 'birthday' => null,
                 'address' => null,
                 'notes' => null,
@@ -87,10 +96,12 @@ class ClientsImport implements ToModel, WithHeadingRow
                     try {
                         $data[$appColumn] = $this->formatDate($value);
                     } catch (\Exception $e) {
+                        Log::warning("Impossible de convertir la date: {$value}", [
+                            'row' => json_encode($row),
+                            'error' => $e->getMessage()
+                        ]);
                         $data[$appColumn] = null;
                     }
-                } elseif ($appColumn === 'category') {
-                    $data['category_id'] = $this->resolveCategoryId($value);
                 } elseif ($appColumn === 'tags') {
                     $tags = $this->resolveTagIds($value);
                 }
@@ -98,8 +109,13 @@ class ClientsImport implements ToModel, WithHeadingRow
 
             // Vérifier les données obligatoires
             if (empty($data['name']) || empty($data['phone'])) {
+                $this->skippedCount++;
+                $this->errors[] = "Ligne ignorée : nom ou téléphone manquant - " . json_encode($row);
                 return null;
             }
+
+            // Normaliser le numéro de téléphone (enlever les espaces, tirets, etc.)
+            $data['phone'] = $this->normalizePhoneNumber($data['phone']);
 
             // Vérifier si le client existe déjà (par téléphone)
             $existingClient = Client::where('phone', $data['phone'])
@@ -112,10 +128,18 @@ class ClientsImport implements ToModel, WithHeadingRow
                 
                 // Synchroniser les tags si nécessaire
                 if (!empty($tags)) {
-                    $existingClient->tags()->sync($tags, false); // false pour ne pas détacher les tags existants
+                    // Récupérer les tags actuels
+                    $currentTags = $existingClient->tags()->pluck('tags.id')->toArray();
+                    
+                    // Fusionner avec les nouveaux tags sans duplications
+                    $mergedTags = array_unique(array_merge($currentTags, $tags));
+                    
+                    // Synchroniser les tags
+                    $existingClient->tags()->sync($mergedTags);
                 }
                 
-                return null; // Retourner null car on a déjà mis à jour le client manuellement
+                $this->updatedCount++;
+                return null; // Retourner null car le client a été mis à jour manuellement
             }
 
             // Créer un nouveau client
@@ -127,16 +151,43 @@ class ClientsImport implements ToModel, WithHeadingRow
                 $client->tags()->attach($tags);
             }
             
-            return null; // On a déjà sauvegardé le client manuellement
+            $this->importedCount++;
+            return null; // Retourner null car le client a été créé manuellement
             
         } catch (\Exception $e) {
+            $this->skippedCount++;
+            $this->errors[] = "Erreur lors de l'importation: " . $e->getMessage() . " - " . json_encode($row);
+            
             Log::error('Erreur dans l\'importation du client: ' . $e->getMessage(), [
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'row' => json_encode($row)
             ]);
+            
             return null;
         }
+    }
+
+    /**
+     * Normaliser un numéro de téléphone
+     */
+    private function normalizePhoneNumber($phone)
+    {
+        // Supprimer tous les caractères non numériques
+        $normalized = preg_replace('/[^0-9+]/', '', $phone);
+        
+        // S'assurer que le numéro commence par un indicatif de pays si ce n'est pas déjà le cas
+        if (!Str::startsWith($normalized, '+')) {
+            // Assumer le format local par défaut (à adapter selon le pays)
+            if (Str::startsWith($normalized, '0')) {
+                $normalized = '+33' . substr($normalized, 1); // Exemple pour la France
+            } else {
+                // Si pas d'indicatif et ne commence pas par 0, ajouter juste un +
+                $normalized = '+' . $normalized;
+            }
+        }
+        
+        return $normalized;
     }
 
     /**
@@ -187,35 +238,8 @@ class ClientsImport implements ToModel, WithHeadingRow
             Log::warning("Impossible de convertir la date: $dateString", [
                 'exception' => $e->getMessage()
             ]);
-            return null;
+            throw $e;
         }
-    }
-
-    /**
-     * Récupérer ou créer l'ID de catégorie
-     */
-    private function resolveCategoryId($categoryName)
-    {
-        if (empty($categoryName)) {
-            return null;
-        }
-
-        $key = Str::slug(strtolower($categoryName));
-
-        // Vérifier si la catégorie est dans le cache
-        if (isset($this->categoriesCache[$key])) {
-            return $this->categoriesCache[$key];
-        }
-
-        // Chercher ou créer la catégorie
-        $category = Category::firstOrCreate(
-            ['name' => $categoryName, 'user_id' => $this->userId]
-        );
-
-        // Ajouter au cache
-        $this->categoriesCache[$key] = $category->id;
-
-        return $category->id;
     }
 
     /**
@@ -254,5 +278,37 @@ class ClientsImport implements ToModel, WithHeadingRow
         }
 
         return $tagIds;
+    }
+    
+    /**
+     * Retourne le nombre de clients importés
+     */
+    public function getImportedCount(): int
+    {
+        return $this->importedCount;
+    }
+    
+    /**
+     * Retourne le nombre de clients mis à jour
+     */
+    public function getUpdatedCount(): int
+    {
+        return $this->updatedCount;
+    }
+    
+    /**
+     * Retourne le nombre de lignes ignorées
+     */
+    public function getSkippedCount(): int
+    {
+        return $this->skippedCount;
+    }
+    
+    /**
+     * Retourne les erreurs d'importation
+     */
+    public function getErrors(): array
+    {
+        return $this->errors;
     }
 }

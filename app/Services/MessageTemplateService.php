@@ -40,13 +40,6 @@ class MessageTemplateService
             '{{day}}' => Carbon::now()->format('d'),
         ];
         
-        // Catégorie client si disponible
-        if ($client->category) {
-            $replacements['{{client.category}}'] = $client->category->name;
-        } else {
-            $replacements['{{client.category}}'] = '';
-        }
-        
         // Tags client si disponibles
         if ($client->tags && $client->tags->count() > 0) {
             $replacements['{{client.tags}}'] = $client->tags->pluck('name')->implode(', ');
@@ -95,7 +88,7 @@ class MessageTemplateService
             case 'has_email':
                 return !empty($client->email);
             case 'has_category':
-                return $client->category_id !== null;
+                return true;
             case 'is_male':
                 return $client->gender === 'male';
             case 'is_female':

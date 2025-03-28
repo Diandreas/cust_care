@@ -307,10 +307,9 @@ class EventCalendarController extends Controller
         $clientsByCategory = $user->categories()
             ->withCount('clients')
             ->get()
-            ->map(function ($category) {
+            ->map(function($category) {
                 return [
-                    'id' => $category->id,
-                    'name' => $category->name,
+                    'category' => $category->name,
                     'count' => $category->clients_count
                 ];
             });

@@ -23,13 +23,6 @@ interface Tag {
     clients_count: number;
 }
 
-interface Category {
-    id: number;
-    name: string;
-    clients_count: number;
-    clients?: Client[];
-}
-
 interface Template {
     id: number;
     name: string;
@@ -37,7 +30,6 @@ interface Template {
 }
 
 interface CreateCampaignProps {
-    categories: Category[];
     templates: Template[];
     tags: Tag[];
     clients: Client[];
@@ -46,7 +38,6 @@ interface CreateCampaignProps {
 
 export default function CreateCampaign({
     auth,
-    categories,
     templates,
     tags,
     clients,
@@ -537,11 +528,6 @@ export default function CreateCampaign({
                                                                     <span className="block text-sm font-medium text-gray-700 dark:text-gray-300">{client.name}</span>
                                                                     <span className="block text-sm text-gray-500 dark:text-gray-400">{client.phone}</span>
                                                                 </label>
-                                                                {client.category_id && (
-                                                                    <span className="ml-auto inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                                                        {categories.find(c => c.id === client.category_id)?.name}
-                                                                    </span>
-                                                                )}
                                                             </li>
                                                         ))}
                                                         {filteredClients.length === 0 && (

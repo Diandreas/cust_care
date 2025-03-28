@@ -255,11 +255,7 @@ export default function AutomaticEventsIndex({
                 targetClients = Math.ceil(clientsStats.total / 2);
                 break;
             case 'specific_category':
-                const categoryId = event.audience_override?.category_id;
-                if (categoryId) {
-                    const category = clientsStats.byCategory.find(c => c.category === categoryId);
-                    targetClients = category ? category.count : 0;
-                }
+                targetClients = 0; // Les catégories n'existent plus
                 break;
             case 'specific_tags':
                 const tagIds = event.audience_override?.tags;

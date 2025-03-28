@@ -5,7 +5,7 @@ import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/Utils/toast';
-import { Client, Category, Tag } from "@/types";
+import { Client, Tag } from "@/types";
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
@@ -15,7 +15,6 @@ import axios from 'axios';
 
 interface EditClientProps extends Record<string, unknown> {
     client: Client;
-    categories: Category[];
     tags: Tag[];
     selectedTags: number[];
 }
@@ -23,7 +22,6 @@ interface EditClientProps extends Record<string, unknown> {
 export default function EditClient({
     auth,
     client,
-    categories,
     tags,
     selectedTags,
 }: PageProps<EditClientProps>) {
@@ -37,7 +35,6 @@ export default function EditClient({
         name: client.name || '',
         phone: client.phone || '',
         email: client.email || '',
-        category_id: client.category_id || '',
         birthday: client.birthday || '',
         address: client.address || '',
         notes: client.notes || '',
@@ -157,29 +154,6 @@ export default function EditClient({
                                         />
                                         {errors.email && (
                                             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="category_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('common.category')}
-                                        </label>
-                                        <select
-                                            id="category_id"
-                                            name="category_id"
-                                            value={data.category_id}
-                                            onChange={(e) => setData('category_id', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        >
-                                            <option value="">{t('clients.selectCategory')}</option>
-                                            {categories.map((category) => (
-                                                <option key={category.id} value={category.id}>
-                                                    {category.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.category_id && (
-                                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.category_id}</p>
                                         )}
                                     </div>
 

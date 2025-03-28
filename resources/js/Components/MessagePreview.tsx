@@ -6,10 +6,9 @@ interface Client {
     name: string;
     phone: string;
     email?: string;
-    category?: {
-        id: number;
-        name: string;
-    };
+    gender?: string;
+    birthday?: string;
+    tags?: { id: number; name: string }[];
 }
 
 interface MessagePreviewProps {
@@ -42,13 +41,6 @@ const MessagePreview: React.FC<MessagePreviewProps> = ({
             result = result.replace(/{{client\.email}}/g, client.email);
         } else {
             result = result.replace(/{{client\.email}}/g, '');
-        }
-
-        // Catégorie (si disponible)
-        if (client.category) {
-            result = result.replace(/{{client\.category}}/g, client.category.name);
-        } else {
-            result = result.replace(/{{client\.category}}/g, '');
         }
 
         // Date et heure actuelles

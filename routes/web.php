@@ -3,7 +3,6 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ClientController;
-use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
@@ -29,6 +28,15 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+Route::middleware(['auth:sanctum'])->group(function () {
+    // Route pour analyser les fichiers Excel
+    Route::post('/parse-excel', [App\Http\Controllers\ClientController::class, 'parseExcel'])
+        ->name('api.parse-excel');
+        
+    // Route pour obtenir le statut d'une importation en cours
+    Route::get('/import-status/{jobId}', [App\Http\Controllers\ClientController::class, 'getImportStatus'])
+        ->name('api.import-status');
+});
 
 // Routes nécessitant une authentification
 Route::middleware(['auth', 'verified', 'web'])->group(function () {
@@ -52,10 +60,10 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     
     // IMPORTANT: Les routes spécifiques doivent être placées AVANT la route resource
     // Route d'exportation des clients
-    Route::get('/clients/export', [ClientController::class, 'export'])->name('clients.export');
+    Route::get('/clients/export', [App\Http\Controllers\ImportExportController::class, 'export'])->name('clients.export');
 
     // Route d'importation des clients
-    Route::middleware(CheckClientLimit::class)->post('/clients/import', [ClientController::class, 'import'])->name('clients.import');
+    Route::middleware(CheckClientLimit::class)->post('/clients/import', [App\Http\Controllers\ImportExportController::class, 'import'])->name('clients.import');
 
     // Route de suppression en masse des clients
     Route::delete('/clients/bulk-destroy', [ClientController::class, 'bulkDestroy'])->name('clients.bulkDestroy');
@@ -75,9 +83,6 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Tags
     Route::resource('tags', TagController::class);
-
-    // Catégories
-    Route::resource('categories', CategoryController::class)->except(['create', 'edit', 'show']);
 
     // Abonnement
     Route::prefix('subscription')->group(function () {

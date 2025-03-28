@@ -4,8 +4,7 @@ import ziggyRoute from 'ziggy-js';
 export interface Category {
     id: number;
     name: string;
-    description: string | null;
-    clients_count: number;
+    color?: string;
 }
 
 export interface User {

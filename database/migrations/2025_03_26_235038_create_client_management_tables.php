@@ -11,15 +11,6 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Table des catégories
-        Schema::create('categories', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('name');
-            $table->text('description')->nullable();
-            $table->timestamps();
-        });
-
         // Table des tags
         Schema::create('tags', function (Blueprint $table) {
             $table->id();
@@ -34,7 +25,6 @@ return new class extends Migration
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
             $table->enum('gender', ['male', 'female', 'other'])->nullable();
             $table->string('phone');
@@ -114,6 +104,5 @@ return new class extends Migration
         Schema::dropIfExists('client_tag');
         Schema::dropIfExists('clients');
         Schema::dropIfExists('tags');
-        Schema::dropIfExists('categories');
     }
 };

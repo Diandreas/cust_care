@@ -5,10 +5,7 @@ interface Client {
     id: number;
     name: string;
     phone: string;
-    category?: {
-        id: number;
-        name: string;
-    };
+    tags?: { id: number; name: string }[];
 }
 
 interface CampaignSummaryProps {
@@ -26,23 +23,7 @@ const CampaignSummary: React.FC<CampaignSummaryProps> = ({ campaign, clients, on
     const { t } = useTranslation();
     const [showMoreStats, setShowMoreStats] = useState(false);
 
-    // Préparer les données pour les graphiques
-    const prepareCategoryData = () => {
-        const categoryMap: Record<string, number> = {};
-
-        clients.forEach(client => {
-            const categoryName = client.category ? client.category.name : t('campaigns.noCategory');
-            if (!categoryMap[categoryName]) {
-                categoryMap[categoryName] = 0;
-            }
-            categoryMap[categoryName]++;
-        });
-
-        return Object.entries(categoryMap).map(([name, count]) => ({ name, count }));
-    };
-
     // Calculer les statistiques
-    const categoryData = prepareCategoryData();
     const totalSmsCount = Math.ceil(campaign.message_content.length / 160) * clients.length;
 
     return (
@@ -105,36 +86,6 @@ const CampaignSummary: React.FC<CampaignSummaryProps> = ({ campaign, clients, on
                             </div>
                         </dd>
                     </div>
-
-                    {showMoreStats && (
-                        <>
-                            <div className="sm:col-span-2">
-                                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                    {t('campaigns.categoryDistribution')}
-                                </dt>
-                                <dd className="mt-1">
-                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                        {categoryData.map((category, index) => (
-                                            <div key={index} className="bg-gray-50 p-3 rounded-md dark:bg-gray-700">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-sm text-gray-700 dark:text-gray-300">{category.name}</span>
-                                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                                        {category.count} {t('common.clients')}
-                                                    </span>
-                                                </div>
-                                                <div className="mt-1 w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-600">
-                                                    <div
-                                                        className="bg-indigo-600 h-2.5 rounded-full"
-                                                        style={{ width: `${(category.count / clients.length) * 100}%` }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </dd>
-                            </div>
-                        </>
-                    )}
                 </dl>
 
                 <div className="mt-6 flex justify-between items-center">

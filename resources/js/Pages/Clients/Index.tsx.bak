@@ -87,7 +87,6 @@ export default function ClientsIndex({
     const [bulkSmsContent, setBulkSmsContent] = useState('');
     const [showBulkCategoryModal, setShowBulkCategoryModal] = useState(false);
     const [selectedCategoryForBulk, setSelectedCategoryForBulk] = useState<number | null>(null);
-    const [importLoading, setImportLoading] = useState(false);
 
     // État pour la recherche et les filtres
     const { data, setData, get, processing } = useForm({
@@ -112,9 +111,6 @@ export default function ClientsIndex({
         return new Date(dateString).toLocaleDateString();
     };
 
-    // Dans votre composant ClientsIndex.tsx
-
-    // 1. Fonction d'importation simplifiée
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null;
         setSelectedFile(file);
@@ -123,33 +119,27 @@ export default function ClientsIndex({
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
-                    // Analyse simple du CSV
+                    // Assuming CSV for simplicity
                     const text = event.target?.result as string;
                     const lines = text.split('\n');
-                    const headers = lines[0].split(',').map(h => h.trim());
+                    const headers = lines[0].split(',');
 
-                    // Mapping automatique des colonnes
+                    // Create initial field mapping
                     const initialMapping: Record<string, string> = {};
                     headers.forEach(header => {
-                        const normalizedHeader = header.toLowerCase();
-                        if (normalizedHeader.includes('name') || normalizedHeader.includes('nom'))
-                            initialMapping[header] = 'name';
-                        else if (normalizedHeader.includes('phone') || normalizedHeader.includes('tel'))
-                            initialMapping[header] = 'phone';
-                        else if (normalizedHeader.includes('email'))
-                            initialMapping[header] = 'email';
-                        else if (normalizedHeader.includes('birth') || normalizedHeader.includes('naissance'))
-                            initialMapping[header] = 'birthday';
-                        else if (normalizedHeader.includes('address') || normalizedHeader.includes('adresse'))
-                            initialMapping[header] = 'address';
-                        else if (normalizedHeader.includes('note'))
-                            initialMapping[header] = 'notes';
-                        else
-                            initialMapping[header] = '';
+                        // Try to match headers with our fields
+                        const normalizedHeader = header.trim().toLowerCase();
+                        if (normalizedHeader.includes('name')) initialMapping[header] = 'name';
+                        else if (normalizedHeader.includes('phone') || normalizedHeader.includes('tel')) initialMapping[header] = 'phone';
+                        else if (normalizedHeader.includes('email')) initialMapping[header] = 'email';
+                        else if (normalizedHeader.includes('birth')) initialMapping[header] = 'birthday';
+                        else if (normalizedHeader.includes('address')) initialMapping[header] = 'address';
+                        else if (normalizedHeader.includes('note')) initialMapping[header] = 'notes';
+                        else initialMapping[header] = '';
                     });
                     setFieldMapping(initialMapping);
 
-                    // Prévisualisation des 5 premières lignes
+                    // Preview first 5 rows
                     const previewRows = [];
                     for (let i = 1; i < Math.min(6, lines.length); i++) {
                         if (lines[i].trim()) {
@@ -164,88 +154,10 @@ export default function ClientsIndex({
                     setPreviewData(previewRows);
                 } catch (error) {
                     console.error('Error parsing file:', error);
-                    error('import.fileError');
                 }
             };
             reader.readAsText(file);
         }
-    };
-
-    // 2. Fonction d'importation simplifiée
-    const handleImport = () => {
-        if (!selectedFile) {
-            error(t('import.fileRequired'));
-            return;
-        }
-
-        // Montrer un indicateur de chargement
-        setImportLoading(true);
-
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('mapping', JSON.stringify(fieldMapping));
-        formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
-
-        axios.post(route('clients.import'), formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            }
-        })
-            .then(response => {
-                setImportLoading(false);
-                success(t('import.success'));
-                setShowImportModal(false);
-
-                // Actualiser la liste sans rechargement complet
-                get(route('clients.index'), {
-                    preserveState: true,
-                    only: ['clients', 'stats']
-                });
-            })
-            .catch(err => {
-                setImportLoading(false);
-
-                if (err.response && err.response.status === 403) {
-                    error(t('subscription.limit.upgradeRequired'));
-                } else {
-                    error(t('common.importError', {
-                        details: err.response?.data?.message || t('common.unknownError')
-                    }));
-                }
-            });
-    };
-
-    // 3. Fonction d'exportation simplifiée sans rechargement de page
-    const handleExport = (format: 'csv' | 'excel') => {
-        // Créer une URL avec les paramètres d'exportation
-        const params = new URLSearchParams();
-
-        // Ajouter les filtres actuels
-        if (data.search) params.append('search', data.search);
-        if (data.tag_id) params.append('tag_id', data.tag_id.toString());
-        if (data.date_range) params.append('date_range', data.date_range);
-        if (data.birthday_month) params.append('birthday_month', data.birthday_month.toString());
-
-        // Si des clients sont sélectionnés, les exporter spécifiquement
-        if (selectedClients.length > 0) {
-            selectedClients.forEach(id => params.append('selected[]', id.toString()));
-        }
-
-        // Ajouter le format d'exportation
-        params.append('format', format);
-
-        // Créer un lien invisible, cliquer dessus, puis le supprimer
-        const link = document.createElement('a');
-        link.href = `${route('clients.export')}?${params.toString()}`;
-        link.setAttribute('download', `clients_${new Date().toISOString().split('T')[0]}.${format}`);
-        link.setAttribute('target', '_blank');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // Fermer le modal
-        setShowExportModal(false);
-        success(t('export.success'));
     };
 
     // Fonction pour gérer les réponses d'importation
@@ -280,6 +192,68 @@ export default function ClientsIndex({
     };
 
     // Modifier la fonction handleImport pour utiliser selectedFile correctement
+    const handleImport = () => {
+        if (!selectedFile) {
+            error('import.fileRequired');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+        formData.append('mapping', JSON.stringify(fieldMapping));
+        formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
+
+        axios.post(route('clients.import'), formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            }
+        })
+            .then(response => {
+                success('import.success');
+                setShowImportModal(false);
+                // Recharger la page pour afficher les clients importés
+                window.location.reload();
+            })
+            .catch(err => {
+                if (err.response && err.response.status === 403) {
+                    error('subscription.limit.upgradeRequired');
+                } else {
+                    error('common.importError', { details: err.response?.data?.message || 'Erreur inconnue' });
+                }
+            });
+    };
+
+    const handleExport = (format: 'csv' | 'excel') => {
+        // Pour l'exportation, nous allons créer une URL avec les paramètres, puis y naviguer
+        const params = new URLSearchParams();
+
+        // Ajouter les filtres actuels
+        if (data.search) params.append('search', data.search);
+        if (data.tag_id) params.append('tag_id', data.tag_id.toString());
+        if (data.date_range) params.append('date_range', data.date_range);
+        if (data.birthday_month) params.append('birthday_month', data.birthday_month.toString());
+
+        // Si des clients sont sélectionnés, les exporter spécifiquement
+        if (selectedClients.length > 0) {
+            selectedClients.forEach(id => params.append('selected[]', id.toString()));
+        }
+
+        // Ajouter le format d'exportation
+        params.append('format', format);
+
+        // Créer l'URL complète
+        const exportUrl = `${route('clients.export')}?${params.toString()}`;
+
+        // Créer un token temporaire en cas de problème CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+        // Ouvrir dans un nouvel onglet avec un cookie CSRF rafraîchi
+        axios.get('/sanctum/csrf-cookie').then(() => {
+            window.open(exportUrl, '_blank');
+        }).catch(err => {
+            error('export.error', { details: err.message });
+        });
+    };
 
     const toggleAllClients = (checked: boolean) => {
         if (checked) {
@@ -672,6 +646,7 @@ export default function ClientsIndex({
                                         onClick={() => {
                                             setData({
                                                 search: '',
+                                                category_id: '',
                                                 tag_id: '',
                                                 date_range: '',
                                                 birthday_month: '',
@@ -757,6 +732,12 @@ export default function ClientsIndex({
                                             <Dropdown.Content>
                                                 <button
                                                     className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                    onClick={() => handleBulkAction('category')}
+                                                >
+                                                    {t('clients.updateCategory')}
+                                                </button>
+                                                <button
+                                                    className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
                                                     onClick={() => setShowExportModal(true)}
                                                 >
                                                     {t('clients.exportSelected')}
@@ -830,7 +811,7 @@ export default function ClientsIndex({
                                                 {t('common.email')}
                                             </th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                {t('common.tags')}
+                                                {t('common.category')}
                                             </th>
                                             <th
                                                 scope="col"
@@ -888,63 +869,410 @@ export default function ClientsIndex({
                                                     </a>
                                                 </td>
                                                 <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                    {client.email && (
-                                                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                            </svg>
-                                                            <a href={`mailto:${client.email}`} className="truncate hover:text-indigo-600 dark:hover:text-indigo-400">
-                                                                {client.email}
-                                                            </a>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                    {client.tags && client.tags.length > 0 && (
-                                                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                                            </svg>
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {client.tags.map(tag => (
-                                                                    <span key={tag.id} className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
-                                                                        {tag.name}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                    {client.birthday && (
-                                                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z" />
-                                                            </svg>
-                                                            {formatDate(client.birthday)}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                    {client.lastContact && (
-                                                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19h-7a4 4 0 00-4 4 4 4 0 004-4v-4zM7 10h10a4 4 0 004-4 4 4 0 00-4-4H7a4 4 0 00-4 4v10a4 4 0 004 4z" />
-                                                            </svg>
-                                                            {formatDate(client.lastContact)}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19h-7a4 4 0 00-4 4 4 4 0 004-4v-4zM7 10h10a4 4 0 004-4 4 4 0 00-4-4H7a4 4 0 00-4 4v10a4 4 0 004 4z" />
-                                                        </svg>
-                                                        <a href={route('clients.show', client.id)} className="truncate hover:text-indigo-600 dark:hover:text-indigo-400">
-                                                            {t('common.show')}
+                                                    {client.email ? (
+                                                        <a href={`mailto:${client.email}`} className="hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                            {client.email}
                                                         </a>
+                                                    ) : (
+                                                        '-'
+                                                    )}
+                                                </td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    {client.category ? (
+                                                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
+                                                            {client.category.name}
+                                                        </span>
+                                                    ) : (
+                                                        '-'
+                                                    )}
+                                                </td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    {formatDate(client.birthday)}
+                                                </td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    {formatDate(client.lastContact)}
+                                                </td>
+                                                <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                                                    <div className="flex space-x-2">
+                                                        <Link
+                                                            href={route('messages.create', { client_id: client.id })}
+                                                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                            </svg>
+                                                        </Link>
+                                                        <Link
+                                                            href={route('clients.edit', client.id)}
+                                                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </Link>
+                                                        <Link
+                                                            href={route('clients.destroy', client.id)}
+                                                            method="delete"
+                                                            as="button"
+                                                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                                            onClick={(e) => {
+                                                                if (!confirm(t('clients.confirmDelete'))) {
+                                                                    e.preventDefault();
+                                                                }
+                                                            }}
+                                                        >
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </Link>
                                                     </div>
                                                 </td>
+                                            </tr>
+                                        ))}
+                                        {clients.data.length === 0 && (
+                                            <tr>
+                                                <td colSpan={8} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                                                    {t('common.noResults')}
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Pagination */}
+                            {clients.links && clients.links.length > 3 && (
+                                <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700 sm:px-6">
+                                    <div className="flex flex-1 justify-between sm:hidden">
+                                        <Link
+                                            href={clients.links[0].url || ''}
+                                            className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 ${!clients.links[0].url ? 'pointer-events-none opacity-50' : ''}`}
+                                        >
+                                            {t('pagination.previous')}
+                                        </Link>
+
+                                        <Link
+                                            href={clients.links[clients.links.length - 1].url || ''}
+                                            className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 ${!clients.links[clients.links.length - 1].url ? 'pointer-events-none opacity-50' : ''}`}
+                                        >
+                                            {t('pagination.next')}
+                                        </Link>
+                                    </div>
+                                    <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                                                {t('pagination.showing')} <span className="font-medium">{clients.data.length}</span> {t('pagination.of')} <span className="font-medium">{clients.total}</span> {t('pagination.results')}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                                {clients.links.map((link, index) => (
+                                                    <Link
+                                                        key={index}
+                                                        href={link.url || ''}
+                                                        className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
+                                                            ? 'z-10 bg-indigo-600 text-white dark:bg-indigo-800'
+                                                            : 'text-gray-500 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                                                            } ${index === 0
+                                                                ? 'rounded-l-md'
+                                                                : index === clients.links.length - 1
+                                                                    ? 'rounded-r-md'
+                                                                    : ''
+                                                            } ${!link.url ? 'pointer-events-none opacity-50' : ''}`}
+                                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                                    />
+                                                ))}
+                                            </nav>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Vue en grille */}
+                    {viewMode === 'grid' && (
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {clients.data.map((client) => (
+                                <div key={client.id} className="flex flex-col overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
+                                    <div className="flex items-start justify-between p-4">
+                                        <div className="flex items-center space-x-3">
+                                            <Checkbox
+                                                checked={selectedClients.includes(client.id)}
+                                                onChange={() => toggleClient(client.id)}
+                                            />
+                                            <button
+                                                onClick={() => window.location.href = route('clients.show', client.id)}
+                                                className="text-lg font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400"
+                                            >
+                                                {client.name}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 space-y-2 p-4 pt-0">
+                                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                            </svg>
+                                            <a href={`tel:${client.phone}`} className="hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                {client.phone}
+                                            </a>
+                                        </div>
+                                        {client.email && (
+                                            <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                                <a href={`mailto:${client.email}`} className="truncate hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                    {client.email}
+                                                </a>
+                                            </div>
+                                        )}
+                                        {client.birthday && (
+                                            <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z" />
+                                                </svg>
+                                                {formatDate(client.birthday)}
+                                            </div>
+                                        )}
+                                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            {client.lastContact ? formatDate(client.lastContact) : t('common.never')}
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between border-t border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-700">
+                                        <Link
+                                            href={route('messages.create', { client_id: client.id })}
+                                            className="rounded-md px-2 py-1 text-green-600 hover:bg-green-100 hover:text-green-900 dark:text-green-400 dark:hover:bg-green-900/20 dark:hover:text-green-300"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                            </svg>
+                                        </Link>
+                                        <Link
+                                            href={route('clients.edit', client.id)}
+                                            className="rounded-md px-2 py-1 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-900 dark:text-indigo-400 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-300"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                        </Link>
+                                        <Link
+                                            href={route('clients.destroy', client.id)}
+                                            method="delete"
+                                            as="button"
+                                            className="rounded-md px-2 py-1 text-red-600 hover:bg-red-100 hover:text-red-900 dark:text-red-400 dark:hover:bg-red-900/20 dark:hover:text-red-300"
+                                            onClick={(e) => {
+                                                if (!confirm(t('clients.confirmDelete'))) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </Link>
+                                    </div>
+                                </div>
+                            ))}
+                            {clients.data.length === 0 && (
+                                <div className="col-span-full rounded-lg border border-gray-200 p-6 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                                    {t('common.noResults')}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Vue en cartes */}
+                    {viewMode === 'cards' && (
+                        <div className="space-y-6">
+                            {clients.data.map((client) => (
+                                <div key={client.id} className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-800">
+                                    <div className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center space-x-3">
+                                                <Checkbox
+                                                    checked={selectedClients.includes(client.id)}
+                                                    onChange={() => toggleClient(client.id)}
+                                                />
+                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                                                    {client.name}
+                                                </h3>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 divide-y divide-gray-200 dark:divide-gray-700 md:grid-cols-2 md:divide-x md:divide-y-0">
+                                        <div className="p-6">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.contact')}</h4>
+                                                    <div className="mt-2 space-y-2">
+                                                        <div className="flex items-center text-sm text-gray-900 dark:text-gray-200">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                            </svg>
+                                                            <a href={`tel:${client.phone}`} className="hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                                {client.phone}
+                                                            </a>
+                                                        </div>
+                                                        {client.email && (
+                                                            <div className="flex items-center text-sm text-gray-900 dark:text-gray-200">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                                </svg>
+                                                                <a href={`mailto:${client.email}`} className="truncate hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                                    {client.email}
+                                                                </a>
+                                                            </div>
+                                                        )}
+                                                        {client.birthday && (
+                                                            <div className="flex items-center text-sm text-gray-900 dark:text-gray-200">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z" />
+                                                                </svg>
+                                                                {formatDate(client.birthday)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.activity')}</h4>
+                                                    <div className="mt-2 space-y-2">
+                                                        <div className="flex items-center text-sm text-gray-900 dark:text-gray-200">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                            <span className="text-gray-700 dark:text-gray-300">{t('common.lastContact')}:</span>
+                                                            <span className="ml-1">{client.lastContact ? formatDate(client.lastContact) : t('common.never')}</span>
+                                                        </div>
+                                                        <div className="flex items-center text-sm text-gray-900 dark:text-gray-200">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                                            </svg>
+                                                            <span className="text-gray-700 dark:text-gray-300">{t('common.totalSms')}:</span>
+                                                            <span className="ml-1">{client.totalSmsCount || 0}</span>
+                                                        </div>
+                                                        <div className="flex items-center text-sm text-gray-900 dark:text-gray-200">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                            </svg>
+                                                            <span className="text-gray-700 dark:text-gray-300">{t('common.lastSms')}:</span>
+                                                            <span className="ml-1">{client.lastSmsDate ? formatDate(client.lastSmsDate) : t('common.never')}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="p-6">
+                                            <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.notes')}</h4>
+                                            <div className="mt-2 text-sm text-gray-900 dark:text-gray-200">
+                                                {client.notes || t('common.noNotes')}
+                                            </div>
+                                            {client.tags && client.tags.length > 0 && (
+                                                <>
+                                                    <h4 className="mt-4 text-sm font-medium text-gray-500 dark:text-gray-400">{t('common.tags')}</h4>
+                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                        {client.tags.map(tag => (
+                                                            <span key={tag.id} className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                                {tag.name}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {clients.data.length === 0 && (
+                                <div className="rounded-lg border border-gray-200 p-6 text-center text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                                    {t('common.noResults')}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Pagination pour les vues grille et cartes */}
+                    {(viewMode === 'grid' || viewMode === 'cards') && clients.links && clients.links.length > 3 && (
+                        <div className="mt-6 flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    {t('pagination.showing')} <span className="font-medium">{clients.data.length}</span> {t('pagination.of')} <span className="font-medium">{clients.total}</span> {t('pagination.results')}
+                                </p>
+                            </div>
+                            <div>
+                                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                    {clients.links.map((link, index) => (
+                                        <Link
+                                            key={index}
+                                            href={link.url || ''}
+                                            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
+                                                ? 'z-10 bg-indigo-600 text-white dark:bg-indigo-800'
+                                                : 'text-gray-500 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                                                } ${index === 0
+                                                    ? 'rounded-l-md'
+                                                    : index === clients.links.length - 1
+                                                        ? 'rounded-r-md'
+                                                        : ''
+                                                } ${!link.url ? 'pointer-events-none opacity-50' : ''}`}
+                                            dangerouslySetInnerHTML={{ __html: link.label }}
+                                        />
+                                    ))}
+                                </nav>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Modal d'importation */}
+            <Modal show={showImportModal} onClose={() => setShowImportModal(false)} maxWidth="2xl">
+                <div className="p-6">
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                        {t('import.title')}
+                    </h2>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        {t('import.description')}
+                    </p>
+
+                    <div className="mt-6">
+                        <InputLabel htmlFor="import_file" value={t('import.selectFile')} />
+                        <input
+                            id="import_file"
+                            type="file"
+                            className="mt-1 block w-full"
+                            onChange={handleFileChange}
+                            accept=".csv,.xls,.xlsx"
+                        />
+                    </div>
+
+                    {previewData.length > 0 && (
+                        <div className="mt-6">
+                            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {t('import.preview')}
+                            </h3>
+                            <div className="mt-2 overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead className="bg-gray-50 dark:bg-gray-700">
+                                        <tr>
+                                            {Object.keys(previewData[0]).map((header) => (
+                                                <th key={header} className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                                                    {header}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                                        {previewData.map((row, rowIndex) => (
+                                            <tr key={rowIndex}>
+                                                {Object.entries(row).map(([key, value], colIndex) => (
+                                                    <td key={`${rowIndex}-${colIndex}`} className="whitespace-nowrap px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                                                        {String(value)}
+                                                    </td>
+                                                ))}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -981,6 +1309,7 @@ export default function ClientsIndex({
                                             <option value="birthday">{t('common.birthday')}</option>
                                             <option value="address">{t('common.address')}</option>
                                             <option value="notes">{t('common.notes')}</option>
+                                            <option value="category">{t('common.category')}</option>
                                             <option value="tags">{t('common.tags')}</option>
                                         </select>
                                     </div>
@@ -990,138 +1319,11 @@ export default function ClientsIndex({
                     )}
 
                     <div className="mt-6 flex justify-end space-x-2">
-                        <SecondaryButton onClick={() => setShowImportModal(false)} disabled={importLoading}>
+                        <SecondaryButton onClick={() => setShowImportModal(false)}>
                             {t('common.cancel')}
                         </SecondaryButton>
-                        <PrimaryButton
-                            onClick={handleImport}
-                            disabled={importLoading || !selectedFile || Object.values(fieldMapping).filter(Boolean).length === 0}
-                        >
-                            {importLoading ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    {t('import.importing')}
-                                </>
-                            ) : t('import.import')}
-                        </PrimaryButton>
-                    </div>
-                </div>
-            </div>
-
-            {/* Modal d'importation */}
-            <Modal show={showImportModal} onClose={() => !importLoading && setShowImportModal(false)}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {t('import.title')}
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {t('import.description')}
-                    </p>
-
-                    <div className="mt-6">
-                        <InputLabel htmlFor="file_import" value={t('import.selectFile')} />
-                        <input
-                            id="file_import"
-                            type="file"
-                            accept=".csv"
-                            onChange={handleFileChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                            disabled={importLoading}
-                        />
-                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {t('import.fileFormats')}
-                        </p>
-                    </div>
-
-                    {previewData.length > 0 && (
-                        <div className="mt-6">
-                            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {t('import.preview')}
-                            </h3>
-                            <div className="mt-2 max-h-40 overflow-auto rounded-md border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800">
-                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead>
-                                        <tr>
-                                            {Object.keys(previewData[0]).map(header => (
-                                                <th key={header} className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                    {header}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                                        {previewData.map((row, rowIndex) => (
-                                            <tr key={rowIndex}>
-                                                {Object.entries(row).map(([key, value]) => (
-                                                    <td key={key} className="whitespace-nowrap px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                                                        {value}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {Object.keys(fieldMapping).length > 0 && (
-                        <div className="mt-6">
-                            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {t('import.fieldMapping')}
-                            </h3>
-                            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                                {t('import.fieldMappingDescription')}
-                            </p>
-                            <div className="mt-2 max-h-60 overflow-y-auto grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                {Object.entries(fieldMapping).map(([csvField, appField]) => (
-                                    <div key={csvField}>
-                                        <InputLabel htmlFor={`mapping_${csvField}`} value={csvField} />
-                                        <select
-                                            id={`mapping_${csvField}`}
-                                            value={appField}
-                                            onChange={(e) => setFieldMapping({
-                                                ...fieldMapping,
-                                                [csvField]: e.target.value,
-                                            })}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                                            disabled={importLoading}
-                                        >
-                                            <option value="">{t('import.ignore')}</option>
-                                            <option value="name">{t('common.name')}</option>
-                                            <option value="phone">{t('common.phone')}</option>
-                                            <option value="email">{t('common.email')}</option>
-                                            <option value="birthday">{t('common.birthday')}</option>
-                                            <option value="address">{t('common.address')}</option>
-                                            <option value="notes">{t('common.notes')}</option>
-                                            <option value="tags">{t('common.tags')}</option>
-                                        </select>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="mt-6 flex justify-end space-x-2">
-                        <SecondaryButton onClick={() => setShowImportModal(false)} disabled={importLoading}>
-                            {t('common.cancel')}
-                        </SecondaryButton>
-                        <PrimaryButton
-                            onClick={handleImport}
-                            disabled={importLoading || !selectedFile || Object.values(fieldMapping).filter(Boolean).length === 0}
-                        >
-                            {importLoading ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    {t('import.importing')}
-                                </>
-                            ) : t('import.import')}
+                        <PrimaryButton onClick={handleImport} disabled={!selectedFile || Object.values(fieldMapping).filter(Boolean).length === 0}>
+                            {t('import.import')}
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1139,49 +1341,123 @@ export default function ClientsIndex({
                             : t('export.description')}
                     </p>
 
+                    <div className="mt-6 space-y-2">
+                        <label className="flex items-center space-x-3">
+                            <input
+                                type="radio"
+                                name="export_format"
+                                value="csv"
+                                className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                defaultChecked
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{t('export.csv')}</span>
+                        </label>
+                        <label className="flex items-center space-x-3">
+                            <input
+                                type="radio"
+                                name="export_format"
+                                value="excel"
+                                className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">{t('export.excel')}</span>
+                        </label>
+                    </div>
+
                     <div className="mt-6">
                         <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {t('export.format')}
+                            {t('export.includeFields')}
                         </h3>
-                        <div className="mt-2 space-y-2">
-                            <button
-                                type="button"
-                                onClick={() => handleExport('csv')}
-                                className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-                            >
-                                <div className="flex items-center">
-                                    <svg className="w-6 h-6 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <div>
-                                        <span className="block font-medium text-gray-900 dark:text-gray-100">CSV</span>
-                                        <span className="block text-xs text-gray-500">{t('export.csvDescription')}</span>
-                                    </div>
-                                </div>
-                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => handleExport('excel')}
-                                className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700"
-                            >
-                                <div className="flex items-center">
-                                    <svg className="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <div>
-                                        <span className="block font-medium text-gray-900 dark:text-gray-100">Excel</span>
-                                        <span className="block text-xs text-gray-500">{t('export.excelDescription')}</span>
-                                    </div>
-                                </div>
-                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.name')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.phone')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.email')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.category')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.birthday')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.address')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.notes')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.tags')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.lastContact')}</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    defaultChecked
+                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">{t('common.totalSms')}</span>
+                            </label>
                         </div>
+                    </div>
+
+                    <div className="mt-6 flex justify-end space-x-2">
+                        <SecondaryButton onClick={() => setShowExportModal(false)}>
+                            {t('common.cancel')}
+                        </SecondaryButton>
+                        <PrimaryButton onClick={() => handleExport('csv')}>
+                            {t('export.export')}
+                        </PrimaryButton>
                     </div>
                 </div>
             </Modal>

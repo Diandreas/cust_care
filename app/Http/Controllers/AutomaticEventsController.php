@@ -121,17 +121,8 @@ class AutomaticEventsController extends Controller
         $totalClients = $user->clients()->count();
         $clientsWithBirthday = $user->clients()->whereNotNull('birthdate')->count();
         
-        // Récupérer les catégories de clients avec leur nombre
-        $clientCategories = $user->categories()
-            ->withCount('clients')
-            ->get()
-            ->map(function($category) {
-                return [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'count' => $category->clients_count
-                ];
-            });
+        // Remplacer par :
+        $clientCategories = []; // Catégories supprimées
         
         // Statistiques complètes
         $stats = [

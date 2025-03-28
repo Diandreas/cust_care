@@ -10,17 +10,12 @@ import axios from 'axios';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 
-interface Category {
-    id: number;
-    name: string;
-}
-
 interface Tag {
     id: number;
     name: string;
 }
 
-export default function Create({ auth, categories, tags }: PageProps<{ categories: Category[], tags: Tag[] }>) {
+export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
     const { t } = useTranslation();
     const { success, error } = useToast();
 
@@ -28,7 +23,6 @@ export default function Create({ auth, categories, tags }: PageProps<{ categorie
         name: '',
         phone: '',
         email: '',
-        category_id: '',
         birthday: '',
         address: '',
         notes: '',
@@ -155,29 +149,6 @@ export default function Create({ auth, categories, tags }: PageProps<{ categorie
                                         />
                                         {errors.email && (
                                             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label htmlFor="category_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('common.category')}
-                                        </label>
-                                        <select
-                                            id="category_id"
-                                            name="category_id"
-                                            value={data.category_id}
-                                            onChange={(e) => setData('category_id', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        >
-                                            <option value="">{t('clients.selectCategory')}</option>
-                                            {categories.map((category) => (
-                                                <option key={category.id} value={category.id}>
-                                                    {category.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {errors.category_id && (
-                                            <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.category_id}</p>
                                         )}
                                     </div>
 

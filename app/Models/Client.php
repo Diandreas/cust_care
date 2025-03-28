@@ -15,7 +15,6 @@ class Client extends Model
         'name',
         'phone',
         'email',
-        'category_id',
         'birthday',
         'address',
         'notes',
@@ -35,11 +34,6 @@ class Client extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function category()
-    {
-        return $this->belongsTo(Category::class);
     }
 
     public function messages()

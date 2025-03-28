@@ -36,11 +36,6 @@ interface Visit {
     created_at: string;
 }
 
-interface Category {
-    id: number;
-    name: string;
-}
-
 interface Tag {
     id: number;
     name: string;
@@ -53,10 +48,6 @@ interface Client {
     phone: string;
     address?: string;
     notes?: string;
-    category?: {
-        id: number;
-        name: string;
-    };
     messages: Message[];
     created_at: string;
     messages_count: number;
@@ -65,7 +56,6 @@ interface Client {
     totalSmsCount?: number;
     lastSmsDate?: string;
     lastContact?: string;
-    category_id: number | null;
     birthday: string | null;
     gender: string | null;
     tags: {
@@ -78,11 +68,20 @@ interface Client {
 
 interface ClientShowProps extends PageProps {
     client: Client;
-    categories: Category[];
     tags: Tag[];
 }
 
-export default function Show({ auth, client: initialClient, categories = [], tags: initialTags }: ClientShowProps) {
+interface ClientFormData {
+    name: string;
+    phone: string;
+    email: string;
+    birthday: string;
+    gender: string;
+    address: string;
+    notes: string;
+}
+
+export default function Show({ auth, client: initialClient, tags: initialTags }: ClientShowProps) {
     const { t } = useTranslation();
     const { success, error } = useToast();
     const [isAddingVisit, setIsAddingVisit] = useState(false);
@@ -100,16 +99,14 @@ export default function Show({ auth, client: initialClient, categories = [], tag
     const [messages, setMessages] = useState<Message[]>(initialClient.messages || []);
 
     // Form for client editing
-    const { data, setData, post, processing, errors, reset } = useForm({
-        name: client.name,
-        phone: client.phone,
+    const { data, setData, post, processing, errors, reset } = useForm<ClientFormData>({
+        name: client.name || '',
+        phone: client.phone || '',
         email: client.email || '',
-        address: client.address || '',
-        notes: client.notes || '',
-        category_id: client.category_id || '',
         birthday: client.birthday || '',
         gender: client.gender || '',
-        tags: client.tags.map(tag => tag.id) || []
+        address: client.address || '',
+        notes: client.notes || '',
     });
 
     const getStatusColor = (status: string) => {
@@ -238,20 +235,9 @@ export default function Show({ auth, client: initialClient, categories = [], tag
                     email: data.email,
                     address: data.address,
                     notes: data.notes,
-                    category_id: data.category_id,
                     birthday: data.birthday,
                     gender: data.gender
                 };
-
-                // Find category if category_id exists
-                if (data.category_id) {
-                    const selectedCategory = categories.find(c => c.id === parseInt(data.category_id as string));
-                    if (selectedCategory) {
-                        updatedClient.category = { id: selectedCategory.id, name: selectedCategory.name };
-                    }
-                } else {
-                    updatedClient.category = undefined;
-                }
 
                 // Update tags
                 const selectedTags = tags.filter(tag => selectedTagsState.includes(tag.id));
@@ -438,13 +424,6 @@ export default function Show({ auth, client: initialClient, categories = [], tag
                                     <h3 className="mt-3 text-center text-xl font-semibold text-white">
                                         {client.name}
                                     </h3>
-                                    {client.category && (
-                                        <div className="mt-1 text-center">
-                                            <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
-                                                {client.category.name}
-                                            </span>
-                                        </div>
-                                    )}
                                 </div>
 
                                 {/* Profil en mode affichage */}
@@ -654,26 +633,6 @@ export default function Show({ auth, client: initialClient, categories = [], tag
                                                     <option value="other">Autre</option>
                                                 </select>
                                                 {errors.gender && <p className="mt-1 text-xs text-red-600">{errors.gender}</p>}
-                                            </div>
-
-                                            <div>
-                                                <label htmlFor="category_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    Catégorie
-                                                </label>
-                                                <select
-                                                    id="category_id"
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                    value={data.category_id}
-                                                    onChange={e => setData('category_id', e.target.value)}
-                                                >
-                                                    <option value="">Sélectionner une catégorie</option>
-                                                    {categories.map(category => (
-                                                        <option key={category.id} value={category.id}>
-                                                            {category.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                {errors.category_id && <p className="mt-1 text-xs text-red-600">{errors.category_id}</p>}
                                             </div>
 
                                             <div>

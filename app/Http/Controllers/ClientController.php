@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Client;
-use App\Models\Category;
 use App\Models\Tag;
 use App\Models\Message;
 use App\Models\User;
@@ -12,6 +11,8 @@ use App\Imports\ClientsImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -29,10 +30,250 @@ use App\Models\Visit;
  */
 class ClientController extends Controller
 {
+    // Méthode d'importation simplifiée
+    public function import(Request $request)
+    {
+        try {
+            $request->validate([
+                'file' => 'required|file|mimes:csv,txt,xls,xlsx',
+                'mapping' => 'required|json'
+            ]);
+            
+            $user = Auth::user();
+            $subscription = $this->getUserSubscription($user);
+            $currentClientCount = $subscription['clientsCount'];
+            $clientLimit = $subscription['clientsLimit'];
+            
+            // Analyser d'abord le fichier pour estimer le nombre de lignes
+            $fileContent = file_get_contents($request->file('file')->getRealPath());
+            $rowCount = substr_count($fileContent, "\n");
+            
+            // Vérifier si l'importation dépasserait la limite
+            if ($currentClientCount + $rowCount > $clientLimit) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "L'importation dépasserait la limite de clients pour votre plan."
+                ], 403);
+            }
+            
+            $mapping = json_decode($request->mapping, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Erreur dans le format du mapping JSON');
+            }
+            
+            // Traiter l'importation en une seule transaction
+            try {
+                DB::beginTransaction();
+                
+                // Pour CSV simple, on peut l'analyser manuellement
+                if ($request->file('file')->getClientOriginalExtension() === 'csv') {
+                    $imported = $this->importFromCsv($request->file('file'), $mapping);
+                } else {
+                    // Pour Excel, utiliser la bibliothèque Excel
+                    $importer = new ClientsImport($mapping, Auth::id());
+                    $importer->import($request->file('file'));
+                    $imported = $importer->getImportedCount();
+                }
+                
+                DB::commit();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Les clients ont été importés avec succès.',
+                    'imported' => $imported
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Erreur lors de l\'importation: ' . $e->getMessage());
+                throw $e;
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur d\'importation: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    // Méthode d'exportation simplifiée
+    public function export(Request $request)
+    {
+        try {
+            $query = Auth::user()->clients()->with('tags');
+            
+            // Appliquer les filtres
+            if ($request->has('search') && $request->search) {
+                $search = $request->search;
+                $query->where(function($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('phone', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
+            
+            if ($request->has('tag_id') && $request->tag_id) {
+                $query->whereHas('tags', function($q) use ($request) {
+                    $q->where('tags.id', $request->tag_id);
+                });
+            }
+            
+            // Clients sélectionnés explicitement
+            if ($request->has('selected') && is_array($request->selected) && count($request->selected) > 0) {
+                $query->whereIn('id', $request->selected);
+            }
+            
+            $clients = $query->get();
+            
+            $format = $request->input('format', 'csv');
+            $fileName = 'clients_' . Carbon::now()->format('Y-m-d') . '.' . $format;
+            
+            // Les champs à exporter (par défaut)
+            $fields = ['name', 'phone', 'email', 'birthday', 'address', 'notes', 'tags', 'lastContact', 'totalSmsCount'];
+            
+            if ($format === 'excel') {
+                return Excel::download(new ClientsExport($clients, $fields), $fileName, \Maatwebsite\Excel\Excel::XLSX);
+            } else {
+                return Excel::download(new ClientsExport($clients, $fields), $fileName, \Maatwebsite\Excel\Excel::CSV);
+            }
+        } catch (\Exception $e) {
+            Log::error('Erreur d\'exportation: ' . $e->getMessage());
+            
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Une erreur est survenue lors de l\'exportation: ' . $e->getMessage()
+                ], 500);
+            }
+            
+            return back()->withErrors(['export' => 'Une erreur est survenue lors de l\'exportation']);
+        }
+    }
+    
+    // Méthode pour importer depuis un CSV
+    private function importFromCsv($file, $mapping)
+    {
+        $handle = fopen($file->getRealPath(), 'r');
+        $headers = fgetcsv($handle);
+        $imported = 0;
+        
+        while (($data = fgetcsv($handle)) !== false) {
+            $row = [];
+            foreach ($headers as $index => $header) {
+                if (isset($data[$index])) {
+                    $row[$header] = $data[$index];
+                }
+            }
+            
+            $this->processClientRow($row, $mapping);
+            $imported++;
+        }
+        
+        fclose($handle);
+        return $imported;
+    }
+    
+    // Traiter une ligne d'importation
+    private function processClientRow($row, $mapping)
+    {
+        $data = [
+            'user_id' => Auth::id(),
+            'name' => '',
+            'phone' => '',
+            'email' => null,
+            'birthday' => null,
+            'address' => null,
+            'notes' => null,
+        ];
+        
+        $tags = [];
+        
+        // Appliquer le mapping
+        foreach ($mapping as $csvColumn => $appColumn) {
+            if (empty($appColumn) || !isset($row[$csvColumn])) {
+                continue;
+            }
+            
+            $value = $row[$csvColumn];
+            
+            if ($appColumn === 'name' || $appColumn === 'phone' || $appColumn === 'email' || 
+                $appColumn === 'address' || $appColumn === 'notes') {
+                $data[$appColumn] = $value;
+            } elseif ($appColumn === 'birthday') {
+                try {
+                    $data[$appColumn] = $this->formatDate($value);
+                } catch (\Exception $e) {
+                    $data[$appColumn] = null;
+                }
+            } elseif ($appColumn === 'tags') {
+                $tagNames = explode(',', $value);
+                foreach ($tagNames as $tagName) {
+                    $tagName = trim($tagName);
+                    if (!empty($tagName)) {
+                        $tag = Tag::firstOrCreate([
+                            'name' => $tagName,
+                            'user_id' => Auth::id()
+                        ]);
+                        $tags[] = $tag->id;
+                    }
+                }
+            }
+        }
+        
+        // Vérifier les données obligatoires
+        if (empty($data['name']) || empty($data['phone'])) {
+            return;
+        }
+        
+        // Vérifier si le client existe
+        $existingClient = Client::where('phone', $data['phone'])
+                                ->where('user_id', Auth::id())
+                                ->first();
+        
+        if ($existingClient) {
+            $existingClient->update($data);
+            if (!empty($tags)) {
+                $existingClient->tags()->syncWithoutDetaching($tags);
+            }
+        } else {
+            $client = new Client($data);
+            $client->save();
+            if (!empty($tags)) {
+                $client->tags()->attach($tags);
+            }
+        }
+    }
+    
+    // Convertir une date en format Y-m-d
+    private function formatDate($dateString)
+    {
+        if (empty($dateString)) {
+            return null;
+        }
+        
+        // Essayer quelques formats courants
+        $formats = ['d/m/Y', 'm/d/Y', 'Y-m-d', 'd-m-Y'];
+        
+        foreach ($formats as $format) {
+            $date = \DateTime::createFromFormat($format, $dateString);
+            if ($date && $date->format($format) === $dateString) {
+                return $date->format('Y-m-d');
+            }
+        }
+        
+        // Essayer avec Carbon en dernier recours
+        try {
+            return Carbon::parse($dateString)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     public function index(Request $request)
     {
         $query = Auth::user()->clients()
-            ->with(['category', 'tags'])
+            ->with('tags')
             ->withCount('messages as totalSmsCount')
             ->withMax('messages as lastSmsDate', 'created_at')
             ->withMax('messages as lastContact', 'created_at')
@@ -40,10 +281,6 @@ class ClientController extends Controller
             ->withCount('visits as visitCount');
         
         // Filtres de base
-        if ($request->has('category_id') && $request->category_id) {
-            $query->where('category_id', $request->category_id);
-        }
-        
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -132,15 +369,6 @@ class ClientController extends Controller
                 ->count(),
             'totalSmsSent' => $user->messages()->count(),
             'totalVisits' => $user->clients()->withCount('visits')->get()->sum('visits_count'),
-            'clientsByCategory' => $user->categories()
-                ->withCount('clients')
-                ->get()
-                ->map(function($category) {
-                    return [
-                        'category' => $category->name,
-                        'count' => $category->clients_count
-                    ];
-                })
         ];
         
         // Informations d'abonnement (simulées pour l'exemple)
@@ -148,10 +376,9 @@ class ClientController extends Controller
         
         return Inertia::render('Clients/Index', [
             'clients' => $clients,
-            'categories' => $user->categories()->get(),
             'tags' => $user->tags()->get(),
             'filters' => $request->only([
-                'search', 'category_id', 'tag_id', 'date_range', 
+                'search', 'tag_id', 'date_range', 
                 'birthday_month', 'sort_by', 'sort_direction'
             ]),
             'stats' => $stats,
@@ -215,11 +442,9 @@ class ClientController extends Controller
     
     public function create()
     {
-        $categories = Auth::user()->categories()->get();
         $tags = Auth::user()->tags()->get();
         
         return Inertia::render('Clients/Create', [
-            'categories' => $categories,
             'tags' => $tags
         ]);
     }
@@ -246,22 +471,21 @@ class ClientController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:255',
-            'category_id' => 'nullable|exists:categories,id',
             'birthday' => 'nullable|date',
             'gender' => 'nullable|string|in:male,female,other',
             'address' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
-            'tags' => 'nullable|array',
-            'tags.*' => 'exists:tags,id',
+            'tag_ids' => 'nullable|array',
+            'tag_ids.*' => 'exists:tags,id',
             'new_tag' => 'nullable|string|max:50' // Permettre la création d'un nouveau tag
         ]);
         
         $validated['user_id'] = Auth::id();
         
         // Supprimer les tags du tableau validé pour éviter une erreur lors de la création du client
-        $tags = $request->input('tags', []);
-        if (isset($validated['tags'])) {
-            unset($validated['tags']);
+        $tags = $request->input('tag_ids', []);
+        if (isset($validated['tag_ids'])) {
+            unset($validated['tag_ids']);
         }
         
         // Gérer la création d'un nouveau tag si nécessaire
@@ -300,7 +524,7 @@ class ClientController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Client ajouté avec succès.',
-                'client' => $client->load(['category', 'tags'])
+                'client' => $client->load('tags')
             ]);
         }
         
@@ -313,12 +537,10 @@ class ClientController extends Controller
         
         $client->load('tags');
         
-        $categories = Auth::user()->categories()->get();
         $tags = Auth::user()->tags()->get();
         
         return Inertia::render('Clients/Edit', [
             'client' => $client,
-            'categories' => $categories,
             'tags' => $tags,
             'selectedTags' => $client->tags->pluck('id')
         ]);
@@ -332,20 +554,19 @@ class ClientController extends Controller
             'name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
             'email' => 'nullable|email|max:255',
-            'category_id' => 'nullable|exists:categories,id',
             'birthday' => 'nullable|date',
             'gender' => 'nullable|string|in:male,female,other',
             'address' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
-            'tags' => 'nullable|array',
-            'tags.*' => 'exists:tags,id',
+            'tag_ids' => 'nullable|array',
+            'tag_ids.*' => 'exists:tags,id',
             'new_tag' => 'nullable|string|max:50' // Permettre la création d'un nouveau tag
         ]);
         
         // Supprimer les tags du tableau validé pour la mise à jour
-        $tags = $request->input('tags', []);
-        if (isset($validated['tags'])) {
-            unset($validated['tags']);
+        $tags = $request->input('tag_ids', []);
+        if (isset($validated['tag_ids'])) {
+            unset($validated['tag_ids']);
         }
         
         // Gérer la création d'un nouveau tag si nécessaire
@@ -382,7 +603,7 @@ class ClientController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Client mis à jour avec succès.',
-                'client' => $client->load(['category', 'tags'])
+                'client' => $client->load('tags')
             ]);
         }
         
@@ -410,7 +631,6 @@ class ClientController extends Controller
         
         // Charger toutes les relations nécessaires
         $client->load([
-            'category', 
             'tags', 
             'messages' => function($query) {
                 $query->latest('sent_at')->with('campaign');
@@ -424,8 +644,6 @@ class ClientController extends Controller
         $client->messages_count = $client->messages()->count();
         $client->successful_messages_count = $client->messages()->where('status', 'delivered')->count();
         
-        // Obtenir les catégories et tags pour le formulaire d'édition
-        $categories = Auth::user()->categories()->get();
         $tags = Auth::user()->tags()->get();
         
         // Calculer si le client est actif (a reçu un message dans les 90 derniers jours)
@@ -438,7 +656,6 @@ class ClientController extends Controller
         
         return Inertia::render('Clients/Show', [
             'client' => $client,
-            'categories' => $categories,
             'tags' => $tags,
         ]);
     }
@@ -465,139 +682,6 @@ class ClientController extends Controller
         return response()->json(['success' => true]);
     }
     
-    public function import(Request $request)
-    {
-        try {
-            $request->validate([
-                'file' => 'required|file|mimes:csv,txt,xls,xlsx',
-                'mapping' => 'required|json'
-            ]);
-            
-            $user = Auth::user();
-            $subscription = $this->getUserSubscription($user);
-            $currentClientCount = $subscription['clientsCount'];
-            $clientLimit = $subscription['clientsLimit'];
-            
-            // Analyser d'abord le fichier pour compter le nombre de clients à importer
-            try {
-                // Compter le nombre approximatif de lignes dans le fichier
-                $fileContent = file_get_contents($request->file('file')->getRealPath());
-                $rowCount = substr_count($fileContent, "\n");
-                
-                // Vérifier si l'importation dépasserait la limite
-                if ($currentClientCount + $rowCount > $clientLimit) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => "L'importation dépasserait la limite de clients pour votre plan. Vous pouvez importer au maximum " . 
-                                    ($clientLimit - $currentClientCount) . " clients."
-                    ], 403);
-                }
-                
-                $mapping = json_decode($request->mapping, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    throw new \Exception('Erreur dans le format du mapping JSON: ' . json_last_error_msg());
-                }
-                
-                try {
-                    DB::beginTransaction();
-                    Excel::import(new ClientsImport($mapping, Auth::id()), $request->file('file'));
-                    DB::commit();
-                    
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Les clients ont été importés avec succès.'
-                    ]);
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    \Log::error('Erreur lors de l\'importation Excel: ' . $e->getMessage(), [
-                        'file' => $e->getFile(),
-                        'line' => $e->getLine()
-                    ]);
-                    
-                    throw $e;
-                }
-            } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
-                \Log::error('Erreur de validation Excel: ' . json_encode($e->errors()));
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erreur de validation des données : ' . implode(', ', $e->errors())
-                ], 422);
-            } catch (\Exception $e) {
-                \Log::error('Erreur générale lors de l\'importation: ' . $e->getMessage(), [
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine()
-                ]);
-                
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Une erreur est survenue lors de l\'importation: ' . $e->getMessage()
-                ], 500);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Erreur d\'importation: ' . $e->getMessage(), [
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Une erreur est survenue: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-    
-    public function export(Request $request)
-    {
-        try {
-            $query = Auth::user()->clients()->with(['category', 'tags']);
-            
-            // Appliquer les mêmes filtres que pour l'index
-            if ($request->has('category_id') && $request->category_id) {
-                $query->where('category_id', $request->category_id);
-            }
-            
-            if ($request->has('search') && $request->search) {
-                $search = $request->search;
-                $query->where(function($q) use ($search) {
-                    $q->where('name', 'like', "%{$search}%")
-                      ->orWhere('phone', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
-                });
-            }
-            
-            // Plus de filtres
-            if ($request->has('tag_id') && $request->tag_id) {
-                $query->whereHas('tags', function($q) use ($request) {
-                    $q->where('tags.id', $request->tag_id);
-                });
-            }
-            
-            // Clients sélectionnés explicitement
-            if ($request->has('selected') && is_array($request->selected) && count($request->selected) > 0) {
-                $query->whereIn('id', $request->selected);
-            }
-            
-            $clients = $query->get();
-            
-            $format = $request->input('format', 'csv');
-            $fileName = 'clients.' . $format;
-            
-            return Excel::download(new ClientsExport($clients), $fileName, \Maatwebsite\Excel\Excel::CSV, [
-                'Content-Type' => 'text/csv',
-            ]);
-        } catch (\Exception $e) {
-            if ($request->wantsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Une erreur est survenue lors de l\'exportation: ' . $e->getMessage()
-                ], 500);
-            }
-            
-            return back()->withErrors(['export' => 'Une erreur est survenue lors de l\'exportation: ' . $e->getMessage()]);
-        }
-    }
-
     /**
      * Enregistrer une visite pour un client
      */

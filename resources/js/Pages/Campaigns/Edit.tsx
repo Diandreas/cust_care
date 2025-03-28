@@ -11,12 +11,6 @@ interface Client {
     phone: string;
 }
 
-interface Category {
-    id: number;
-    name: string;
-    clients: Client[];
-}
-
 interface Template {
     id: number;
     name: string;
@@ -35,7 +29,6 @@ interface Campaign {
 
 interface EditCampaignProps {
     campaign: Campaign;
-    categories: Category[];
     templates: Template[];
     selected_clients: number[];
     [key: string]: unknown;
@@ -44,7 +37,6 @@ interface EditCampaignProps {
 export default function EditCampaign({
     auth,
     campaign,
-    categories,
     templates,
     selected_clients
 }: PageProps<EditCampaignProps>) {
@@ -67,20 +59,16 @@ export default function EditCampaign({
 
     // Initialiser les catégories sélectionnées
     useEffect(() => {
-        const categoriesWithSelectedClients = categories.filter(category =>
-            category.clients && category.clients.some(client => selected_clients.includes(client.id))
-        );
-
-        setData('selected_categories', categoriesWithSelectedClients.map(cat => cat.id));
+        setData('selected_categories', []);
 
         // Filtrer les clients
-        const allClients = categories.flatMap(category => category.clients || []);
+        const allClients = [];
         setFilteredClients(allClients);
     }, []);
 
     // Mettre à jour les clients filtrés lorsque le terme de recherche change
     useEffect(() => {
-        const allClients = categories.flatMap(category => category.clients || []);
+        const allClients = [];
         if (searchTerm) {
             setFilteredClients(
                 allClients.filter(client =>
@@ -91,7 +79,7 @@ export default function EditCampaign({
         } else {
             setFilteredClients(allClients);
         }
-    }, [searchTerm, categories]);
+    }, [searchTerm]);
 
     // Gérer le changement de template
     const handleTemplateChange = (templateId: number) => {
@@ -129,21 +117,15 @@ export default function EditCampaign({
             newSelectedCategories = newSelectedCategories.filter((id) => id !== categoryId);
 
             // Retirer tous les clients de cette catégorie
-            const categoryClients = categories.find((cat) => cat.id === categoryId)?.clients || [];
             newClientIds = newClientIds.filter((clientId) =>
-                !categoryClients.some((client) => client.id === clientId)
+                ![]?.some((client) => client.id === clientId) || []
             );
         } else {
             // Sélectionner la catégorie
             newSelectedCategories.push(categoryId);
 
             // Ajouter tous les clients de cette catégorie
-            const categoryClients = categories.find((cat) => cat.id === categoryId)?.clients || [];
-            categoryClients.forEach((client) => {
-                if (!newClientIds.includes(client.id)) {
-                    newClientIds.push(client.id);
-                }
-            });
+            newClientIds = [...newClientIds, ...[]?.map(c => c.id) || []];
         }
 
         setData({
@@ -160,7 +142,7 @@ export default function EditCampaign({
     };
 
     // Récupérer tous les clients disponibles
-    const allClients = categories.flatMap((category) => category.clients || []);
+    const allClients = [];
 
     // Suivant du formulaire multi-étapes
     const handleNext = () => {
@@ -303,7 +285,7 @@ export default function EditCampaign({
                                     <div className="mb-4">
                                         <h5 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaigns.selectByCategory')}</h5>
                                         <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-                                            {categories.map((category) => (
+                                            {[]?.map((category) => (
                                                 <div key={category.id} className="border rounded-lg p-4 dark:border-gray-700">
                                                     <div className="flex items-center mb-2">
                                                         <input

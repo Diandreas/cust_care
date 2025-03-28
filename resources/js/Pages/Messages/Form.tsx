@@ -15,11 +15,6 @@ interface Client {
     phone: string;
 }
 
-interface Category {
-    id: number;
-    name: string;
-}
-
 interface Template {
     id: number;
     name: string;
@@ -28,16 +23,14 @@ interface Template {
 
 interface MessageFormProps extends PageProps {
     clients: Client[];
-    categories: Category[];
     templates: Template[];
 }
 
-export default function Form({ auth, clients, categories, templates }: MessageFormProps) {
+export default function Form({ auth, clients, templates }: MessageFormProps) {
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [recipients, setRecipients] = useState<Client[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filteredClients, setFilteredClients] = useState<Client[]>(clients);
-    const [selectedCategory, setSelectedCategory] = useState<number | ''>('');
 
     const { data, setData, post, processing, errors, reset } = useForm({
         recipients: [] as number[],
@@ -48,15 +41,6 @@ export default function Form({ auth, clients, categories, templates }: MessageFo
     useEffect(() => {
         let filtered = clients;
 
-        if (selectedCategory !== '') {
-            // Cette fonction simulée serait remplacée par un vrai filtre basé sur la catégorie
-            // Elle dépendrait de la structure de vos données
-            filtered = clients.filter(client => {
-                // Simulons que chaque client a une propriété category_id
-                return (client as any).category_id === selectedCategory;
-            });
-        }
-
         if (searchTerm) {
             filtered = filtered.filter(client =>
                 client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -65,7 +49,7 @@ export default function Form({ auth, clients, categories, templates }: MessageFo
         }
 
         setFilteredClients(filtered);
-    }, [searchTerm, selectedCategory, clients]);
+    }, [searchTerm, clients]);
 
     const handleTemplateChange = (templateId: string) => {
         const template = templates.find((t) => t.id === parseInt(templateId));
@@ -126,22 +110,6 @@ export default function Form({ auth, clients, categories, templates }: MessageFo
                                                 className="mt-1 block w-full"
                                                 placeholder="Nom ou numéro de téléphone"
                                             />
-                                        </div>
-                                        <div className="sm:w-64">
-                                            <InputLabel htmlFor="category" value="Filtrer par catégorie" />
-                                            <select
-                                                id="category"
-                                                value={selectedCategory}
-                                                onChange={(e) => setSelectedCategory(e.target.value === '' ? '' : parseInt(e.target.value))}
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                            >
-                                                <option value="">Toutes les catégories</option>
-                                                {categories.map((category) => (
-                                                    <option key={category.id} value={category.id}>
-                                                        {category.name}
-                                                    </option>
-                                                ))}
-                                            </select>
                                         </div>
                                     </div>
 

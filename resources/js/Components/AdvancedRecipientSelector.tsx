@@ -6,7 +6,6 @@ interface Client {
     name: string;
     phone: string;
     email?: string;
-    category_id?: number;
     tags: { id: number; name: string }[];
     last_message_date?: string;
 }
@@ -17,28 +16,19 @@ interface Tag {
     clients_count: number;
 }
 
-interface Category {
-    id: number;
-    name: string;
-    clients_count: number;
-}
-
 interface AdvancedRecipientSelectorProps {
     clients: Client[];
     tags: Tag[];
-    categories: Category[];
     onSelectionChange: (selectedClientIds: number[]) => void;
 }
 
 const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
     clients,
     tags,
-    categories,
     onSelectionChange
 }) => {
     const { t } = useTranslation();
     const [selectedTags, setSelectedTags] = useState<number[]>([]);
-    const [selectedCategories, setSelectedCategories] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClients, setSelectedClients] = useState<number[]>([]);
     const [filterType, setFilterType] = useState('all');
@@ -46,13 +36,6 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
     // Filtrer les clients en fonction des critères sélectionnés
     useEffect(() => {
         let filteredClients = clients;
-
-        // Filtre par catégorie
-        if (selectedCategories.length > 0) {
-            filteredClients = filteredClients.filter(client =>
-                client.category_id && selectedCategories.includes(client.category_id)
-            );
-        }
 
         // Filtre par tags
         if (selectedTags.length > 0) {
@@ -79,7 +62,7 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
 
         setSelectedClients(filteredClients.map(client => client.id));
         onSelectionChange(filteredClients.map(client => client.id));
-    }, [selectedTags, selectedCategories, searchTerm, filterType, clients]);
+    }, [selectedTags, searchTerm, filterType, clients]);
 
     return (
         <div className="space-y-4">
@@ -120,38 +103,11 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
                                 }
                             }}
                             className={`px-3 py-1 rounded-full text-xs font-medium ${selectedTags.includes(tag.id)
-                                    ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300'
+                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                                 }`}
                         >
                             {tag.name} ({tag.clients_count})
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Sélection par catégories */}
-            <div>
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    {t('clients.filterByCategories')}
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                    {categories.map(category => (
-                        <button
-                            key={category.id}
-                            onClick={() => {
-                                if (selectedCategories.includes(category.id)) {
-                                    setSelectedCategories(selectedCategories.filter(id => id !== category.id));
-                                } else {
-                                    setSelectedCategories([...selectedCategories, category.id]);
-                                }
-                            }}
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${selectedCategories.includes(category.id)
-                                    ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300'
-                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                                }`}
-                        >
-                            {category.name} ({category.clients_count})
                         </button>
                     ))}
                 </div>
