@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/Utils/toast';
@@ -10,11 +10,13 @@ import axios from 'axios';
 import {
     CalendarDays, Phone, Mail, MapPin, Tag, Clock, MessageSquare,
     CheckCircle, AlertCircle, FileText, User, MessageCircle, Home,
-    Edit, Save, X, Plus, Check, ArrowLeft, Send
+    Edit, Save, X, Plus, Check, ArrowLeft, Send, ChevronDown,
+    Calendar, Activity, PieChart, Users, Copy, Share2, Trash2
 } from 'lucide-react';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TagSelector from '@/Components/TagSelector';
+import { Transition } from '@headlessui/react';
 
 interface Message {
     id: number;
@@ -97,6 +99,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
     const [tags, setTags] = useState<Tag[]>(initialTags);
     const [selectedTagsState, setSelectedTagsState] = useState<number[]>(initialClient.tags.map(tag => tag.id) || []);
     const [messages, setMessages] = useState<Message[]>(initialClient.messages || []);
+    const [showActionsMenu, setShowActionsMenu] = useState(false);
 
     // Form for client editing
     const { data, setData, post, processing, errors, reset } = useForm<ClientFormData>({
@@ -109,16 +112,42 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
         notes: client.notes || '',
     });
 
+    // Calculate age if birthday is available
+    const calculateAge = (birthday: string | null) => {
+        if (!birthday) return null;
+        const today = new Date();
+        const birthDate = new Date(birthday);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    };
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'delivered':
-                return 'bg-green-100 text-green-800';
+                return 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400';
             case 'failed':
-                return 'bg-red-100 text-red-800';
+                return 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400';
             case 'pending':
-                return 'bg-yellow-100 text-yellow-800';
+                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/20 dark:text-yellow-400';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+        }
+    };
+
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'delivered':
+                return <CheckCircle className="h-4 w-4 mr-1" />;
+            case 'failed':
+                return <AlertCircle className="h-4 w-4 mr-1" />;
+            case 'pending':
+                return <Clock className="h-4 w-4 mr-1" />;
+            default:
+                return null;
         }
     };
 
@@ -143,6 +172,11 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
     const formatDateTime = (date: string) => {
         if (!date) return '-';
         return format(new Date(date), 'dd/MM/yyyy HH:mm', { locale: fr });
+    };
+
+    const formatTimeAgo = (date: string | null) => {
+        if (!date) return '-';
+        return formatDistanceToNow(new Date(date), { addSuffix: true, locale: fr });
     };
 
     const registerVisit = () => {
@@ -194,7 +228,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                 success('Message envoyé avec succès');
 
                 // Add the new message to the messages state
-                const newMessage = response.data.message;
+                const newMessage = response.data.sms;
                 setMessages(prevMessages => [newMessage, ...prevMessages]);
 
                 // Update client's message counts
@@ -223,7 +257,10 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
         e.preventDefault();
 
         // Use axios.patch to send the form data
-        axios.patch(route('clients.update', client.id), data)
+        axios.patch(route('clients.update', client.id), {
+            ...data,
+            tag_ids: selectedTagsState
+        })
             .then(response => {
                 success('Client mis à jour avec succès');
 
@@ -259,6 +296,22 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
             });
     };
 
+    // Function to generate avatar gradient based on name
+    const getAvatarGradient = (name: string) => {
+        const colors = [
+            'from-red-500 to-pink-500',
+            'from-orange-500 to-amber-500',
+            'from-yellow-500 to-lime-500',
+            'from-green-500 to-emerald-500',
+            'from-teal-500 to-cyan-500',
+            'from-blue-500 to-indigo-500',
+            'from-indigo-500 to-purple-500',
+            'from-purple-500 to-pink-500',
+        ];
+        const index = name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % colors.length;
+        return colors[index];
+    };
+
     // Calculate statistics
     const messageStats = {
         total: client.messages_count || 0,
@@ -269,6 +322,11 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
     // Get total visits count
     const totalVisits = visits.length;
 
+    // Calculate delivery rate percentage
+    const deliveryRate = messageStats.total > 0
+        ? Math.round((messageStats.delivered / messageStats.total) * 100)
+        : 0;
+
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -277,25 +335,89 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                     <div className="flex items-center space-x-3">
                         <Link
                             href={route('clients.index')}
-                            className="inline-flex items-center text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+                            className="inline-flex items-center justify-center rounded-full h-8 w-8 bg-white dark:bg-gray-800 shadow-sm text-gray-600 transition-colors hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400"
                         >
-                            <ArrowLeft className="h-5 w-5 mr-1" />
+                            <ArrowLeft className="h-5 w-5" />
                         </Link>
                         <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-white flex items-center gap-2">
-                            <User className="h-5 w-5" />
                             {client.name}
                             {client.is_active ? (
-                                <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                                <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-800/30 dark:text-green-300">
                                     Actif
                                 </span>
                             ) : (
-                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
                                     Inactif
                                 </span>
                             )}
                         </h2>
                     </div>
 
+                    <div className="flex items-center space-x-2">
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowActionsMenu(!showActionsMenu)}
+                                className="inline-flex items-center rounded-md bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none"
+                            >
+                                Actions
+                                <ChevronDown className="ml-2 h-4 w-4" />
+                            </button>
+                            <Transition
+                                show={showActionsMenu}
+                                enter="transition ease-out duration-100"
+                                enterFrom="transform opacity-0 scale-95"
+                                enterTo="transform opacity-100 scale-100"
+                                leave="transition ease-in duration-75"
+                                leaveFrom="transform opacity-100 scale-100"
+                                leaveTo="transform opacity-0 scale-95"
+                            >
+                                <div className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5">
+                                    <div className="py-1" role="menu">
+                                        <button
+                                            onClick={() => setIsAddingMessage(true)}
+                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            role="menuitem"
+                                        >
+                                            <Send className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                            Envoyer un message
+                                        </button>
+                                        <button
+                                            onClick={() => setIsAddingVisit(true)}
+                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            role="menuitem"
+                                        >
+                                            <Home className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                            Enregistrer une visite
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEditing(!isEditing)}
+                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            role="menuitem"
+                                        >
+                                            <Edit className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                            Modifier le profil
+                                        </button>
+                                        <a
+                                            href={`tel:${client.phone}`}
+                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            role="menuitem"
+                                        >
+                                            <Phone className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                            Appeler
+                                        </a>
+                                        <div className="border-t border-gray-100 dark:border-gray-700"></div>
+                                        <button
+                                            className="flex w-full items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                            role="menuitem"
+                                        >
+                                            <Trash2 className="mr-3 h-4 w-4" />
+                                            Supprimer
+                                        </button>
+                                    </div>
+                                </div>
+                            </Transition>
+                        </div>
+                    </div>
                 </div>
             }
         >
@@ -305,12 +427,15 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     {/* Formulaire d'ajout de visite */}
                     {isAddingVisit && (
-                        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 animate-fadeIn">
+                        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 animate-in fade-in duration-300">
                             <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Enregistrer une nouvelle visite</h3>
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                                    <Home className="h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400" />
+                                    Enregistrer une nouvelle visite
+                                </h3>
                                 <button
                                     onClick={() => setIsAddingVisit(false)}
-                                    className="text-gray-400 hover:text-gray-500 transition-colors"
+                                    className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 transition-colors"
                                 >
                                     <X className="h-5 w-5" />
                                 </button>
@@ -321,19 +446,29 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                 </label>
                                 <textarea
                                     id="visitNotes"
-                                    rows={3}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                    rows={4}
+                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
                                     value={visitNotes}
                                     onChange={(e) => setVisitNotes(e.target.value)}
                                     placeholder="Détails de la visite, services rendus, observations..."
                                 />
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                    Ces notes seront associées à la visite enregistrée aujourd'hui.
+                                </p>
                             </div>
-                            <div className="flex justify-end">
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddingVisit(false)}
+                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                >
+                                    Annuler
+                                </button>
                                 <button
                                     type="button"
                                     onClick={registerVisit}
                                     disabled={isLoadingVisit || !visitNotes.trim()}
-                                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600"
                                 >
                                     {isLoadingVisit ? (
                                         <>
@@ -356,12 +491,15 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
                     {/* Formulaire d'envoi de message direct */}
                     {isAddingMessage && (
-                        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 animate-fadeIn">
+                        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 animate-in fade-in duration-300">
                             <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Envoyer un message direct</h3>
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
+                                    <MessageCircle className="h-5 w-5 mr-2 text-blue-500" />
+                                    Envoyer un message direct
+                                </h3>
                                 <button
                                     onClick={() => setIsAddingMessage(false)}
-                                    className="text-gray-400 hover:text-gray-500 transition-colors"
+                                    className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 transition-colors"
                                 >
                                     <X className="h-5 w-5" />
                                 </button>
@@ -372,24 +510,61 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                 </label>
                                 <textarea
                                     id="messageContent"
-                                    rows={3}
+                                    rows={4}
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
                                     value={messageContent}
                                     onChange={(e) => setMessageContent(e.target.value)}
                                     placeholder="Saisir votre message ici..."
                                     maxLength={160}
                                 />
-                                <div className="mt-1 flex justify-between items-center text-xs text-gray-500">
-                                    <span>{messageContent.length} / 160 caractères</span>
-                                    <span>{Math.ceil(messageContent.length / 160)} SMS</span>
+                                <div className="mt-1 flex justify-between items-center">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">{messageContent.length} / 160 caractères</span>
+                                    <span className={`text-xs font-medium ${messageContent.length > 160 ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                                        {Math.ceil(messageContent.length / 160)} SMS
+                                    </span>
+                                </div>
+
+                                {/* Message templates suggestions */}
+                                <div className="mt-3">
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Modèles de messages :</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setMessageContent(`Bonjour ${client.name}, nous confirmons votre rendez-vous. À bientôt !`)}
+                                            className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                        >
+                                            Confirmation de RDV
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMessageContent(`Bonjour ${client.name}, souhaitez-vous prendre rendez-vous prochainement ?`)}
+                                            className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                        >
+                                            Proposition de RDV
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMessageContent(`Bonjour ${client.name}, merci pour votre visite aujourd'hui. N'hésitez pas à nous contacter pour toute question.`)}
+                                            className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
+                                        >
+                                            Remerciement après visite
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex justify-end">
+                            <div className="flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddingMessage(false)}
+                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                >
+                                    Annuler
+                                </button>
                                 <button
                                     type="button"
                                     onClick={sendDirectMessage}
                                     disabled={isLoadingMessage || !messageContent.trim()}
-                                    className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                                    className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all dark:bg-blue-700 dark:hover:bg-blue-600"
                                 >
                                     {isLoadingMessage ? (
                                         <>
@@ -413,78 +588,140 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                     {/* Informations du client */}
                     <div className="grid gap-6 md:grid-cols-3">
                         {/* Profile et détails */}
-                        <div className="md:col-span-1">
+                        <div className="md:col-span-1 space-y-6">
                             <div className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 p-4">
+                                <div className={`bg-gradient-to-r ${getAvatarGradient(client.name)} p-6 relative`}>
                                     <div className="flex justify-center">
-                                        <div className="h-24 w-24 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center text-indigo-600 text-4xl font-bold">
-                                            {client.name.charAt(0).toUpperCase()}
+                                        <div className="h-24 w-24 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center text-3xl font-bold shadow-lg">
+                                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+                                                {client.name.charAt(0).toUpperCase() + (client.name.split(' ')[1]?.[0]?.toUpperCase() || '')}
+                                            </span>
                                         </div>
                                     </div>
-                                    <h3 className="mt-3 text-center text-xl font-semibold text-white">
+                                    <h3 className="mt-4 text-center text-xl font-semibold text-white">
                                         {client.name}
                                     </h3>
+                                    {client.birthday && (
+                                        <p className="mt-1 text-center text-sm text-white/80">
+                                            {calculateAge(client.birthday)} ans
+                                        </p>
+                                    )}
+
+                                    {/* Quick action buttons */}
+                                    <div className="absolute top-2 right-2">
+                                        <button onClick={() => setIsEditing(!isEditing)} className="rounded-full p-2 bg-white/20 text-white hover:bg-white/30 transition-colors">
+                                            <Edit className="h-4 w-4" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Profil en mode affichage */}
-                                {!isEditing && (
-                                    <div className="p-4">
-                                        <ul className="space-y-3">
-                                            <li className="flex items-start gap-3 group">
-                                                <Phone className="h-5 w-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
-                                                <div className="flex-1">
-                                                    <span className="block text-sm text-gray-700 dark:text-gray-300">{client.phone}</span>
-                                                    <a href={`tel:${client.phone}`} className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">Appeler</a>
+                                {!isEditing ? (
+                                    <div className="p-5">
+                                        <ul className="space-y-4">
+                                            <li className="flex items-start">
+                                                <div className="flex-shrink-0">
+                                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
+                                                        <Phone className="h-4 w-4" />
+                                                    </span>
+                                                </div>
+                                                <div className="ml-3">
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">Téléphone</p>
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                        <a href={`tel:${client.phone}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                                            {client.phone}
+                                                        </a>
+                                                    </p>
                                                 </div>
                                             </li>
+
                                             {client.email && (
-                                                <li className="flex items-start gap-3 group">
-                                                    <Mail className="h-5 w-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
-                                                    <div className="flex-1">
-                                                        <span className="block text-sm text-gray-700 dark:text-gray-300">{client.email}</span>
-                                                        <a href={`mailto:${client.email}`} className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">Envoyer un email</a>
+                                                <li className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                                                            <Mail className="h-4 w-4" />
+                                                        </span>
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Email</p>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                            <a href={`mailto:${client.email}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                                                {client.email}
+                                                            </a>
+                                                        </p>
                                                     </div>
                                                 </li>
                                             )}
+
                                             {client.address && (
-                                                <li className="flex items-start gap-3 group">
-                                                    <MapPin className="h-5 w-5 text-gray-400 group-hover:text-indigo-500 transition-colors" />
-                                                    <div className="flex-1">
-                                                        <span className="block text-sm text-gray-700 dark:text-gray-300">{client.address}</span>
-                                                        <a
-                                                            href={`https://maps.google.com/?q=${encodeURIComponent(client.address)}`}
-                                                            target="_blank"
-                                                            className="text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400"
-                                                        >
-                                                            Voir sur la carte
-                                                        </a>
+                                                <li className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                                            <MapPin className="h-4 w-4" />
+                                                        </span>
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Adresse</p>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                            {client.address}
+                                                            <a
+                                                                href={`https://maps.google.com/?q=${encodeURIComponent(client.address)}`}
+                                                                target="_blank"
+                                                                className="block text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 mt-1"
+                                                            >
+                                                                Voir sur Google Maps
+                                                            </a>
+                                                        </p>
                                                     </div>
                                                 </li>
                                             )}
+
                                             {client.birthday && (
-                                                <li className="flex items-start gap-3">
-                                                    <CalendarDays className="h-5 w-5 text-gray-400" />
-                                                    <span className="text-sm text-gray-700 dark:text-gray-300">{formatDate(client.birthday)}</span>
+                                                <li className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                                                            <CalendarDays className="h-4 w-4" />
+                                                        </span>
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Date de naissance</p>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                            {formatDate(client.birthday)}
+                                                        </p>
+                                                    </div>
                                                 </li>
                                             )}
+
                                             {client.gender && (
-                                                <li className="flex items-start gap-3">
-                                                    <User className="h-5 w-5 text-gray-400" />
-                                                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                        {client.gender === 'male' ? 'Homme' : client.gender === 'female' ? 'Femme' : 'Autre'}
-                                                    </span>
+                                                <li className="flex items-start">
+                                                    <div className="flex-shrink-0">
+                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+                                                            <User className="h-4 w-4" />
+                                                        </span>
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Genre</p>
+                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                            {client.gender === 'male' ? 'Homme' : client.gender === 'female' ? 'Femme' : 'Autre'}
+                                                        </p>
+                                                    </div>
                                                 </li>
                                             )}
                                         </ul>
 
+                                        {/* Tags section */}
                                         {client.tags.length > 0 && (
                                             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-2">
-                                                    <Tag className="h-4 w-4" /> Tags
+                                                <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                    <Tag className="h-4 w-4 mr-1 text-gray-500" />
+                                                    Tags
                                                 </h4>
-                                                <div className="flex flex-wrap gap-1">
+                                                <div className="flex flex-wrap gap-1.5">
                                                     {client.tags.map(tag => (
-                                                        <span key={tag.id} className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                                                        <span
+                                                            key={tag.id}
+                                                            className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
+                                                        >
                                                             {tag.name}
                                                         </span>
                                                     ))}
@@ -492,54 +729,51 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             </div>
                                         )}
 
+                                        {/* Notes section */}
                                         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                            <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-2">
-                                                <FileText className="h-4 w-4" /> Notes
+                                            <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                <FileText className="h-4 w-4 mr-1 text-gray-500" />
+                                                Notes
                                             </h4>
-                                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
-                                                {client.notes || "Aucune note"}
-                                            </p>
+                                            <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-700/50">
+                                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                                                    {client.notes || "Aucune note"}
+                                                </p>
+                                            </div>
                                         </div>
 
-                                        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                    Client depuis
-                                                </h4>
-                                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                    {formatDate(client.created_at)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                    Dernier contact
-                                                </h4>
-                                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                    {formatDate(client.lastContact || null)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                    Dernière visite
-                                                </h4>
-                                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                    {formatDate(client.last_visit_date || null)}
-                                                </span>
-                                            </div>
+                                        {/* Trackers */}
+                                        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                            <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                                <Clock className="h-4 w-4 mr-1 text-gray-500" />
+                                                Historique
+                                            </h4>
+                                            <ul className="space-y-2">
+                                                <li className="flex justify-between text-sm">
+                                                    <span className="text-gray-500 dark:text-gray-400">Client depuis</span>
+                                                    <span className="font-medium text-gray-900 dark:text-white">{formatDate(client.created_at)}</span>
+                                                </li>
+                                                <li className="flex justify-between text-sm">
+                                                    <span className="text-gray-500 dark:text-gray-400">Dernier contact</span>
+                                                    <span className="font-medium text-gray-900 dark:text-white">{formatTimeAgo(client.lastContact)}</span>
+                                                </li>
+                                                <li className="flex justify-between text-sm">
+                                                    <span className="text-gray-500 dark:text-gray-400">Dernière visite</span>
+                                                    <span className="font-medium text-gray-900 dark:text-white">{client.last_visit_date ? formatTimeAgo(client.last_visit_date) : '-'}</span>
+                                                </li>
+                                            </ul>
                                         </div>
                                     </div>
-                                )}
-
-                                {/* Formulaire d'édition */}
-                                {isEditing && (
-                                    <div className="p-4 animate-fadeIn">
+                                ) : (
+                                    /* Formulaire d'édition */
+                                    <div className="p-5 animate-in fade-in duration-300">
                                         <form onSubmit={handleSubmit} className="space-y-5">
-                                            <div className="flex justify-between items-center">
+                                            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
                                                 <h3 className="text-lg font-medium text-gray-900 dark:text-white">Modifier les informations</h3>
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsEditing(false)}
-                                                    className="text-gray-400 hover:text-gray-500 transition-colors"
+                                                    className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 transition-colors"
                                                 >
                                                     <X className="h-5 w-5" />
                                                 </button>
@@ -603,45 +837,49 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                 {errors.address && <p className="mt-1 text-xs text-red-600">{errors.address}</p>}
                                             </div>
 
-                                            <div>
-                                                <label htmlFor="birthday" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    Date de naissance
-                                                </label>
-                                                <input
-                                                    id="birthday"
-                                                    type="date"
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                    value={data.birthday}
-                                                    onChange={e => setData('birthday', e.target.value)}
-                                                />
-                                                {errors.birthday && <p className="mt-1 text-xs text-red-600">{errors.birthday}</p>}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label htmlFor="birthday" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        Date de naissance
+                                                    </label>
+                                                    <input
+                                                        id="birthday"
+                                                        type="date"
+                                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                                        value={data.birthday}
+                                                        onChange={e => setData('birthday', e.target.value)}
+                                                    />
+                                                    {errors.birthday && <p className="mt-1 text-xs text-red-600">{errors.birthday}</p>}
+                                                </div>
+
+                                                <div>
+                                                    <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                        Genre
+                                                    </label>
+                                                    <select
+                                                        id="gender"
+                                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                                        value={data.gender}
+                                                        onChange={e => setData('gender', e.target.value)}
+                                                    >
+                                                        <option value="">Sélectionner</option>
+                                                        <option value="male">Homme</option>
+                                                        <option value="female">Femme</option>
+                                                        <option value="other">Autre</option>
+                                                    </select>
+                                                    {errors.gender && <p className="mt-1 text-xs text-red-600">{errors.gender}</p>}
+                                                </div>
                                             </div>
 
                                             <div>
-                                                <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    Genre
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    Tags
                                                 </label>
-                                                <select
-                                                    id="gender"
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                    value={data.gender}
-                                                    onChange={e => setData('gender', e.target.value)}
-                                                >
-                                                    <option value="">Sélectionner</option>
-                                                    <option value="male">Homme</option>
-                                                    <option value="female">Femme</option>
-                                                    <option value="other">Autre</option>
-                                                </select>
-                                                {errors.gender && <p className="mt-1 text-xs text-red-600">{errors.gender}</p>}
-                                            </div>
-
-                                            <div>
                                                 <TagSelector
                                                     tags={tags}
                                                     selectedTags={selectedTagsState}
                                                     onTagsChange={(tagIds) => {
                                                         setSelectedTagsState(tagIds);
-                                                        setData('tags', tagIds);
                                                     }}
                                                     className="mt-1"
                                                 />
@@ -662,11 +900,18 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                 {errors.notes && <p className="mt-1 text-xs text-red-600">{errors.notes}</p>}
                                             </div>
 
-                                            <div className="pt-4 flex justify-end">
+                                            <div className="pt-2 flex justify-end space-x-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsEditing(false)}
+                                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                                >
+                                                    Annuler
+                                                </button>
                                                 <button
                                                     type="submit"
                                                     disabled={processing}
-                                                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                                                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600"
                                                 >
                                                     {processing ? (
                                                         <>
@@ -687,128 +932,189 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                         </form>
                                     </div>
                                 )}
-                                <div className="flex items-center space-x-2">
-                                    <button
-                                        onClick={() => setIsAddingVisit(true)}
-                                        className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-500 transition-colors"
-                                        title="Enregistrer une visite"
-                                    >
-                                        <Home className="h-4 w-4 mr-1" />
-                                        <span className="hidden sm:inline">Visite</span>
-                                    </button>
+                            </div>
+
+                            {/* Quick Actions Card */}
+                            <div className="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
+                                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Actions rapides</h3>
+                                </div>
+                                <div className="p-4 grid grid-cols-3 gap-2">
                                     <button
                                         onClick={() => setIsAddingMessage(true)}
-                                        className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500 transition-colors"
-                                        title="Envoyer un message"
+                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
                                     >
-                                        <Send className="h-4 w-4 mr-1" />
-                                        <span className="hidden sm:inline">Message</span>
+                                        <Send className="h-5 w-5 mb-1" />
+                                        <span className="text-xs font-medium">Message</span>
                                     </button>
                                     <button
-                                        onClick={() => setIsEditing(!isEditing)}
-                                        className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors"
-                                        title="Modifier les informations"
+                                        onClick={() => setIsAddingVisit(true)}
+                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20 transition-colors"
                                     >
-                                        <Edit className="h-4 w-4 mr-1" />
-                                        <span className="hidden sm:inline">Modifier</span>
+                                        <Home className="h-5 w-5 mb-1" />
+                                        <span className="text-xs font-medium">Visite</span>
+                                    </button>
+                                    <a
+                                        href={`tel:${client.phone}`}
+                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 transition-colors"
+                                    >
+                                        <Phone className="h-5 w-5 mb-1" />
+                                        <span className="text-xs font-medium">Appeler</span>
+                                    </a>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-colors"
+                                    >
+                                        <Edit className="h-5 w-5 mb-1" />
+                                        <span className="text-xs font-medium">Modifier</span>
+                                    </button>
+                                    {client.email && (
+                                        <a
+                                            href={`mailto:${client.email}`}
+                                            className="flex flex-col items-center justify-center p-3 rounded-lg text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 transition-colors"
+                                        >
+                                            <Mail className="h-5 w-5 mb-1" />
+                                            <span className="text-xs font-medium">Email</span>
+                                        </a>
+                                    )}
+                                    <button
+                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        <Share2 className="h-5 w-5 mb-1" />
+                                        <span className="text-xs font-medium">Partager</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
                         {/* Statistiques et Activités */}
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 space-y-6">
                             {/* Résumé des statistiques */}
-                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow group">
+                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-all group">
                                     <div className="flex items-center">
-                                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform">
-                                            <MessageSquare className="h-10 w-10 text-indigo-500" />
+                                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 group-hover:bg-indigo-200 dark:bg-indigo-900/30 dark:group-hover:bg-indigo-800/40 transition-colors">
+                                            <MessageSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                                         </div>
-                                        <div className="ml-3">
+                                        <div>
                                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Messages</p>
                                             <p className="text-2xl font-semibold text-gray-900 dark:text-white">{messageStats.total}</p>
                                         </div>
                                     </div>
+                                    <div className="mt-3 h-1 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                                        <div className="h-1 rounded-full bg-indigo-500" style={{ width: `${deliveryRate}%` }}></div>
+                                    </div>
+                                    <p className="mt-1 text-xs text-right text-gray-500 dark:text-gray-400">
+                                        {deliveryRate}% livrés
+                                    </p>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow group">
+                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-all group">
                                     <div className="flex items-center">
-                                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform">
-                                            <CheckCircle className="h-10 w-10 text-green-500" />
+                                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 group-hover:bg-green-200 dark:bg-green-900/30 dark:group-hover:bg-green-800/40 transition-colors">
+                                            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                                         </div>
-                                        <div className="ml-3">
+                                        <div>
                                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Messages Livrés</p>
                                             <p className="text-2xl font-semibold text-gray-900 dark:text-white">{messageStats.delivered}</p>
                                         </div>
                                     </div>
+                                    <div className="mt-3 flex items-center">
+                                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                            <CheckCircle className="mr-1 h-3 w-3" />
+                                            Taux: {deliveryRate}%
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow group">
+                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-all group">
                                     <div className="flex items-center">
-                                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform">
-                                            <Home className="h-10 w-10 text-amber-500" />
+                                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 group-hover:bg-amber-200 dark:bg-amber-900/30 dark:group-hover:bg-amber-800/40 transition-colors">
+                                            <Home className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                                         </div>
-                                        <div className="ml-3">
+                                        <div>
                                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Visites</p>
                                             <p className="text-2xl font-semibold text-gray-900 dark:text-white">{totalVisits}</p>
                                         </div>
                                     </div>
+                                    <div className="mt-3 flex items-center space-x-1">
+                                        <button
+                                            onClick={() => {
+                                                setActiveTab('visits');
+                                                setIsAddingVisit(true);
+                                            }}
+                                            className="inline-flex items-center text-xs font-medium text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+                                        >
+                                            <Plus className="mr-1 h-3 w-3" />
+                                            Ajouter une visite
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-shadow group">
+                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-all group">
                                     <div className="flex items-center">
-                                        <div className="flex-shrink-0 group-hover:scale-110 transition-transform">
-                                            <Clock className="h-10 w-10 text-blue-500" />
+                                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 group-hover:bg-blue-200 dark:bg-blue-900/30 dark:group-hover:bg-blue-800/40 transition-colors">
+                                            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                                         </div>
-                                        <div className="ml-3">
+                                        <div>
                                             <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière Visite</p>
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                                                {visits.length > 0 ? formatDate(visits[0].visit_date) : 'Aucune'}
+                                            <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
+                                                {visits.length > 0 ? formatTimeAgo(visits[0].visit_date) : 'Aucune'}
                                             </p>
                                         </div>
                                     </div>
+                                    {visits.length > 0 && (
+                                        <div className="mt-3 flex items-center">
+                                            <span className="inline-flex items-center text-xs text-gray-500 dark:text-gray-400">
+                                                {formatDate(visits[0].visit_date)}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             {/* Onglets Messages/Visites */}
                             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
                                 <div className="border-b border-gray-200 dark:border-gray-700">
-                                    <nav className="flex -mb-px">
+                                    <nav className="flex">
                                         <button
                                             onClick={() => setActiveTab('messages')}
-                                            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === 'messages'
-                                                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                                            className={`px-6 py-4 text-sm font-medium transition-colors flex items-center ${activeTab === 'messages'
+                                                ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <MessageCircle className="h-4 w-4" />
-                                                Messages
-                                            </div>
+                                            <MessageCircle className="h-4 w-4 mr-2" />
+                                            Messages
+                                            <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                                {messageStats.total}
+                                            </span>
                                         </button>
                                         <button
                                             onClick={() => setActiveTab('visits')}
-                                            className={`py-4 px-6 text-sm font-medium border-b-2 transition-colors ${activeTab === 'visits'
-                                                ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                                            className={`px-6 py-4 text-sm font-medium transition-colors flex items-center ${activeTab === 'visits'
+                                                ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <Home className="h-4 w-4" />
-                                                Visites
-                                            </div>
+                                            <Home className="h-4 w-4 mr-2" />
+                                            Visites
+                                            <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                                                {totalVisits}
+                                            </span>
                                         </button>
                                     </nav>
                                 </div>
 
                                 <div className="p-4">
                                     {activeTab === 'messages' && (
-                                        <div className="overflow-x-auto">
+                                        <div className="overflow-hidden">
                                             {messages.length === 0 ? (
                                                 <div className="text-center py-10">
-                                                    <MessageCircle className="mx-auto h-12 w-12 text-gray-400" />
-                                                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Aucun message</h3>
+                                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/30">
+                                                        <MessageCircle className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                                                    </div>
+                                                    <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-white">Aucun message</h3>
                                                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                                         Aucun message n'a encore été envoyé à ce client.
                                                     </p>
@@ -816,67 +1122,73 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                         <button
                                                             type="button"
                                                             onClick={() => setIsAddingMessage(true)}
-                                                            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500"
+                                                            className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
                                                         >
-                                                            <Plus className="mr-1.5 h-4 w-4" />
+                                                            <Send className="mr-2 h-4 w-4" />
                                                             Envoyer un message
                                                         </button>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <div className="flex justify-end mb-3">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Historique des messages</h3>
                                                         <button
                                                             onClick={() => setIsAddingMessage(true)}
-                                                            className="inline-flex items-center rounded-md bg-blue-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-500 transition-colors"
+                                                            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-500 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600"
                                                         >
                                                             <Plus className="mr-1 h-3 w-3" />
                                                             Nouveau message
                                                         </button>
                                                     </div>
-                                                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                                        <thead className="bg-gray-50 dark:bg-gray-700">
-                                                            <tr>
-                                                                <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Date</th>
-                                                                <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Message</th>
-                                                                <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Campagne</th>
-                                                                <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Statut</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                                                            {messages.map((message) => (
-                                                                <tr key={message.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                                                                    <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                                                        {formatDateTime(message.sent_at)}
-                                                                    </td>
-                                                                    <td className="px-3 py-3 text-sm text-gray-900 dark:text-gray-200">
-                                                                        <div className="max-w-xs overflow-hidden text-ellipsis" title={message.content}>
-                                                                            {message.content}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                                                        {message.campaign ? (
-                                                                            <Link
-                                                                                href={route('campaigns.show', message.campaign.id)}
-                                                                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors"
-                                                                            >
-                                                                                {message.campaign.name}
-                                                                            </Link>
-                                                                        ) : (
-                                                                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                                                                Message Direct
-                                                                            </span>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="whitespace-nowrap px-3 py-3 text-sm">
-                                                                        <span className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${getStatusColor(message.status)}`}>
-                                                                            {getStatusLabel(message.status)}
-                                                                        </span>
-                                                                    </td>
+                                                    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                                            <thead className="bg-gray-50 dark:bg-gray-700">
+                                                                <tr>
+                                                                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Date</th>
+                                                                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Message</th>
+                                                                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Type</th>
+                                                                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Statut</th>
                                                                 </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                                                                {messages.map((message) => (
+                                                                    <tr key={message.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+                                                                        <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                                                            {formatDateTime(message.sent_at)}
+                                                                        </td>
+                                                                        <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
+                                                                            <div className="max-w-xs overflow-hidden text-ellipsis" title={message.content}>
+                                                                                {message.content}
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                                                                            {message.campaign ? (
+                                                                                <Link
+                                                                                    href={route('campaigns.show', message.campaign.id)}
+                                                                                    className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-800/40 transition-colors"
+                                                                                >
+                                                                                    <Activity className="mr-1 h-3 w-3" />
+                                                                                    {message.campaign.name}
+                                                                                </Link>
+                                                                            ) : (
+                                                                                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                                                                    <MessageCircle className="mr-1 h-3 w-3" />
+                                                                                    Message Direct
+                                                                                </span>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="whitespace-nowrap px-3 py-3 text-sm">
+                                                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(message.status)}`}>
+                                                                                {getStatusIcon(message.status)}
+                                                                                {getStatusLabel(message.status)}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
                                                 </>
                                             )}
                                         </div>
@@ -886,8 +1198,10 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                         <div>
                                             {visits.length === 0 ? (
                                                 <div className="text-center py-10">
-                                                    <Home className="mx-auto h-12 w-12 text-gray-400" />
-                                                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">Aucune visite</h3>
+                                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                                                        <Home className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+                                                    </div>
+                                                    <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-white">Aucune visite</h3>
                                                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                                                         Ce client n'a pas encore reçu de visite.
                                                     </p>
@@ -895,19 +1209,20 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                         <button
                                                             type="button"
                                                             onClick={() => setIsAddingVisit(true)}
-                                                            className="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors"
+                                                            className="inline-flex items-center rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-amber-500 transition-colors dark:bg-amber-700 dark:hover:bg-amber-600"
                                                         >
-                                                            <Plus className="mr-1.5 h-4 w-4" />
+                                                            <Home className="mr-2 h-4 w-4" />
                                                             Nouvelle visite
                                                         </button>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <>
-                                                    <div className="flex justify-end mb-3">
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Historique des visites</h3>
                                                         <button
                                                             onClick={() => setIsAddingVisit(true)}
-                                                            className="inline-flex items-center rounded-md bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-500 transition-colors"
+                                                            className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-amber-500 transition-colors dark:bg-amber-700 dark:hover:bg-amber-600"
                                                         >
                                                             <Plus className="mr-1 h-3 w-3" />
                                                             Nouvelle visite
@@ -915,18 +1230,30 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                     </div>
                                                     <div className="space-y-4">
                                                         {visits.map((visit) => (
-                                                            <div key={visit.id} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow">
-                                                                <div className="flex justify-between items-center mb-2">
-                                                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                                                                        Visite du {formatDate(visit.visit_date)}
-                                                                    </h3>
-                                                                    <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-700 dark:text-green-100">
-                                                                        {format(new Date(visit.created_at), 'HH:mm')}
+                                                            <div key={visit.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 hover:shadow-md transition-shadow">
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <div className="flex items-center">
+                                                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                                                                            <Home className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                                                        </div>
+                                                                        <div className="ml-3">
+                                                                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                                                                                Visite du {formatDate(visit.visit_date)}
+                                                                            </h3>
+                                                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                                                Enregistrée le {format(new Date(visit.created_at), 'dd/MM/yyyy à HH:mm')}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                                                        {formatTimeAgo(visit.visit_date)}
                                                                     </span>
                                                                 </div>
-                                                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
-                                                                    {visit.notes || "Aucune note pour cette visite"}
-                                                                </p>
+                                                                <div className="mt-3 rounded-md bg-gray-50 dark:bg-gray-700/50 p-3">
+                                                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                                                                        {visit.notes || "Aucune note pour cette visite"}
+                                                                    </p>
+                                                                </div>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -934,8 +1261,6 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             )}
                                         </div>
                                     )}
-
-
                                 </div>
                             </div>
                         </div>

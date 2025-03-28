@@ -12,7 +12,6 @@ interface Client {
     name: string;
     phone: string;
     email?: string;
-    category_id?: number;
     tags: { id: number; name: string }[];
     last_message_date?: string;
 }
@@ -59,7 +58,6 @@ export default function CreateCampaign({
         send_now: true,
         client_ids: [] as number[],
         selected_all_clients: false,
-        selected_categories: [] as number[],
         filter_criteria: {} as any,
     });
 
@@ -83,18 +81,6 @@ export default function CreateCampaign({
     // Gérer la sélection des clients avec le sélecteur avancé
     const handleAdvancedClientSelection = (selectedClientIds: number[]) => {
         setData('client_ids', selectedClientIds);
-
-        // Recalculer les catégories sélectionnées
-        const newSelectedCategories = categories
-            .filter(category =>
-                category.clients &&
-                category.clients.every(client =>
-                    selectedClientIds.includes(client.id)
-                )
-            )
-            .map(category => category.id);
-
-        setData('selected_categories', newSelectedCategories);
     };
 
     // Gérer la sélection individuelle d'un client
@@ -104,41 +90,6 @@ export default function CreateCampaign({
         } else {
             setData('client_ids', [...data.client_ids, clientId]);
         }
-    };
-
-    // Gérer la sélection d'une catégorie entière
-    const handleCategorySelection = (categoryId: number) => {
-        let newSelectedCategories = [...data.selected_categories];
-        let newClientIds = [...data.client_ids];
-
-        const categoryClients = categories
-            .find(cat => cat.id === categoryId)?.clients || [];
-
-        if (newSelectedCategories.includes(categoryId)) {
-            // Désélectionner la catégorie
-            newSelectedCategories = newSelectedCategories.filter(id => id !== categoryId);
-
-            // Retirer tous les clients de cette catégorie
-            newClientIds = newClientIds.filter(clientId =>
-                !categoryClients.some(client => client.id === clientId)
-            );
-        } else {
-            // Sélectionner la catégorie
-            newSelectedCategories.push(categoryId);
-
-            // Ajouter tous les clients de cette catégorie
-            categoryClients.forEach(client => {
-                if (!newClientIds.includes(client.id)) {
-                    newClientIds.push(client.id);
-                }
-            });
-        }
-
-        setData({
-            ...data,
-            selected_categories: newSelectedCategories,
-            client_ids: newClientIds
-        });
     };
 
     // Gérer la soumission du formulaire - MODIFIÉ

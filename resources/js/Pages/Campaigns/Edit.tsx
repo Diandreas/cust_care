@@ -54,13 +54,10 @@ export default function EditCampaign({
         send_now: !campaign.scheduled_at,
         client_ids: selected_clients || [],
         selected_all_clients: false,
-        selected_categories: [] as number[],
     });
 
-    // Initialiser les catégories sélectionnées
+    // Initialiser les clients filtrés
     useEffect(() => {
-        setData('selected_categories', []);
-
         // Filtrer les clients
         const allClients = [];
         setFilteredClients(allClients);
@@ -105,34 +102,6 @@ export default function EditCampaign({
         } else {
             setData('client_ids', [...data.client_ids, clientId]);
         }
-    };
-
-    // Gérer la sélection d'une catégorie (tous les clients)
-    const handleCategorySelection = (categoryId: number) => {
-        let newSelectedCategories = [...data.selected_categories];
-        let newClientIds = [...data.client_ids];
-
-        if (newSelectedCategories.includes(categoryId)) {
-            // Désélectionner la catégorie
-            newSelectedCategories = newSelectedCategories.filter((id) => id !== categoryId);
-
-            // Retirer tous les clients de cette catégorie
-            newClientIds = newClientIds.filter((clientId) =>
-                ![]?.some((client) => client.id === clientId) || []
-            );
-        } else {
-            // Sélectionner la catégorie
-            newSelectedCategories.push(categoryId);
-
-            // Ajouter tous les clients de cette catégorie
-            newClientIds = [...newClientIds, ...[]?.map(c => c.id) || []];
-        }
-
-        setData({
-            ...data,
-            selected_categories: newSelectedCategories,
-            client_ids: newClientIds,
-        });
     };
 
     // Gérer la soumission du formulaire
@@ -281,32 +250,6 @@ export default function EditCampaign({
                             {step === 3 && (
                                 <div className="px-4 py-5 sm:p-6">
                                     <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">{t('campaigns.step3Title')}</h4>
-
-                                    <div className="mb-4">
-                                        <h5 className="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">{t('campaigns.selectByCategory')}</h5>
-                                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-                                            {[]?.map((category) => (
-                                                <div key={category.id} className="border rounded-lg p-4 dark:border-gray-700">
-                                                    <div className="flex items-center mb-2">
-                                                        <input
-                                                            id={`category-${category.id}`}
-                                                            name={`category-${category.id}`}
-                                                            type="checkbox"
-                                                            checked={data.selected_categories.includes(category.id)}
-                                                            onChange={() => handleCategorySelection(category.id)}
-                                                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                                                        />
-                                                        <label htmlFor={`category-${category.id}`} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                                                            {category.name}
-                                                        </label>
-                                                    </div>
-                                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                                        {(category.clients?.length || 0)} {t('common.clients')}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
 
                                     <div className="mb-6">
                                         <div className="flex justify-between items-center">

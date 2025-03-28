@@ -69,16 +69,15 @@ class CampaignController extends Controller
             ->withCount('clients')
             ->get();
 
-        // Clients avec leurs tags et catégorie
+        // Clients avec leurs tags
         $clients = $user->clients()
-            ->with(['tags', 'category'])
+            ->with(['tags'])
             ->withCount('messages')
             ->get();
 
         $templates = $user->templates()->get();
 
         return Inertia::render('Campaigns/Create', [
-            'categories' => [],
             'tags' => $tags,
             'clients' => $clients,
             'templates' => $templates
@@ -164,9 +163,6 @@ class CampaignController extends Controller
                 $q->whereHas('tags', function($q) use ($filterCriteria) {
                     $q->whereIn('tags.id', $filterCriteria['tags']);
                 });
-            })
-            ->when(!empty($filterCriteria['categories']), function($q) use ($filterCriteria) {
-                $q->whereIn('category_id', $filterCriteria['categories']);
             });
         
         return $query->pluck('id')->toArray();
@@ -196,7 +192,7 @@ class CampaignController extends Controller
             ->withCount('clients')
             ->get();
 
-        // Clients avec leurs tags et catégorie
+        // Clients avec leurs tags
         $clientIds = $campaign->recipients->pluck('id');
         $clients = Client::whereIn('id', $clientIds)
             ->where('user_id', Auth::id())
@@ -207,7 +203,6 @@ class CampaignController extends Controller
 
         return Inertia::render('Campaigns/Edit', [
             'campaign' => $campaign,
-            'categories' => [],
             'tags' => $tags,
             'clients' => $clients,
             'templates' => $templates,
@@ -238,9 +233,6 @@ class CampaignController extends Controller
                         $q->whereHas('tags', function($q) use ($validated) {
                             $q->whereIn('tags.id', $validated['filter_criteria']['tags']);
                         });
-                    })
-                    ->when(!empty($validated['filter_criteria']['categories']), function($q) use ($validated) {
-                        $q->whereIn('category_id', $validated['filter_criteria']['categories']);
                     });
                 
                 $clientIds = $query->pluck('id')->toArray();
