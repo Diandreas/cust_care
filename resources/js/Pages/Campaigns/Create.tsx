@@ -171,6 +171,14 @@ export default function CreateCampaign({
             return;
         }
 
+        // Si on est à l'étape 3 et qu'il y a des destinataires sélectionnés, demander confirmation
+        if (step === 3 && data.client_ids.length > 0) {
+            if (confirm(t('campaigns.confirmRecipients', { count: data.client_ids.length }))) {
+                setStep(step + 1);
+            }
+            return;
+        }
+
         setStep(step + 1);
     };
 
@@ -375,21 +383,11 @@ export default function CreateCampaign({
                                             <nav className="-mb-px flex" aria-label="Tabs">
                                                 <button
                                                     type="button"
-                                                    onClick={() => setSelectionMethod('categories')}
-                                                    className={`${selectionMethod === 'categories'
-                                                        ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                                                        } w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}
-                                                >
-                                                    {t('campaigns.byCategory')}
-                                                </button>
-                                                <button
-                                                    type="button"
                                                     onClick={() => setSelectionMethod('advanced')}
                                                     className={`${selectionMethod === 'advanced'
                                                         ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                                                        } w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+                                                        } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
                                                 >
                                                     {t('campaigns.advancedFilters')}
                                                 </button>
@@ -399,7 +397,7 @@ export default function CreateCampaign({
                                                     className={`${selectionMethod === 'manual'
                                                         ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400'
                                                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                                                        } w-1/3 py-4 px-1 text-center border-b-2 font-medium text-sm`}
+                                                        } w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm`}
                                                 >
                                                     {t('campaigns.manualSelection')}
                                                 </button>
@@ -407,41 +405,10 @@ export default function CreateCampaign({
                                         </div>
 
                                         {/* Contenu selon la méthode sélectionnée */}
-                                        {selectionMethod === 'categories' && (
-                                            <div className="space-y-4">
-                                                <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                                                    {t('campaigns.selectCategoriesDescription')}
-                                                </div>
-                                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                                    {categories.map((category) => (
-                                                        <div key={category.id} className="border rounded-lg p-4 dark:border-gray-700">
-                                                            <div className="flex items-center mb-2">
-                                                                <input
-                                                                    id={`category-${category.id}`}
-                                                                    name={`category-${category.id}`}
-                                                                    type="checkbox"
-                                                                    checked={data.selected_categories.includes(category.id)}
-                                                                    onChange={() => handleCategorySelection(category.id)}
-                                                                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                                                                />
-                                                                <label htmlFor={`category-${category.id}`} className="ml-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                                    {category.name}
-                                                                </label>
-                                                            </div>
-                                                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                                                                {category.clients_count} {t('common.clients')}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-
                                         {selectionMethod === 'advanced' && (
                                             <AdvancedRecipientSelector
                                                 clients={allClients}
                                                 tags={tags}
-                                                categories={categories}
                                                 onSelectionChange={(selectedIds) => setData('client_ids', selectedIds)}
                                             />
                                         )}
@@ -508,6 +475,39 @@ export default function CreateCampaign({
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Notification de validation */}
+                                    {data.client_ids.length > 0 ? (
+                                        <div className="mt-4 p-4 rounded-md bg-green-50 dark:bg-green-900">
+                                            <div className="flex">
+                                                <div className="flex-shrink-0">
+                                                    <svg className="h-5 w-5 text-green-400 dark:text-green-300" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                                <div className="ml-3">
+                                                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                                                        {t('campaigns.recipientsValidMessage', { count: data.client_ids.length })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-4 p-4 rounded-md bg-yellow-50 dark:bg-yellow-900">
+                                            <div className="flex">
+                                                <div className="flex-shrink-0">
+                                                    <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                                    </svg>
+                                                </div>
+                                                <div className="ml-3">
+                                                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                                                        {t('campaigns.noRecipientsSelected')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Récapitulatif des clients sélectionnés */}
                                     {data.client_ids.length > 0 && (

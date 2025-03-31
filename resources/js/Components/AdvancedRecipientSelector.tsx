@@ -32,6 +32,7 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClients, setSelectedClients] = useState<number[]>([]);
     const [filterType, setFilterType] = useState('all');
+    const [showPreview, setShowPreview] = useState(false);
 
     // Filtrer les clients en fonction des critères sélectionnés
     useEffect(() => {
@@ -63,6 +64,9 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
         setSelectedClients(filteredClients.map(client => client.id));
         onSelectionChange(filteredClients.map(client => client.id));
     }, [selectedTags, searchTerm, filterType, clients]);
+
+    // Obtenir les détails des clients sélectionnés
+    const selectedClientsDetails = clients.filter(client => selectedClients.includes(client.id));
 
     return (
         <div className="space-y-4">
@@ -113,10 +117,53 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
                 </div>
             </div>
 
-            {/* Nombre de clients sélectionnés */}
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-                {selectedClients.length} {t('clients.selected')}
+            {/* Nombre de clients sélectionnés et bouton de prévisualisation */}
+            <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {selectedClients.length} {t('clients.selected')}
+                </div>
+                <button
+                    type="button"
+                    onClick={() => setShowPreview(!showPreview)}
+                    className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                    {showPreview ? t('campaigns.hideList') : t('campaigns.showList')}
+                </button>
             </div>
+
+            {/* Prévisualisation des clients sélectionnés */}
+            {showPreview && selectedClientsDetails.length > 0 && (
+                <div className="mt-4 border border-gray-200 rounded-md p-4 dark:border-gray-700">
+                    <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {t('campaigns.selectedRecipients')}
+                    </h5>
+                    <div className="max-h-60 overflow-y-auto">
+                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {selectedClientsDetails.slice(0, 50).map(client => (
+                                <li key={client.id} className="py-2 flex justify-between items-center">
+                                    <div className="text-sm text-gray-800 dark:text-gray-200">
+                                        {client.name} <span className="text-gray-500 dark:text-gray-400">({client.phone})</span>
+                                    </div>
+                                    {client.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1">
+                                            {client.tags.map(tag => (
+                                                <span key={tag.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                    {tag.name}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
+                            {selectedClientsDetails.length > 50 && (
+                                <li className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    {t('common.moreResults', { count: selectedClientsDetails.length - 50 })}
+                                </li>
+                            )}
+                        </ul>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

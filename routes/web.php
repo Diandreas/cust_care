@@ -13,6 +13,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\CampaignRetryController;
 use App\Http\Controllers\EventCalendarController;
+use App\Http\Controllers\ClientImportController;
 use App\Http\Middleware\CheckClientLimit;
 use App\Http\Middleware\EnsureUserHasActiveSubscription;
 use Illuminate\Foundation\Application;
@@ -66,7 +67,58 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::middleware(CheckClientLimit::class)->post('/clients/import', [App\Http\Controllers\ImportExportController::class, 'import'])->name('clients.import');
 
     // Route de suppression en masse des clients
-    Route::delete('/clients/bulk-destroy', [ClientController::class, 'bulkDestroy'])->name('clients.bulkDestroy');
+    Route::delete('/api/clients/bulk-delete', [ClientController::class, 'bulkDelete'])->name('clients.bulkDelete');
+
+    // Route pour l'envoi en masse de messages
+    Route::post('/messages/bulkSend', [ClientController::class, 'bulkSend'])->name('messages.bulkSend');
+
+    // Route pour la fusion de clients en double
+    Route::post('/api/clients/merge', function (\Illuminate\Http\Request $request) {
+        $request->validate([
+            'primary_id' => 'required|exists:clients,id',
+            'secondary_id' => 'required|exists:clients,id|different:primary_id'
+        ]);
+
+        $primaryId = $request->input('primary_id');
+        $secondaryId = $request->input('secondary_id');
+        
+        // Récupérer les clients
+        $primaryClient = \App\Models\Client::findOrFail($primaryId);
+        $secondaryClient = \App\Models\Client::findOrFail($secondaryId);
+        
+        // Vérifier que les deux clients appartiennent à l'utilisateur connecté
+        if ($primaryClient->user_id !== auth()->id() || $secondaryClient->user_id !== auth()->id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        // Fusionner les messages
+        \App\Models\Message::where('client_id', $secondaryId)
+            ->update(['client_id' => $primaryId]);
+        
+        // Fusionner les tags
+        $primaryTags = $primaryClient->tags()->pluck('tags.id')->toArray();
+        $secondaryTags = $secondaryClient->tags()->pluck('tags.id')->toArray();
+        $mergedTags = array_unique(array_merge($primaryTags, $secondaryTags));
+        $primaryClient->tags()->sync($mergedTags);
+        
+        // Copier les champs non vides du client secondaire vers le client primaire
+        $fieldsToCopy = ['email', 'birthday', 'address', 'notes'];
+        foreach ($fieldsToCopy as $field) {
+            if (empty($primaryClient->$field) && !empty($secondaryClient->$field)) {
+                $primaryClient->$field = $secondaryClient->$field;
+            }
+        }
+        $primaryClient->save();
+        
+        // Supprimer le client secondaire
+        $secondaryClient->delete();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Clients fusionnés avec succès',
+            'client' => $primaryClient->load('tags')
+        ]);
+    })->name('clients.merge');
 
     // Routes pour les visites clients
     Route::post('/clients/{client}/visit', [ClientController::class, 'recordVisit'])->name('clients.recordVisit');
@@ -163,6 +215,15 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// Routes pour les clients
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::resource('clients', ClientController::class);
+    Route::get('clients/export', [ClientController::class, 'export'])->name('clients.export');
+    Route::post('clients/import', [ClientController::class, 'import'])->name('clients.import');
+    Route::post('clients/import/simple', [ClientImportController::class, 'store'])->name('clients.import.simple');
+    Route::delete('api/clients/bulk-delete', [ClientController::class, 'bulkDelete']);
 });
 
 require __DIR__.'/auth.php';

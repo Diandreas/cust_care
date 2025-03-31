@@ -1,20 +1,45 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
-import Modal from '@/Components/Modal';
-import InputLabel from '@/Components/InputLabel';
-import TextInput from '@/Components/TextInput';
-import PrimaryButton from '@/Components/PrimaryButton';
-import SecondaryButton from '@/Components/SecondaryButton';
-import DangerButton from '@/Components/DangerButton';
-import Dropdown from '@/Components/Dropdown';
-import Checkbox from '@/Components/Checkbox';
-import { Transition } from '@headlessui/react';
-import { useToast } from '@/Utils/toast';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { Transition } from '@headlessui/react';
+
+// ShadCN UI Components
+import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
+import { Checkbox } from '@/Components/ui/checkbox';
+import { Textarea } from '@/Components/ui/textarea';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger
+} from '@/Components/ui/dialog';
+import {
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
+} from '@/Components/ui/dropdown-menu';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue
+} from '@/Components/ui/select';
+import { Card, CardContent, CardHeader } from '@/Components/ui/card';
+import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
+import { Badge } from '@/Components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/Components/ui/table';
+import { ScrollArea } from '@/Components/ui/scroll-area';
+import { Separator } from '@/Components/ui/separator';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+
+// Icons
+import {
+    Search, Filter, LayoutGrid, List, Plus, Upload, Download,
+    MoreHorizontal, Check, X, MessageSquare, Eye, Edit, Trash,
+    Phone, Mail, Calendar, Clock, RefreshCw, Tag, Info,
+    FileText, Save, MessageSquarePlus, Users
+} from 'lucide-react';
 
 interface Client {
     id: number;
@@ -78,13 +103,32 @@ export default function ClientsIndex({
     const [showImportModal, setShowImportModal] = useState(false);
     const [showExportModal, setShowExportModal] = useState(false);
     const [showBulkSmsModal, setShowBulkSmsModal] = useState(false);
-    const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [previewData, setPreviewData] = useState<any[]>([]);
-    const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
-    const { success, error } = useToast();
-    const [bulkSmsContent, setBulkSmsContent] = useState('');
+    const [showSimpleImportModal, setShowSimpleImportModal] = useState(false);
+    const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+    const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+    const [showSmsPreviewModal, setShowSmsPreviewModal] = useState(false);
     const [importLoading, setImportLoading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
+    const [previewData, setPreviewData] = useState<Record<string, string>[]>([]);
+    const [bulkSmsContent, setBulkSmsContent] = useState('');
+    const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+    const [contactsText, setContactsText] = useState('');
+    const [clientToDelete, setClientToDelete] = useState<number | null>(null);
+    const [clientsToDelete, setClientsToDelete] = useState<number[]>([]);
+    const [duplicateClients, setDuplicateClients] = useState<any[]>([]);
+    const [smsPreviewInfo, setSmsPreviewInfo] = useState({
+        characters: 0,
+        segments: 1
+    });
+
+    // Quick add form state
+    const [quickAddForm, setQuickAddForm] = useState({
+        name: '',
+        phone: '',
+        email: '',
+        tagIds: [] as number[]
+    });
 
     // État pour la recherche et les filtres
     const { data, setData, get, processing } = useForm({
@@ -96,7 +140,128 @@ export default function ClientsIndex({
         sort_direction: filters.sort_direction || 'asc',
     });
 
-    // Fonction d'analyse de fichier CSV simplifiée
+    // État pour la validation en temps réel du téléphone
+    const [phoneValidation, setPhoneValidation] = useState({
+        isValid: true,
+        formattedNumber: '',
+        errorType: '',
+        country: '',
+    });
+
+    // Fonction avancée pour valider et formater les numéros de téléphone
+    const validateAndFormatPhone = (phone: string) => {
+        // Réinitialiser la validation
+        const validation = {
+            isValid: false,
+            formattedNumber: '',
+            errorType: '',
+            country: '',
+        };
+
+        // Ignorer si vide
+        if (!phone.trim()) {
+            validation.isValid = true; // On ne veut pas montrer d'erreur pour un champ vide
+            setPhoneValidation(validation);
+            return validation;
+        }
+
+        // Nettoyage du numéro
+        const cleanedPhone = phone.replace(/\s+/g, '').replace(/[()-]/g, '');
+
+        // Détecter le format international
+        const isInternational = /^(\+|00)/.test(cleanedPhone);
+
+        // Tests spécifiques aux pays
+        if (isInternational) {
+            // Format international
+            if (/^\+237[6-9][0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'Cameroun';
+            } else if (/^\+33[1-9][0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'France';
+            } else if (/^\+[0-9]{10,14}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'International';
+            } else {
+                validation.errorType = 'format';
+            }
+        } else {
+            // Format local Cameroun: commence par 6 et a 9 chiffres
+            if (/^6[0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+237${cleanedPhone}`;
+                validation.country = 'Cameroun';
+            }
+            // Format local France: commence par 0 et a 10 chiffres
+            else if (/^0[1-9][0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+33${cleanedPhone.substring(1)}`;
+                validation.country = 'France';
+            } else {
+                // Déterminer le type d'erreur pour un message adapté
+                if (/^[0-9]+$/.test(cleanedPhone)) {
+                    validation.errorType = 'length';
+                } else {
+                    validation.errorType = 'characters';
+                }
+            }
+        }
+
+        setPhoneValidation(validation);
+        return validation;
+    };
+
+    // Detect duplicate clients
+    useEffect(() => {
+        const phoneMap = new Map();
+        const emailMap = new Map();
+        const potentialDuplicates = [];
+
+        for (const client of clients.data) {
+            if (client.phone) {
+                if (phoneMap.has(client.phone)) {
+                    potentialDuplicates.push({
+                        type: 'phone',
+                        value: client.phone,
+                        clients: [phoneMap.get(client.phone), client]
+                    });
+                } else {
+                    phoneMap.set(client.phone, client);
+                }
+            }
+
+            if (client.email) {
+                if (emailMap.has(client.email)) {
+                    potentialDuplicates.push({
+                        type: 'email',
+                        value: client.email,
+                        clients: [emailMap.get(client.email), client]
+                    });
+                } else {
+                    emailMap.set(client.email, client);
+                }
+            }
+        }
+
+        setDuplicateClients(potentialDuplicates);
+    }, [clients]);
+
+    // SMS preview calculations
+    useEffect(() => {
+        if (bulkSmsContent) {
+            const characters = bulkSmsContent.length;
+            const segments = Math.ceil(characters / 160);
+            setSmsPreviewInfo({ characters, segments });
+        } else {
+            setSmsPreviewInfo({ characters: 0, segments: 1 });
+        }
+    }, [bulkSmsContent]);
+
+    // Function to handle file analysis for import
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0] || null;
         setSelectedFile(file);
@@ -105,12 +270,12 @@ export default function ClientsIndex({
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
-                    // Analyse simple du CSV
+                    // Analyze CSV data
                     const text = event.target?.result as string;
                     const lines = text.split('\n');
                     const headers = lines[0].split(',').map(h => h.trim());
 
-                    // Mapping automatique des colonnes
+                    // Auto-map columns
                     const initialMapping: Record<string, string> = {};
                     headers.forEach(header => {
                         const normalizedHeader = header.toLowerCase();
@@ -131,7 +296,7 @@ export default function ClientsIndex({
                     });
                     setFieldMapping(initialMapping);
 
-                    // Prévisualisation des 5 premières lignes
+                    // Preview first 5 rows
                     const previewRows = [];
                     for (let i = 1; i < Math.min(6, lines.length); i++) {
                         if (lines[i].trim()) {
@@ -144,23 +309,22 @@ export default function ClientsIndex({
                         }
                     }
                     setPreviewData(previewRows);
-                } catch (error) {
-                    console.error('Error parsing file:', error);
-                    error(t('import.fileError'));
+                } catch (err) {
+                    console.error('Error parsing file:', err);
+                    toast.error(t('import.fileError'));
                 }
             };
             reader.readAsText(file);
         }
     };
 
-    // Fonction d'importation simplifiée
+    // Handle import submission
     const handleImport = () => {
         if (!selectedFile) {
-            error(t('import.fileRequired'));
+            toast.error(t('import.fileRequired'));
             return;
         }
 
-        // Montrer un indicateur de chargement
         setImportLoading(true);
 
         const formData = new FormData();
@@ -169,16 +333,14 @@ export default function ClientsIndex({
         formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
 
         axios.post(route('clients.import'), formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            }
+            headers: { 'Content-Type': 'multipart/form-data' }
         })
             .then(response => {
                 setImportLoading(false);
-                success(t('import.success'));
+                toast.success(t('import.success'));
                 setShowImportModal(false);
 
-                // Actualiser la liste sans rechargement complet
+                // Refresh without full page reload
                 get(route('clients.index'), {
                     preserveState: true,
                     only: ['clients', 'stats']
@@ -188,35 +350,155 @@ export default function ClientsIndex({
                 setImportLoading(false);
 
                 if (err.response && err.response.status === 403) {
-                    error(t('subscription.limit.upgradeRequired'));
+                    toast.error(t('subscription.limit.upgradeRequired'));
                 } else {
-                    error(t('common.importError', {
+                    toast.error(t('common.importError', {
                         details: err.response?.data?.message || t('common.unknownError')
                     }));
                 }
             });
     };
 
-    // Fonction d'exportation simplifiée sans rechargement de page
+    // Handle simple text import (name + phone)
+    const handleSimpleImport = () => {
+        if (!contactsText.trim()) {
+            toast.error(t('import.textRequired'));
+            return;
+        }
+
+        setImportLoading(true);
+
+        const lines = contactsText.trim().split('\n');
+        const contacts = lines.map(line => {
+            // Try different delimiters (space, comma, semicolon)
+            let parts: string[];
+            if (line.includes(',')) {
+                parts = line.split(',');
+            } else if (line.includes(';')) {
+                parts = line.split(';');
+            } else {
+                // Split by last space to take everything before as name
+                const lastSpaceIndex = line.lastIndexOf(' ');
+                if (lastSpaceIndex > 0) {
+                    parts = [
+                        line.substring(0, lastSpaceIndex),
+                        line.substring(lastSpaceIndex + 1)
+                    ];
+                } else {
+                    parts = line.split(' ');
+                }
+            }
+
+            const name = parts[0]?.trim() || '';
+            const phone = parts[1]?.trim().replace(/\s+/g, '') || '';
+
+            return { name, phone };
+        }).filter(c => c.name && c.phone); // Filter incomplete lines
+
+        if (contacts.length === 0) {
+            setImportLoading(false);
+            toast.error(t('import.noValidContacts'));
+            return;
+        }
+
+        axios.post(route('clients.import.simple'), {
+            contacts: JSON.stringify(contacts)
+        })
+            .then(response => {
+                setImportLoading(false);
+                toast.success(t('import.success', { count: response.data.imported || 0 }));
+                setShowSimpleImportModal(false);
+                setContactsText('');
+
+                // Refresh client list
+                get(route('clients.index'), {
+                    preserveState: true,
+                    only: ['clients', 'stats']
+                });
+            })
+            .catch(err => {
+                setImportLoading(false);
+
+                if (err.response && err.response.status === 403) {
+                    toast.error(t('subscription.limit.upgradeRequired'));
+                } else {
+                    toast.error(t('common.importError', {
+                        details: err.response?.data?.message || t('common.unknownError')
+                    }));
+                }
+            });
+    };
+
+    // Handle quickAddForm submission with improved phone validation
+    const handleQuickAdd = () => {
+        if (!quickAddForm.name || !quickAddForm.phone) {
+            toast.error(t('clients.missingRequiredFields'));
+            return;
+        }
+
+        // Validation du numéro de téléphone
+        const phoneCheck = validateAndFormatPhone(quickAddForm.phone);
+        if (!phoneCheck.isValid) {
+            toast.error(t('clients.invalidPhoneFormat'));
+            return;
+        }
+
+        // Utiliser le numéro formaté
+        const normalizedPhone = phoneCheck.formattedNumber;
+
+        axios.post(route('clients.store'), {
+            name: quickAddForm.name,
+            phone: normalizedPhone,
+            email: quickAddForm.email,
+            tag_ids: quickAddForm.tagIds
+        })
+            .then(response => {
+                toast.success(t('clients.added'));
+                setShowQuickAddModal(false);
+                setQuickAddForm({
+                    name: '',
+                    phone: '',
+                    email: '',
+                    tagIds: []
+                });
+
+                // Refresh the client list
+                get(route('clients.index'), {
+                    preserveState: true,
+                    only: ['clients', 'stats']
+                });
+            })
+            .catch(err => {
+                if (err.response && err.response.status === 403) {
+                    toast.error(t('subscription.limit.upgradeRequired'));
+                } else {
+                    toast.error(t('common.error', {
+                        details: err.response?.data?.message || t('common.unknownError')
+                    }));
+                }
+            });
+    };
+
+    // Export clients (CSV or Excel)
     const handleExport = (format: 'csv' | 'excel') => {
-        // Créer une URL avec les paramètres d'exportation
+        // Create URL with export parameters
         const params = new URLSearchParams();
 
-        // Ajouter les filtres actuels
+        // Add current filters
         if (data.search) params.append('search', data.search);
         if (data.tag_id) params.append('tag_id', data.tag_id.toString());
         if (data.date_range) params.append('date_range', data.date_range);
         if (data.birthday_month) params.append('birthday_month', data.birthday_month.toString());
 
-        // Si des clients sont sélectionnés, les exporter spécifiquement
+        // If clients are selected, export only those
         if (selectedClients.length > 0) {
             selectedClients.forEach(id => params.append('selected[]', id.toString()));
         }
 
-        // Ajouter le format d'exportation
+        // Add export format
         params.append('format', format);
 
-        // Créer un lien invisible, cliquer dessus, puis le supprimer
+        // Create invisible link, click it, then remove it
         const link = document.createElement('a');
         link.href = `${route('clients.export')}?${params.toString()}`;
         link.setAttribute('download', `clients_${new Date().toISOString().split('T')[0]}.${format}`);
@@ -225,11 +507,12 @@ export default function ClientsIndex({
         link.click();
         document.body.removeChild(link);
 
-        // Fermer le modal
+        // Close modal and show success message
         setShowExportModal(false);
-        success(t('export.success'));
+        toast.success(t('export.success'));
     };
 
+    // Handle search form submission
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         get(route('clients.index'), {
@@ -238,15 +521,18 @@ export default function ClientsIndex({
         });
     };
 
+    // Format date for display
     const formatDate = (dateString: string | null) => {
         if (!dateString) return '-';
         return new Date(dateString).toLocaleDateString();
     };
 
+    // Format phone number for display
     const formatPhoneNumber = (phone: string) => {
         return phone?.replace(/(\d{2})(?=\d)/g, '$1 ');
     };
 
+    // Toggle all clients selection
     const toggleAllClients = (checked: boolean) => {
         if (checked) {
             setSelectedClients(clients.data.map(client => client.id));
@@ -255,6 +541,7 @@ export default function ClientsIndex({
         }
     };
 
+    // Toggle single client selection
     const toggleClient = (clientId: number) => {
         if (selectedClients.includes(clientId)) {
             setSelectedClients(selectedClients.filter(id => id !== clientId));
@@ -263,37 +550,87 @@ export default function ClientsIndex({
         }
     };
 
+    // Handle bulk actions (delete, SMS)
     const handleBulkAction = (action: string) => {
-        if (selectedClients.length === 0) {
-            error(t('clients.noClientsSelected'));
-            return;
-        }
-
-        switch (action) {
-            case 'sms':
-                setShowBulkSmsModal(true);
-                break;
-            case 'delete':
-                if (confirm(t('clients.confirmDelete', { count: selectedClients.length }))) {
-                    axios.delete('/api/clients/bulk-delete', {
-                        data: { clients: selectedClients }
-                    })
-                        .then(response => {
-                            success(t('clients.deleteSuccess', { count: selectedClients.length }));
-                            get(route('clients.index'), {
-                                preserveState: true,
-                                only: ['clients', 'stats']
-                            });
-                            setSelectedClients([]);
-                        })
-                        .catch(err => {
-                            error(t('common.error'));
-                        });
-                }
-                break;
+        if (action === 'delete') {
+            if (selectedClients.length === 0) {
+                toast.error(t('clients.noClientsSelected'));
+                return;
+            }
+            setClientsToDelete(selectedClients);
+            setShowDeleteConfirmModal(true);
+        } else if (action === 'sms') {
+            if (selectedClients.length === 0) {
+                toast.error(t('clients.noClientsSelected'));
+                return;
+            }
+            setShowBulkSmsModal(true);
         }
     };
 
+    // Handle client deletion confirmation
+    const handleDeleteConfirm = () => {
+        if (clientToDelete) {
+            // Delete single client
+            axios.post(route('clients.destroy', clientToDelete), {
+                _method: 'DELETE'
+            })
+                .then(response => {
+                    // Reset states first
+                    setClientToDelete(null);
+                    setShowDeleteConfirmModal(false);
+
+                    // Show success message
+                    toast.success(t('clients.deleteSuccess', { count: 1 }));
+
+                    // Refresh data
+                    setTimeout(() => {
+                        get(route('clients.index'), {
+                            preserveState: true,
+                            only: ['clients', 'stats']
+                        });
+                    }, 100);
+                })
+                .catch(err => {
+                    // Reset states on error
+                    setClientToDelete(null);
+                    setShowDeleteConfirmModal(false);
+                    toast.error(t('common.error'));
+                });
+        } else if (clientsToDelete.length > 0) {
+            // Bulk delete clients
+            axios.post('/api/clients/bulk-delete', {
+                _method: 'DELETE',
+                clients: clientsToDelete
+            })
+                .then(response => {
+                    // Reset states first
+                    setSelectedClients([]);
+                    setClientsToDelete([]);
+                    setShowDeleteConfirmModal(false);
+
+                    // Show success message
+                    toast.success(t('clients.deleteSuccess', { count: clientsToDelete.length }));
+
+                    // Refresh data
+                    setTimeout(() => {
+                        get(route('clients.index'), {
+                            preserveState: true,
+                            only: ['clients', 'stats']
+                        });
+                    }, 100);
+                })
+                .catch(err => {
+                    // Reset states on error
+                    setSelectedClients([]);
+                    setClientsToDelete([]);
+                    setShowDeleteConfirmModal(false);
+                    toast.error(t('common.error'));
+                });
+        }
+    };
+
+    // Handle sort change
     const handleSortChange = (field: string) => {
         setData(prevData => {
             const newDirection = prevData.sort_by === field && prevData.sort_direction === 'asc' ? 'desc' : 'asc';
@@ -309,9 +646,10 @@ export default function ClientsIndex({
         });
     };
 
+    // Send bulk SMS
     const handleBulkSms = () => {
         if (!bulkSmsContent.trim()) {
-            error(t('sms.contentRequired'));
+            toast.error(t('sms.contentRequired'));
             return;
         }
 
@@ -320,20 +658,20 @@ export default function ClientsIndex({
             content: bulkSmsContent,
         })
             .then(response => {
-                success(t('sms.sendSuccess'));
+                toast.success(t('sms.sendSuccess'));
                 setShowBulkSmsModal(false);
                 setBulkSmsContent('');
             })
             .catch(err => {
                 if (err.response && err.response.status === 403) {
-                    error(t('subscription.limit.upgradeRequired'));
+                    toast.error(t('subscription.limit.upgradeRequired'));
                 } else {
-                    error(t('common.error', { details: err.response?.data?.message || t('common.unknownError') }));
+                    toast.error(t('common.error', { details: err.response?.data?.message || t('common.unknownError') }));
                 }
             });
     };
 
-    // Fonction pour obtenir l'initiale du nom du client (pour l'avatar)
+    // Get client initials for avatar
     const getInitials = (name: string) => {
         return name
             .split(' ')
@@ -343,11 +681,11 @@ export default function ClientsIndex({
             .substring(0, 2);
     };
 
-    // Générer une couleur d'arrière-plan d'avatar basée sur le nom
+    // Generate avatar background color based on name
     const getAvatarColor = (name: string) => {
         const colors = [
-            'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500',
-            'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'
+            'bg-blue-500', 'bg-indigo-500', 'bg-cyan-500', 'bg-purple-500',
+            'bg-green-500', 'bg-teal-500', 'bg-amber-500', 'bg-rose-500'
         ];
         const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
         return colors[index];
@@ -362,220 +700,209 @@ export default function ClientsIndex({
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    {/* Statistiques clients avec design amélioré */}
+                    {/* Stats Cards - Blue Theme */}
                     <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md transition-all hover:shadow-lg dark:bg-gray-800">
-                            <div className="flex items-center">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-4">
-                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.totalClients')}</div>
-                                    <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                                        {stats.totalClients.toLocaleString()}
-                                        <span className="ml-2 text-sm font-medium text-green-500 dark:text-green-400">
-                                            +{stats.newClientsThisMonth} {t('stats.thisMonth')}
-                                        </span>
+                        <Card className="overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                            <CardContent className="p-4">
+                                <div className="flex items-center">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 shadow-lg shadow-blue-500/20 dark:shadow-blue-600/30">
+                                        <Users className="h-6 w-6 text-white" />
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md transition-all hover:shadow-lg dark:bg-gray-800">
-                            <div className="flex items-center">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-4">
-                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.activeClients')}</div>
-                                    <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                                        {stats.activeClientsLast30Days.toLocaleString()}
-                                        <span className="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
-                                            {Math.round((stats.activeClientsLast30Days / stats.totalClients) * 100)}% {t('stats.ofTotal')}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md transition-all hover:shadow-lg dark:bg-gray-800">
-                            <div className="flex items-center">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-4">
-                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.smsSent')}</div>
-                                    <div className="text-2xl font-semibold text-gray-900 dark:text-white">
-                                        {stats.totalSmsSent.toLocaleString()}
-                                        <span className="ml-2 text-sm font-medium text-blue-500 dark:text-blue-400">
-                                            {subscription.smsBalance} {t('stats.smsRemaining')}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="overflow-hidden rounded-lg bg-white p-4 shadow-md transition-all hover:shadow-lg dark:bg-gray-800">
-                            <div className="flex items-center">
-                                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/30">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-4">
-                                    <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.subscription')}</div>
-                                    <div className="text-xl font-semibold text-gray-900 dark:text-white">
-                                        {subscription.plan}
-                                        <div className="mt-1 text-sm font-medium">
-                                            <span className={`${subscription.clientsCount > subscription.clientsLimit * 0.9 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
-                                                {subscription.clientsCount}/{subscription.clientsLimit} {t('stats.clientsUsed')}
+                                    <div className="ml-4">
+                                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.totalClients')}</div>
+                                        <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                                            {stats.totalClients.toLocaleString()}
+                                            <span className="ml-2 text-sm font-medium text-blue-500 dark:text-blue-400">
+                                                +{stats.newClientsThisMonth} {t('stats.thisMonth')}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                            <CardContent className="p-4">
+                                <div className="flex items-center">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 shadow-lg shadow-blue-500/20 dark:shadow-blue-600/30">
+                                        <Users className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div className="ml-4">
+                                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.activeClients')}</div>
+                                        <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                                            {stats.activeClientsLast30Days.toLocaleString()}
+                                            <span className="ml-2 text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                {Math.round((stats.activeClientsLast30Days / stats.totalClients) * 100)}% {t('stats.ofTotal')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                            <CardContent className="p-4">
+                                <div className="flex items-center">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 shadow-lg shadow-blue-500/20 dark:shadow-blue-600/30">
+                                        <MessageSquare className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div className="ml-4">
+                                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.smsSent')}</div>
+                                        <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                                            {stats.totalSmsSent.toLocaleString()}
+                                            <span className="ml-2 text-sm font-medium text-blue-500 dark:text-blue-400">
+                                                {subscription.smsBalance} {t('stats.smsRemaining')}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                            <CardContent className="p-4">
+                                <div className="flex items-center">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 shadow-lg shadow-blue-500/20 dark:shadow-blue-600/30">
+                                        <Shield className="h-6 w-6 text-white" />
+                                    </div>
+                                    <div className="ml-4">
+                                        <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.subscription')}</div>
+                                        <div className="text-xl font-semibold text-gray-900 dark:text-white">
+                                            {subscription.plan}
+                                            <div className="mt-1 text-sm font-medium">
+                                                <span className={`${subscription.clientsCount > subscription.clientsLimit * 0.9 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                                                    {subscription.clientsCount}/{subscription.clientsLimit} {t('stats.clientsUsed')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
 
+                    {/* Alert for duplicates */}
+                    {duplicateClients.length > 0 && (
+                        <Alert className="mb-6 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                            <Info className="h-4 w-4" />
+                            <AlertDescription className="flex items-center justify-between">
+                                <span>{duplicateClients.length} {t('clients.possibleDuplicates')}</span>
+                                <Button
+                                    variant="link"
+                                    className="text-blue-600 dark:text-blue-400"
+                                    onClick={() => { }} // Add handler for duplicates management
+                                >
+                                    {t('clients.manageDuplicates')}
+                                </Button>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+
                     <div className="mb-6 space-y-4">
-                        {/* Barre d'actions et recherche avec design amélioré */}
+                        {/* Search and actions bar */}
                         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <div className="flex flex-1 flex-col gap-2 sm:flex-row">
                                 <form onSubmit={handleSearch} className="flex w-full gap-2 md:w-auto md:flex-1">
                                     <div className="relative flex-grow">
-                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                            <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        <input
-                                            type="text"
+                                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <Input
                                             value={data.search}
                                             onChange={(e) => setData('search', e.target.value)}
                                             placeholder={t('common.searchClients')}
-                                            className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-4 text-gray-900 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                                            className="w-full pl-9 dark:bg-slate-800 dark:text-gray-100"
                                         />
                                     </div>
-                                    <button
+                                    <Button
                                         type="submit"
                                         disabled={processing}
-                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                                        className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
                                     >
                                         {t('common.search')}
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
+                                        variant="outline"
                                         type="button"
                                         onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-                                        className="flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                                        className="flex items-center justify-center gap-2 border-gray-300 shadow-sm dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                                        </svg>
+                                        <Filter className="h-4 w-4" />
                                         {t('common.filters')}
                                         {(data.tag_id || data.date_range || data.birthday_month) && (
-                                            <span className="ml-2 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-xs text-white">
+                                            <Badge className="ml-1 h-5 w-5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 p-0 text-center text-xs">
                                                 {[data.tag_id, data.date_range, data.birthday_month].filter(Boolean).length}
-                                            </span>
+                                            </Badge>
                                         )}
-                                    </button>
+                                    </Button>
                                 </form>
                                 <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => setViewMode('table')}
-                                        className={`flex items-center rounded-lg px-4 py-2 ${viewMode === 'table' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200'}`}
+                                    <Tabs
+                                        value={viewMode}
+                                        onValueChange={(val) => setViewMode(val as 'table' | 'grid')}
+                                        className="w-auto"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                                        </svg>
-                                        {t('common.tableView')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setViewMode('grid')}
-                                        className={`flex items-center rounded-lg px-4 py-2 ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-200' : 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-200'}`}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                                        </svg>
-                                        {t('common.gridView')}
-                                    </button>
+                                        <TabsList className="grid w-full grid-cols-2">
+                                            <TabsTrigger value="table" className="flex items-center gap-2">
+                                                <List className="h-4 w-4" />
+                                                {t('common.tableView')}
+                                            </TabsTrigger>
+                                            <TabsTrigger value="grid" className="flex items-center gap-2">
+                                                <LayoutGrid className="h-4 w-4" />
+                                                {t('common.gridView')}
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    </Tabs>
                                 </div>
                             </div>
 
                             <div className="flex flex-wrap gap-2">
+                                <Button
+                                    onClick={() => setShowQuickAddModal(true)}
+                                    className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    {t('clients.quickAdd')}
+                                </Button>
+
                                 <Link
                                     href={route('clients.create')}
-                                    className="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                                    className="inline-flex items-center justify-center rounded-lg border border-blue-500 bg-white px-4 py-2 text-sm font-medium text-blue-600 shadow-sm transition-all hover:bg-blue-50 hover:shadow-md dark:border-blue-600 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700"
                                 >
-                                    <svg
-                                        className="-ml-1 mr-2 h-5 w-5"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                        />
-                                    </svg>
-                                    {t('common.addClient')}
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    {t('common.addDetailed')}
                                 </Link>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowImportModal(true)}
-                                    className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
-                                >
-                                    <svg
-                                        className="-ml-1 mr-2 h-5 w-5"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"
-                                        />
-                                    </svg>
-                                    {t('common.import')}
-                                </button>
-                                <button
-                                    type="button"
+
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className="flex items-center justify-center gap-2 border-gray-300 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                            {t('common.import')}
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onSelect={() => setShowImportModal(true)}>
+                                            {t('import.fromCSV')}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setShowSimpleImportModal(true)}>
+                                            {t('import.simpleFormat')}
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center justify-center gap-2 border-gray-300 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
                                     onClick={() => setShowExportModal(true)}
-                                    className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
                                 >
-                                    <svg
-                                        className="-ml-1 mr-2 h-5 w-5"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                                        />
-                                    </svg>
+                                    <Download className="h-4 w-4" />
                                     {t('common.export')}
-                                </button>
+                                </Button>
                             </div>
                         </div>
 
-                        {/* Panneau de filtres avancés avec design amélioré */}
+                        {/* Filters panel */}
                         <Transition
                             show={showFiltersPanel}
                             enter="transition ease-out duration-200"
@@ -585,251 +912,207 @@ export default function ClientsIndex({
                             leaveFrom="opacity-100 translate-y-0"
                             leaveTo="opacity-0 translate-y-1"
                         >
-                            <div className="mt-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('filters.tags')}
-                                        </label>
-                                        <select
-                                            value={data.tag_id}
-                                            onChange={(e) => setData('tag_id', e.target.value)}
-                                            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        >
-                                            <option value="">{t('common.all')}</option>
-                                            {tags.map((tag) => (
-                                                <option key={tag.id} value={tag.id}>
-                                                    {tag.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('filters.dateRange')}
-                                        </label>
-                                        <select
-                                            value={data.date_range}
-                                            onChange={(e) => setData('date_range', e.target.value)}
-                                            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        >
-                                            <option value="">{t('common.all')}</option>
-                                            <option value="today">{t('filters.today')}</option>
-                                            <option value="this_week">{t('filters.thisWeek')}</option>
-                                            <option value="this_month">{t('filters.thisMonth')}</option>
-                                            <option value="last_30_days">{t('filters.last30Days')}</option>
-                                            <option value="this_year">{t('filters.thisYear')}</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('filters.birthdayMonth')}
-                                        </label>
-                                        <select
-                                            value={data.birthday_month}
-                                            onChange={(e) => setData('birthday_month', e.target.value)}
-                                            className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                        >
-                                            <option value="">{t('common.all')}</option>
-                                            <option value="1">{t('months.january')}</option>
-                                            <option value="2">{t('months.february')}</option>
-                                            <option value="3">{t('months.march')}</option>
-                                            <option value="4">{t('months.april')}</option>
-                                            <option value="5">{t('months.may')}</option>
-                                            <option value="6">{t('months.june')}</option>
-                                            <option value="7">{t('months.july')}</option>
-                                            <option value="8">{t('months.august')}</option>
-                                            <option value="9">{t('months.september')}</option>
-                                            <option value="10">{t('months.october')}</option>
-                                            <option value="11">{t('months.november')}</option>
-                                            <option value="12">{t('months.december')}</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('filters.sortBy')}
-                                        </label>
-                                        <div className="mt-1 flex rounded-lg shadow-sm">
+                            <Card className="mt-2 dark:border-gray-700 dark:bg-slate-800">
+                                <CardContent className="pt-6">
+                                    <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                        <div>
+                                            <Label htmlFor="tag_filter" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                {t('filters.tags')}
+                                            </Label>
                                             <select
-                                                value={data.sort_by}
-                                                onChange={(e) => setData('sort_by', e.target.value)}
-                                                className="block w-full rounded-l-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                value={data.tag_id}
+                                                onChange={(e) => setData('tag_id', e.target.value)}
+                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             >
-                                                <option value="name">{t('common.name')}</option>
-                                                <option value="created_at">{t('common.dateAdded')}</option>
-                                                <option value="last_contact">{t('common.lastContact')}</option>
-                                                <option value="birthday">{t('common.birthday')}</option>
-                                                <option value="total_sms">{t('common.totalSms')}</option>
+                                                <option value="">{t('common.all')}</option>
+                                                {tags.map((tag) => (
+                                                    <option key={tag.id} value={tag.id.toString()}>
+                                                        {tag.name}
+                                                    </option>
+                                                ))}
                                             </select>
-                                            <button
-                                                type="button"
-                                                onClick={() => setData('sort_direction', data.sort_direction === 'asc' ? 'desc' : 'asc')}
-                                                className="inline-flex items-center rounded-r-lg border border-l-0 border-gray-300 bg-gray-50 px-3 text-gray-500 dark:border-gray-600 dark:bg-gray-600 dark:text-gray-200"
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="date_range" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                {t('filters.dateRange')}
+                                            </Label>
+                                            <select
+                                                value={data.date_range}
+                                                onChange={(e) => setData('date_range', e.target.value)}
+                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                             >
-                                                {data.sort_direction === 'asc' ? (
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                                                    </svg>
-                                                )}
-                                            </button>
+                                                <option value="">{t('common.all')}</option>
+                                                <option value="today">{t('filters.today')}</option>
+                                                <option value="this_week">{t('filters.thisWeek')}</option>
+                                                <option value="this_month">{t('filters.thisMonth')}</option>
+                                                <option value="last_30_days">{t('filters.last30Days')}</option>
+                                                <option value="this_year">{t('filters.thisYear')}</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="birthday_month" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                {t('filters.birthdayMonth')}
+                                            </Label>
+                                            <select
+                                                value={data.birthday_month}
+                                                onChange={(e) => setData('birthday_month', e.target.value)}
+                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                            >
+                                                <option value="">{t('common.all')}</option>
+                                                <option value="1">{t('months.january')}</option>
+                                                <option value="2">{t('months.february')}</option>
+                                                <option value="3">{t('months.march')}</option>
+                                                <option value="4">{t('months.april')}</option>
+                                                <option value="5">{t('months.may')}</option>
+                                                <option value="6">{t('months.june')}</option>
+                                                <option value="7">{t('months.july')}</option>
+                                                <option value="8">{t('months.august')}</option>
+                                                <option value="9">{t('months.september')}</option>
+                                                <option value="10">{t('months.october')}</option>
+                                                <option value="11">{t('months.november')}</option>
+                                                <option value="12">{t('months.december')}</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="sort_by" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                {t('filters.sortBy')}
+                                            </Label>
+                                            <div className="mt-1 flex rounded-md shadow-sm">
+                                                <Select
+                                                    value={data.sort_by}
+                                                    onValueChange={(val) => setData('sort_by', val)}
+                                                >
+                                                    <SelectTrigger className="rounded-r-none dark:border-gray-600 dark:bg-slate-700 dark:text-white">
+                                                        <SelectValue placeholder={t('common.name')} />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="name">{t('common.name')}</SelectItem>
+                                                        <SelectItem value="created_at">{t('common.dateAdded')}</SelectItem>
+                                                        <SelectItem value="last_contact">{t('common.lastContact')}</SelectItem>
+                                                        <SelectItem value="birthday">{t('common.birthday')}</SelectItem>
+                                                        <SelectItem value="total_sms">{t('common.totalSms')}</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setData('sort_direction', data.sort_direction === 'asc' ? 'desc' : 'asc')}
+                                                    className="rounded-l-none border border-l-0 dark:border-gray-600 dark:bg-slate-600 dark:text-gray-200"
+                                                >
+                                                    {data.sort_direction === 'asc' ? (
+                                                        <ArrowDownAZ className="h-4 w-4" />
+                                                    ) : (
+                                                        <ArrowUpAZ className="h-4 w-4" />
+                                                    )}
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex justify-end space-x-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setData({
-                                                search: '',
-                                                tag_id: '',
-                                                date_range: '',
-                                                birthday_month: '',
-                                                sort_by: 'name',
-                                                sort_direction: 'asc',
-                                            });
-                                            get(route('clients.index'), {
-                                                preserveState: true,
-                                                replace: true,
-                                            });
-                                        }}
-                                        className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                    >
-                                        {t('common.resetFilters')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            get(route('clients.index'), {
-                                                preserveState: true,
-                                                replace: true,
-                                            });
-                                        }}
-                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
-                                    >
-                                        {t('common.applyFilters')}
-                                    </button>
-                                </div>
-                            </div>
+                                    <div className="flex justify-end space-x-3">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => {
+                                                setData({
+                                                    search: '',
+                                                    tag_id: '',
+                                                    date_range: '',
+                                                    birthday_month: '',
+                                                    sort_by: 'name',
+                                                    sort_direction: 'asc',
+                                                });
+                                                get(route('clients.index'), {
+                                                    preserveState: true,
+                                                    replace: true,
+                                                });
+                                            }}
+                                            className="dark:border-gray-600 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
+                                        >
+                                            {t('common.resetFilters')}
+                                        </Button>
+                                        <Button
+                                            onClick={() => {
+                                                get(route('clients.index'), {
+                                                    preserveState: true,
+                                                    replace: true,
+                                                });
+                                            }}
+                                            className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                                        >
+                                            {t('common.applyFilters')}
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </Transition>
 
-                        {/* Actions de lot si clients sélectionnés avec design amélioré */}
+                        {/* Bulk action bar */}
                         {selectedClients.length > 0 && (
-                            <div className="sticky top-20 z-10 mt-2 rounded-lg bg-indigo-50 p-4 shadow-sm transition-all dark:bg-indigo-900/40">
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                    <div className="flex items-center text-indigo-700 dark:text-indigo-200">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
+                            <Card className="sticky top-20 z-10 mt-2 bg-gradient-to-r from-blue-50 to-blue-100 shadow-md transition-all dark:from-blue-900/30 dark:to-blue-800/30 dark:shadow-blue-900/20">
+                                <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                                    <div className="flex items-center text-blue-700 dark:text-blue-300">
+                                        <Check className="mr-2 h-5 w-5" />
                                         <span className="font-medium">
                                             {selectedClients.length} {t('clients.selectedClients')}
                                         </span>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        <button
-                                            type="button"
+                                        <Button
                                             onClick={() => handleBulkAction('sms')}
-                                            className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                                            className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
                                         >
-                                            <svg
-                                                className="mr-2 h-4 w-4"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-                                                />
-                                            </svg>
+                                            <MessageSquare className="mr-2 h-4 w-4" />
                                             {t('clients.sendMessage')}
-                                        </button>
-                                        <Dropdown>
-                                            <Dropdown.Trigger>
-                                                <button
-                                                    type="button"
-                                                    className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
                                                 >
                                                     {t('common.moreActions')}
-                                                    <svg
-                                                        className="ml-2 -mr-0.5 h-4 w-4"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        viewBox="0 0 20 20"
-                                                        fill="currentColor"
-                                                        aria-hidden="true"
-                                                    >
-                                                        <path
-                                                            fillRule="evenodd"
-                                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                            clipRule="evenodd"
-                                                        />
-                                                    </svg>
-                                                </button>
-                                            </Dropdown.Trigger>
-                                            <Dropdown.Content width="48">
-                                                <button
-                                                    className="block w-full px-4 py-2 text-left text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                    onClick={() => setShowExportModal(true)}
-                                                >
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem onSelect={() => setShowExportModal(true)}>
                                                     {t('clients.exportSelected')}
-                                                </button>
-                                                <button
-                                                    className="block w-full px-4 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                    onClick={() => handleBulkAction('delete')}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onSelect={() => handleBulkAction('delete')}
+                                                    className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400"
                                                 >
                                                     {t('clients.deleteSelected')}
-                                                </button>
-                                            </Dropdown.Content>
-                                        </Dropdown>
-                                        <button
-                                            type="button"
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                        <Button
+                                            variant="outline"
                                             onClick={() => setSelectedClients([])}
-                                            className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                                            className="dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
                                         >
-                                            <svg
-                                                className="mr-2 h-4 w-4"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M6 18L18 6M6 6l12 12"
-                                                />
-                                            </svg>
+                                            <X className="mr-2 h-4 w-4" />
                                             {t('common.cancel')}
-                                        </button>
+                                        </Button>
                                     </div>
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
                         )}
                     </div>
 
-                    {/* Vue en tableau améliorée */}
+                    {/* Table View */}
                     {viewMode === 'table' && (
-                        <div className="overflow-hidden rounded-lg bg-white shadow-sm dark:bg-gray-800">
+                        <Card className="overflow-hidden shadow-md dark:bg-slate-800">
                             <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead className="bg-gray-50 dark:bg-gray-700">
-                                        <tr>
-                                            <th scope="col" className="w-10 px-6 py-3">
+                                <Table>
+                                    <TableHeader className="bg-gray-50 dark:bg-slate-700">
+                                        <TableRow>
+                                            <TableHead className="w-10 px-6">
                                                 <Checkbox
                                                     checked={clients.data.length > 0 && selectedClients.length === clients.data.length}
-                                                    onChange={(e) => toggleAllClients(e.target.checked)}
+                                                    onCheckedChange={toggleAllClients}
                                                 />
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 cursor-pointer"
+                                            </TableHead>
+                                            <TableHead
+                                                className="px-6 cursor-pointer"
                                                 onClick={() => handleSortChange('name')}
                                             >
                                                 <div className="flex items-center">
@@ -840,19 +1123,12 @@ export default function ClientsIndex({
                                                         </span>
                                                     )}
                                                 </div>
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                {t('common.phone')}
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                {t('common.email')}
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                {t('common.tags')}
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 cursor-pointer"
+                                            </TableHead>
+                                            <TableHead className="px-6">{t('common.phone')}</TableHead>
+                                            <TableHead className="px-6">{t('common.email')}</TableHead>
+                                            <TableHead className="px-6">{t('common.tags')}</TableHead>
+                                            <TableHead
+                                                className="px-6 cursor-pointer"
                                                 onClick={() => handleSortChange('birthday')}
                                             >
                                                 <div className="flex items-center">
@@ -863,10 +1139,9 @@ export default function ClientsIndex({
                                                         </span>
                                                     )}
                                                 </div>
-                                            </th>
-                                            <th
-                                                scope="col"
-                                                className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300 cursor-pointer"
+                                            </TableHead>
+                                            <TableHead
+                                                className="px-6 cursor-pointer"
                                                 onClick={() => handleSortChange('last_contact')}
                                             >
                                                 <div className="flex items-center">
@@ -877,134 +1152,133 @@ export default function ClientsIndex({
                                                         </span>
                                                     )}
                                                 </div>
-                                            </th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
-                                                {t('common.actions')}
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                                            </TableHead>
+                                            <TableHead className="px-6">{t('common.actions')}</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {clients.data.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={8} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                            <TableRow>
+                                                <TableCell colSpan={8} className="h-96 text-center">
                                                     <div className="flex flex-col items-center">
-                                                        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                                        </svg>
+                                                        <Users className="h-12 w-12 text-gray-400" />
                                                         <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('clients.noClients')}</h3>
                                                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('clients.noClientsDescription')}</p>
                                                         <div className="mt-6">
                                                             <Link
                                                                 href={route('clients.create')}
-                                                                className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                                                className="inline-flex items-center rounded-md border border-transparent bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:shadow-blue-600/30"
                                                             >
-                                                                <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                                                                </svg>
+                                                                <Plus className="mr-2 h-4 w-4" />
                                                                 {t('common.addClient')}
                                                             </Link>
                                                         </div>
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                         ) : (
                                             clients.data.map((client) => (
-                                                <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                                                    <td className="whitespace-nowrap px-6 py-4">
+                                                <TableRow key={client.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
+                                                    <TableCell className="px-6">
                                                         <Checkbox
                                                             checked={selectedClients.includes(client.id)}
-                                                            onChange={() => toggleClient(client.id)}
+                                                            onCheckedChange={() => toggleClient(client.id)}
                                                         />
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4">
+                                                    </TableCell>
+                                                    <TableCell className="px-6">
                                                         <Link
                                                             href={route('clients.show', client.id)}
                                                             className="flex items-center"
                                                         >
-                                                            <div className={`flex h-10 w-10 items-center justify-center rounded-full text-white ${getAvatarColor(client.name)}`}>
-                                                                {getInitials(client.name)}
-                                                            </div>
-                                                            <span className="ml-3 font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                            <Avatar className={`${getAvatarColor(client.name)} text-white h-10 w-10`}>
+                                                                <AvatarFallback>{getInitials(client.name)}</AvatarFallback>
+                                                            </Avatar>
+                                                            <span className="ml-3 font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                                                                 {client.name}
                                                             </span>
                                                         </Link>
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                                                        <a href={`tel:${client.phone}`} className="flex items-center hover:text-indigo-600 dark:hover:text-indigo-400">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                                            </svg>
+                                                    </TableCell>
+                                                    <TableCell className="px-6 text-sm text-gray-500 dark:text-gray-400">
+                                                        <a href={`tel:${client.phone}`} className="flex items-center hover:text-blue-600 dark:hover:text-blue-400">
+                                                            <Phone className="mr-2 h-4 w-4" />
                                                             {formatPhoneNumber(client.phone)}
                                                         </a>
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    </TableCell>
+                                                    <TableCell className="px-6 text-sm text-gray-500 dark:text-gray-400">
                                                         {client.email && (
-                                                            <a href={`mailto:${client.email}`} className="flex items-center hover:text-indigo-600 dark:hover:text-indigo-400">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                                </svg>
+                                                            <a href={`mailto:${client.email}`} className="flex items-center hover:text-blue-600 dark:hover:text-blue-400">
+                                                                <Mail className="mr-2 h-4 w-4" />
                                                                 <span className="truncate max-w-[150px]">{client.email}</span>
                                                             </a>
                                                         )}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    </TableCell>
+                                                    <TableCell className="px-6 text-sm text-gray-500 dark:text-gray-400">
                                                         {client.tags && client.tags.length > 0 && (
                                                             <div className="flex flex-wrap gap-1">
                                                                 {client.tags.map(tag => (
-                                                                    <span key={tag.id} className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
+                                                                    <Badge
+                                                                        key={tag.id}
+                                                                        variant="secondary"
+                                                                        className="bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                                                    >
                                                                         {tag.name}
-                                                                    </span>
+                                                                    </Badge>
                                                                 ))}
                                                             </div>
                                                         )}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    </TableCell>
+                                                    <TableCell className="px-6 text-sm text-gray-500 dark:text-gray-400">
                                                         {client.birthday && (
                                                             <div className="flex items-center">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z" />
-                                                                </svg>
+                                                                <Calendar className="mr-2 h-4 w-4" />
                                                                 {formatDate(client.birthday)}
                                                             </div>
                                                         )}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                                                    </TableCell>
+                                                    <TableCell className="px-6 text-sm text-gray-500 dark:text-gray-400">
                                                         {client.lastContact && (
                                                             <div className="flex items-center">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                                </svg>
+                                                                <Clock className="mr-2 h-4 w-4" />
                                                                 {formatDate(client.lastContact)}
                                                             </div>
                                                         )}
-                                                    </td>
-                                                    <td className="whitespace-nowrap px-6 py-4 text-sm">
+                                                    </TableCell>
+                                                    <TableCell className="px-6 text-sm">
                                                         <div className="flex space-x-3">
                                                             <Link
                                                                 href={route('clients.show', client.id)}
-                                                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                                                             >
                                                                 {t('common.show')}
                                                             </Link>
                                                             <Link
                                                                 href={route('clients.edit', client.id)}
-                                                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
                                                             >
                                                                 {t('common.edit')}
                                                             </Link>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setClientToDelete(client.id);
+                                                                    setShowDeleteConfirmModal(true);
+                                                                }}
+                                                                className="text-rose-600 hover:text-rose-900 dark:text-rose-400 dark:hover:text-rose-300"
+                                                            >
+                                                                {t('common.delete')}
+                                                            </button>
                                                         </div>
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))
                                         )}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
 
                             {/* Pagination */}
                             {clients.links.length > 3 && (
                                 <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700 sm:px-6">
-                                    <nav className="flex items-center justify-between">
+                                    <div className="flex items-center justify-between">
                                         <div className="hidden sm:block">
                                             <p className="text-sm text-gray-700 dark:text-gray-300">
                                                 {t('pagination.showing')} <span className="font-medium">{clients.data.length}</span> {t('pagination.of')} <span className="font-medium">{clients.total}</span> {t('pagination.results')}
@@ -1012,7 +1286,7 @@ export default function ClientsIndex({
                                         </div>
                                         <div className="flex flex-1 justify-between sm:justify-end">
                                             {clients.links.map((link, i) => {
-                                                // Skip the "current" link
+                                                // Skip the non-page links
                                                 if (i === 0 || i === clients.links.length - 1 || !link.url) {
                                                     return null;
                                                 }
@@ -1022,8 +1296,8 @@ export default function ClientsIndex({
                                                         key={i}
                                                         href={link.url}
                                                         className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
-                                                            ? 'z-10 bg-indigo-600 text-white focus:z-20'
-                                                            : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                                                            ? 'z-10 bg-gradient-to-r from-blue-600 to-blue-600 text-white shadow-md shadow-blue-500/20 dark:shadow-blue-600/30 focus:z-20'
+                                                            : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700'
                                                             } border border-gray-300 dark:border-gray-600`}
                                                     >
                                                         {link.label.replace('&laquo;', '←').replace('&raquo;', '→')}
@@ -1031,83 +1305,87 @@ export default function ClientsIndex({
                                                 );
                                             })}
                                         </div>
-                                    </nav>
+                                    </div>
                                 </div>
                             )}
-                        </div>
+                        </Card>
                     )}
 
                     {/* Vue en grille améliorée */}
                     {viewMode === 'grid' && (
                         <div className="space-y-6">
                             {clients.data.length === 0 ? (
-                                <div className="mt-6 rounded-lg bg-white px-6 py-12 text-center shadow dark:bg-gray-800">
+                                <Card className="mt-6 px-6 py-12 text-center shadow-md dark:bg-slate-800">
                                     <div className="flex flex-col items-center">
-                                        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                        </svg>
+                                        <Users className="h-12 w-12 text-gray-400" />
                                         <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('clients.noClients')}</h3>
                                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('clients.noClientsDescription')}</p>
                                         <div className="mt-6">
                                             <Link
                                                 href={route('clients.create')}
-                                                className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                                className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:shadow-blue-600/30"
                                             >
-                                                <svg className="-ml-1 mr-2 h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                                                </svg>
+                                                <Plus className="mr-2 h-4 w-4" />
                                                 {t('common.addClient')}
                                             </Link>
                                         </div>
                                     </div>
-                                </div>
+                                </Card>
                             ) : (
                                 <>
                                     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                         {clients.data.map((client) => (
-                                            <div key={client.id} className="relative overflow-hidden rounded-lg bg-white shadow-sm transition-all hover:shadow-md dark:bg-gray-800">
-                                                {/* En-tête avec checkbox */}
+                                            <Card key={client.id} className="relative overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                                                {/* Header with checkbox */}
                                                 <div className="relative">
                                                     <div className="absolute left-3 top-3 z-10">
                                                         <Checkbox
                                                             checked={selectedClients.includes(client.id)}
-                                                            onChange={() => toggleClient(client.id)}
+                                                            onCheckedChange={() => toggleClient(client.id)}
                                                         />
                                                     </div>
                                                     <div className="absolute right-3 top-3 z-10">
-                                                        <Dropdown>
-                                                            <Dropdown.Trigger>
-                                                                <button className="rounded-full bg-white p-1 text-gray-400 shadow-sm hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-300 dark:hover:text-gray-200">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                                                        <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                                                                    </svg>
-                                                                </button>
-                                                            </Dropdown.Trigger>
-                                                            <Dropdown.Content>
-                                                                <Link
-                                                                    href={route('clients.edit', client.id)}
-                                                                    className="block w-full px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 rounded-full p-0 bg-white dark:bg-slate-700"
                                                                 >
-                                                                    {t('common.edit')}
-                                                                </Link>
-                                                                <button
-                                                                    className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                                                                    onClick={() => handleBulkAction('delete')}
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent>
+                                                                <DropdownMenuItem>
+                                                                    <Link
+                                                                        href={route('clients.edit', client.id)}
+                                                                        className="w-full flex"
+                                                                    >
+                                                                        {t('common.edit')}
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400"
+                                                                    onSelect={(e) => {
+                                                                        e.preventDefault();
+                                                                        setClientToDelete(client.id);
+                                                                        setShowDeleteConfirmModal(true);
+                                                                    }}
                                                                 >
                                                                     {t('common.delete')}
-                                                                </button>
-                                                            </Dropdown.Content>
-                                                        </Dropdown>
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
                                                     </div>
 
-                                                    {/* Avatar et nom du client */}
+                                                    {/* Avatar and client name */}
                                                     <div className="flex flex-col items-center p-6">
-                                                        <div className={`mb-3 flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold text-white ${getAvatarColor(client.name)}`}>
-                                                            {getInitials(client.name)}
-                                                        </div>
+                                                        <Avatar className={`${getAvatarColor(client.name)} mb-3 h-20 w-20 text-2xl font-bold text-white shadow-lg`}>
+                                                            <AvatarFallback>{getInitials(client.name)}</AvatarFallback>
+                                                        </Avatar>
                                                         <Link
                                                             href={route('clients.show', client.id)}
-                                                            className="mt-1 truncate text-center text-lg font-medium text-gray-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400"
+                                                            className="mt-1 truncate text-center text-lg font-medium text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400"
                                                         >
                                                             {client.name}
                                                         </Link>
@@ -1116,38 +1394,39 @@ export default function ClientsIndex({
                                                         {client.tags && client.tags.length > 0 && (
                                                             <div className="mt-2 flex flex-wrap justify-center gap-1">
                                                                 {client.tags.slice(0, 2).map(tag => (
-                                                                    <span key={tag.id} className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
+                                                                    <Badge
+                                                                        key={tag.id}
+                                                                        variant="secondary"
+                                                                        className="bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                                                    >
                                                                         {tag.name}
-                                                                    </span>
+                                                                    </Badge>
                                                                 ))}
                                                                 {client.tags.length > 2 && (
-                                                                    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                                    <Badge variant="outline" className="text-gray-600 dark:text-gray-300">
                                                                         +{client.tags.length - 2}
-                                                                    </span>
+                                                                    </Badge>
                                                                 )}
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                {/* Informations de contact */}
-                                                <div className="border-t border-gray-200 p-4 dark:border-gray-700">
+                                                {/* Contact info */}
+                                                <Separator />
+                                                <div className="p-4">
                                                     <div className="space-y-2 text-sm">
                                                         <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                                                            </svg>
-                                                            <a href={`tel:${client.phone}`} className="hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                            <Phone className="mr-2 h-4 w-4" />
+                                                            <a href={`tel:${client.phone}`} className="hover:text-blue-600 dark:hover:text-blue-400">
                                                                 {formatPhoneNumber(client.phone)}
                                                             </a>
                                                         </div>
 
                                                         {client.email && (
                                                             <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                                </svg>
-                                                                <a href={`mailto:${client.email}`} className="truncate hover:text-indigo-600 dark:hover:text-indigo-400">
+                                                                <Mail className="mr-2 h-4 w-4" />
+                                                                <a href={`mailto:${client.email}`} className="truncate hover:text-blue-600 dark:hover:text-blue-400">
                                                                     {client.email}
                                                                 </a>
                                                             </div>
@@ -1155,51 +1434,43 @@ export default function ClientsIndex({
 
                                                         {client.birthday && (
                                                             <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18zm-3-9v-2a2 2 0 00-2-2H8a2 2 0 00-2 2v2h12z" />
-                                                                </svg>
+                                                                <Calendar className="mr-2 h-4 w-4" />
                                                                 {formatDate(client.birthday)}
                                                             </div>
                                                         )}
 
                                                         {client.lastContact && (
                                                             <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                                                </svg>
+                                                                <Clock className="mr-2 h-4 w-4" />
                                                                 {formatDate(client.lastContact)}
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
 
-                                                {/* Actions rapides */}
-                                                <div className="flex divide-x divide-gray-200 border-t border-gray-200 dark:divide-gray-700 dark:border-gray-700">
+                                                {/* Quick actions */}
+                                                <Separator />
+                                                <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
                                                     <Link
                                                         href={route('clients.show', client.id)}
-                                                        className="flex flex-1 items-center justify-center py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                                                        className="flex items-center justify-center py-3 text-sm font-medium text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-gray-400 dark:hover:bg-blue-900/20 dark:hover:text-blue-300"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-1.5 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
+                                                        <Eye className="mr-1.5 h-4 w-4" />
                                                         {t('common.show')}
                                                     </Link>
                                                     <Link
                                                         href={route('clients.edit', client.id)}
-                                                        className="flex flex-1 items-center justify-center py-3 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+                                                        className="flex items-center justify-center py-3 text-sm font-medium text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-gray-400 dark:hover:bg-blue-900/20 dark:hover:text-blue-300"
                                                     >
-                                                        <svg xmlns="http://www.w3.org/2000/svg" className="mr-1.5 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
+                                                        <Edit className="mr-1.5 h-4 w-4" />
                                                         {t('common.edit')}
                                                     </Link>
                                                 </div>
-                                            </div>
+                                            </Card>
                                         ))}
                                     </div>
 
-                                    {/* Pagination pour la vue grille */}
+                                    {/* Pagination */}
                                     {clients.links.length > 3 && (
                                         <div className="mt-6 flex items-center justify-between border-t border-gray-200 px-4 py-3 dark:border-gray-700 sm:px-6">
                                             <div className="hidden sm:block">
@@ -1209,7 +1480,7 @@ export default function ClientsIndex({
                                             </div>
                                             <div className="flex flex-1 justify-between sm:justify-end">
                                                 {clients.links.map((link, i) => {
-                                                    // Skip the "current" link
+                                                    // Skip non-page links
                                                     if (i === 0 || i === clients.links.length - 1 || !link.url) {
                                                         return null;
                                                     }
@@ -1218,9 +1489,9 @@ export default function ClientsIndex({
                                                         <Link
                                                             key={i}
                                                             href={link.url}
-                                                            className={`relative inline-flex items-center rounded-md px-4 py-2 text-sm font-medium ${link.active
-                                                                ? 'z-10 bg-indigo-600 text-white focus:z-20'
-                                                                : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                                                            className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
+                                                                ? 'z-10 bg-gradient-to-r from-blue-600 to-blue-600 text-white shadow-md shadow-blue-500/20 dark:shadow-blue-600/30 focus:z-20'
+                                                                : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700'
                                                                 } border border-gray-300 dark:border-gray-600`}
                                                         >
                                                             {link.label.replace('&laquo;', '←').replace('&raquo;', '→')}
@@ -1234,28 +1505,28 @@ export default function ClientsIndex({
                             )}
                         </div>
                     )}
-
                 </div>
             </div>
 
-            {/* Modal d'importation simplifiée */}
-            <Modal show={showImportModal} onClose={() => !importLoading && setShowImportModal(false)}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {t('import.title')}
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {t('import.description')}
-                    </p>
+            {/* Modals */}
+            {/* Import CSV Modal */}
+            <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{t('import.title')}</DialogTitle>
+                        <DialogDescription>
+                            {t('import.description')}
+                        </DialogDescription>
+                    </DialogHeader>
 
-                    <div className="mt-6">
-                        <InputLabel htmlFor="file_import" value={t('import.selectFile')} />
-                        <input
+                    <div className="mt-4">
+                        <Label htmlFor="file_import">{t('import.selectFile')}</Label>
+                        <Input
                             id="file_import"
                             type="file"
                             accept=".csv"
                             onChange={handleFileChange}
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                            className="mt-1 bg-white dark:bg-slate-800"
                             disabled={importLoading}
                         />
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -1268,30 +1539,30 @@ export default function ClientsIndex({
                             <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {t('import.preview')}
                             </h3>
-                            <div className="mt-2 max-h-40 overflow-auto rounded-md border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800">
-                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead>
-                                        <tr>
+                            <ScrollArea className="mt-2 h-40 rounded-md border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-slate-700">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
                                             {Object.keys(previewData[0]).map(header => (
-                                                <th key={header} className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">
+                                                <TableHead key={header} className="px-3 py-2 text-xs">
                                                     {header}
-                                                </th>
+                                                </TableHead>
                                             ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
                                         {previewData.map((row, rowIndex) => (
-                                            <tr key={rowIndex}>
+                                            <TableRow key={rowIndex}>
                                                 {Object.entries(row).map(([key, value]) => (
-                                                    <td key={key} className="whitespace-nowrap px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                                                    <TableCell key={key} className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                                                         {value}
-                                                    </td>
+                                                    </TableCell>
                                                 ))}
-                                            </tr>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
                         </div>
                     )}
 
@@ -1303,233 +1574,518 @@ export default function ClientsIndex({
                             <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                                 {t('import.fieldMappingDescription')}
                             </p>
-                            <div className="mt-2 max-h-60 overflow-y-auto grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                {Object.entries(fieldMapping).map(([csvField, appField]) => (
-                                    <div key={csvField}>
-                                        <InputLabel htmlFor={`mapping_${csvField}`} value={csvField} />
-                                        <select
-                                            id={`mapping_${csvField}`}
-                                            value={appField}
-                                            onChange={(e) => setFieldMapping({
-                                                ...fieldMapping,
-                                                [csvField]: e.target.value,
-                                            })}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                                            disabled={importLoading}
-                                        >
-                                            <option value="">{t('import.ignore')}</option>
-                                            <option value="name">{t('common.name')}</option>
-                                            <option value="phone">{t('common.phone')}</option>
-                                            <option value="email">{t('common.email')}</option>
-                                            <option value="birthday">{t('common.birthday')}</option>
-                                            <option value="address">{t('common.address')}</option>
-                                            <option value="notes">{t('common.notes')}</option>
-                                            <option value="tags">{t('common.tags')}</option>
-                                        </select>
-                                    </div>
-                                ))}
-                            </div>
+                            <ScrollArea className="mt-2 h-60">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pr-4">
+                                    {Object.entries(fieldMapping).map(([csvField, appField]) => (
+                                        <div key={csvField}>
+                                            <Label htmlFor={`mapping_${csvField}`}>{csvField}</Label>
+                                            <Select
+                                                value={appField}
+                                                onValueChange={(val) => setFieldMapping({
+                                                    ...fieldMapping,
+                                                    [csvField]: val,
+                                                })}
+                                                disabled={importLoading}
+                                            >
+                                                <SelectTrigger id={`mapping_${csvField}`} className="mt-1 w-full dark:bg-slate-800">
+                                                    <SelectValue placeholder={t('import.ignore')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="">{t('import.ignore')}</SelectItem>
+                                                    <SelectItem value="name">{t('common.name')}</SelectItem>
+                                                    <SelectItem value="phone">{t('common.phone')}</SelectItem>
+                                                    <SelectItem value="email">{t('common.email')}</SelectItem>
+                                                    <SelectItem value="birthday">{t('common.birthday')}</SelectItem>
+                                                    <SelectItem value="address">{t('common.address')}</SelectItem>
+                                                    <SelectItem value="notes">{t('common.notes')}</SelectItem>
+                                                    <SelectItem value="tags">{t('common.tags')}</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
                         </div>
                     )}
 
-                    <div className="mt-6 flex justify-end space-x-2">
-                        <SecondaryButton onClick={() => setShowImportModal(false)} disabled={importLoading}>
+                    <DialogFooter className="mt-6">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowImportModal(false)}
+                            disabled={importLoading}
+                        >
                             {t('common.cancel')}
-                        </SecondaryButton>
-                        <PrimaryButton
+                        </Button>
+                        <Button
                             onClick={handleImport}
                             disabled={importLoading || !selectedFile || Object.values(fieldMapping).filter(Boolean).length === 0}
+                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 disabled:opacity-70 dark:shadow-blue-600/30"
                         >
                             {importLoading ? (
                                 <>
-                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
+                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                                     {t('import.importing')}
                                 </>
                             ) : t('import.import')}
-                        </PrimaryButton>
-                    </div>
-                </div>
-            </Modal>
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
-            {/* Modal d'exportation avec design amélioré */}
-            <Modal show={showExportModal} onClose={() => setShowExportModal(false)}>
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {t('export.title')}
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {selectedClients.length > 0
-                            ? t('export.selectedDescription', { count: selectedClients.length })
-                            : t('export.description')}
-                    </p>
-
-                    <div className="mt-6">
-                        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {t('export.format')}
-                        </h3>
-                        <div className="mt-2 space-y-2">
-                            <button
-                                type="button"
-                                onClick={() => handleExport('csv')}
-                                className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:hover:bg-gray-700"
-                            >
-                                <div className="flex items-center">
-                                    <svg className="w-6 h-6 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <div>
-                                        <span className="block font-medium text-gray-900 dark:text-gray-100">CSV</span>
-                                        <span className="block text-xs text-gray-500">{t('export.csvDescription')}</span>
-                                    </div>
-                                </div>
-                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => handleExport('excel')}
-                                className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors dark:border-gray-600 dark:hover:bg-gray-700"
-                            >
-                                <div className="flex items-center">
-                                    <svg className="w-6 h-6 mr-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                    <div>
-                                        <span className="block font-medium text-gray-900 dark:text-gray-100">Excel</span>
-                                        <span className="block text-xs text-gray-500">{t('export.excelDescription')}</span>
-                                    </div>
-                                </div>
-                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </Modal>
-
-            {/* Modal d'envoi de SMS en masse avec design amélioré */}
-            <Modal show={showBulkSmsModal} onClose={() => setShowBulkSmsModal(false)} maxWidth="xl">
-                <div className="p-6">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {t('bulk.sendSms')}
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {t('bulk.sendSmsDescription', { count: selectedClients.length })}
-                    </p>
-
-                    <div className="mt-6">
-                        <div className="rounded-lg bg-indigo-50 p-4 dark:bg-indigo-900/30">
-                            <div className="flex items-start">
-                                <div className="flex-shrink-0">
-                                    <svg className="h-5 w-5 text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </div>
-                                <div className="ml-3">
-                                    <h3 className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
-                                        {t('bulk.recipientInfo')}
-                                    </h3>
-                                    <div className="mt-2 text-sm text-indigo-700 dark:text-indigo-300">
-                                        <p>{t('bulk.selectedClients', { count: selectedClients.length })}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-6">
-                        <InputLabel htmlFor="message_template" value={t('bulk.messageTemplate')} />
-                        <select
-                            id="message_template"
-                            className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                        >
-                            <option value="">{t('bulk.selectTemplate')}</option>
-                            <option value="promotion">{t('templates.promotion')}</option>
-                            <option value="reminder">{t('templates.reminder')}</option>
-                            <option value="birthday">{t('templates.birthday')}</option>
-                            <option value="holiday">{t('templates.holiday')}</option>
-                        </select>
-                    </div>
+            {/* Simple Import Modal */}
+            <Dialog open={showSimpleImportModal} onOpenChange={setShowSimpleImportModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('import.simpleTitle')}</DialogTitle>
+                        <DialogDescription>
+                            {t('import.simpleDescription')}
+                        </DialogDescription>
+                    </DialogHeader>
 
                     <div className="mt-4">
-                        <InputLabel htmlFor="message_content" value={t('bulk.messageContent')} />
-                        <textarea
-                            id="message_content"
-                            className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                            rows={5}
-                            placeholder={t('bulk.messagePlaceholder')}
-                            value={bulkSmsContent}
-                            onChange={(e) => setBulkSmsContent(e.target.value)}
-                        ></textarea>
+                        <Label htmlFor="contacts_text">{t('import.contactList')}</Label>
+                        <Textarea
+                            id="contacts_text"
+                            value={contactsText}
+                            onChange={(e) => setContactsText(e.target.value)}
+                            rows={10}
+                            placeholder={t('import.contactsPlaceholder')}
+                            className="mt-1 dark:bg-slate-800"
+                        />
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {t('bulk.availableTags')}: <code className="text-xs">{'{{name}}, {{category}}, {{birthday}}, {{phone}}'}</code>
+                            {t('import.contactsExample')}
                         </p>
                     </div>
 
-                    <div className="mt-4">
-                        <div className="flex items-center justify-between">
-                            <InputLabel htmlFor="schedule_message" value={t('bulk.scheduleMessage')} />
-                            <label className="relative inline-flex cursor-pointer items-center">
-                                <input type="checkbox" className="peer sr-only" />
-                                <div className="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-indigo-600 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:ring-4 peer-focus:ring-indigo-300 dark:border-gray-600 dark:bg-gray-700 dark:peer-focus:ring-indigo-800"></div>
-                            </label>
-                        </div>
-                        <div className="mt-2 grid grid-cols-2 gap-4">
-                            <div>
-                                <InputLabel htmlFor="schedule_date" value={t('bulk.scheduleDate')} />
-                                <input
-                                    type="date"
-                                    id="schedule_date"
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                                />
-                            </div>
-                            <div>
-                                <InputLabel htmlFor="schedule_time" value={t('bulk.scheduleTime')} />
-                                <input
-                                    type="time"
-                                    id="schedule_time"
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-6">
-                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {t('bulk.summary')}
-                        </div>
-                        <div className="mt-2 rounded-lg bg-gray-50 p-4 dark:bg-gray-700">
-                            <div className="flex items-center justify-between border-b border-gray-200 pb-2 dark:border-gray-600">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">{t('bulk.recipients')}</span>
-                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedClients.length}</span>
-                            </div>
-                            <div className="flex items-center justify-between border-b border-gray-200 py-2 dark:border-gray-600">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">{t('bulk.estimatedCost')}</span>
-                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{selectedClients.length} SMS</span>
-                            </div>
-                            <div className="flex items-center justify-between pt-2">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">{t('bulk.remaining')}</span>
-                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{subscription.smsBalance - selectedClients.length} SMS</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-6 flex justify-end space-x-2">
-                        <SecondaryButton onClick={() => setShowBulkSmsModal(false)}>
+                    <DialogFooter className="mt-6">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowSimpleImportModal(false)}
+                            disabled={importLoading}
+                        >
                             {t('common.cancel')}
-                        </SecondaryButton>
-                        <PrimaryButton onClick={handleBulkSms} disabled={!bulkSmsContent.trim()}>
-                            {t('bulk.send')}
-                        </PrimaryButton>
+                        </Button>
+                        <Button
+                            onClick={handleSimpleImport}
+                            disabled={importLoading || !contactsText.trim()}
+                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                        >
+                            {importLoading ? (
+                                <>
+                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                    {t('import.importing')}
+                                </>
+                            ) : t('import.import')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Export Modal */}
+            <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('export.title')}</DialogTitle>
+                        <DialogDescription>
+                            {selectedClients.length > 0
+                                ? t('export.selectedDescription', { count: selectedClients.length })
+                                : t('export.description')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-4">
+                        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {t('export.format')}
+                        </h3>
+                        <div className="mt-2 space-y-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => handleExport('csv')}
+                                className="w-full justify-between border-gray-300 bg-white px-6 py-4 text-left hover:bg-blue-50 dark:border-gray-600 dark:bg-slate-800 dark:hover:bg-blue-900/20"
+                            >
+                                <div className="flex items-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 dark:from-blue-900/50 dark:to-blue-800/50 dark:text-blue-400 mr-3">
+                                        <FileText className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <span className="block font-medium">CSV</span>
+                                        <span className="block text-xs text-gray-500 dark:text-gray-400">{t('export.csvDescription')}</span>
+                                    </div>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-gray-400" />
+                            </Button>
+
+                            <Button
+                                variant="outline"
+                                onClick={() => handleExport('excel')}
+                                className="w-full justify-between border-gray-300 bg-white px-6 py-4 text-left hover:bg-green-50 dark:border-gray-600 dark:bg-slate-800 dark:hover:bg-green-900/20"
+                            >
+                                <div className="flex items-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-green-100 to-green-200 text-green-600 dark:from-green-900/50 dark:to-green-800/50 dark:text-green-400 mr-3">
+                                        <FileSpreadsheet className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <span className="block font-medium">Excel</span>
+                                        <span className="block text-xs text-gray-500 dark:text-gray-400">{t('export.excelDescription')}</span>
+                                    </div>
+                                </div>
+                                <ChevronRight className="h-5 w-5 text-gray-400" />
+                            </Button>
+                        </div>
                     </div>
-                </div>
-            </Modal>
+                </DialogContent>
+            </Dialog>
+
+            {/* Bulk SMS Modal */}
+            <Dialog open={showBulkSmsModal} onOpenChange={setShowBulkSmsModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('sms.sendToSelected', { count: selectedClients.length })}</DialogTitle>
+                        <DialogDescription>
+                            {t('sms.bulkDescription')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-4">
+                        <Label htmlFor="bulk_sms_content">{t('sms.content')}</Label>
+                        <Textarea
+                            id="bulk_sms_content"
+                            value={bulkSmsContent}
+                            onChange={(e) => setBulkSmsContent(e.target.value)}
+                            rows={5}
+                            className="mt-1 dark:bg-slate-800"
+                        />
+                        <div className="mt-2 flex justify-between text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">
+                                {bulkSmsContent.length} {t('sms.characters')}
+                                ({smsPreviewInfo.segments} {t('sms.segments')})
+                            </span>
+                            <Button
+                                variant="link"
+                                size="sm"
+                                className="h-auto p-0 text-blue-600 dark:text-blue-400"
+                                onClick={() => setShowSmsPreviewModal(true)}
+                            >
+                                {t('sms.preview')}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="mt-6">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowBulkSmsModal(false)}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            onClick={handleBulkSms}
+                            disabled={!bulkSmsContent.trim()}
+                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                        >
+                            <MessageSquarePlus className="mr-2 h-4 w-4" />
+                            {t('sms.send')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* SMS Preview Modal */}
+            <Dialog open={showSmsPreviewModal} onOpenChange={setShowSmsPreviewModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('sms.preview')}</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="mt-4 rounded-lg bg-gray-100 p-4 dark:bg-slate-700">
+                        <div className="mb-4 max-w-xs rounded-lg bg-blue-500 p-3 text-white">
+                            <p className="whitespace-pre-wrap">{bulkSmsContent}</p>
+                        </div>
+
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                            <p className="mb-1">{t('sms.characterCount')}: <span className="font-medium">{smsPreviewInfo.characters}</span></p>
+                            <p className="mb-1">{t('sms.segmentCount')}: <span className="font-medium">{smsPreviewInfo.segments}</span></p>
+                            <p className="mb-1">{t('sms.recipientCount')}: <span className="font-medium">{selectedClients.length}</span></p>
+                            <p className="font-bold">{t('sms.totalMessages')}: <span>{smsPreviewInfo.segments * selectedClients.length}</span></p>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button onClick={() => setShowSmsPreviewModal(false)}>
+                            {t('common.close')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Quick Add Modal */}
+            <Dialog open={showQuickAddModal} onOpenChange={setShowQuickAddModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('clients.quickAdd')}</DialogTitle>
+                        <DialogDescription>
+                            {t('clients.quickAddDescription')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="mt-4 space-y-4">
+                        <div>
+                            <Label htmlFor="quick_name">{t('common.name')}</Label>
+                            <Input
+                                id="quick_name"
+                                value={quickAddForm.name}
+                                onChange={e => setQuickAddForm({ ...quickAddForm, name: e.target.value })}
+                                className="mt-1 dark:bg-slate-800"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="quick_phone">{t('common.phone')}</Label>
+                            <div className="relative mt-1">
+                                <Input
+                                    id="quick_phone"
+                                    type="tel"
+                                    value={quickAddForm.phone}
+                                    onChange={e => {
+                                        const newValue = e.target.value;
+                                        setQuickAddForm({ ...quickAddForm, phone: newValue });
+                                        validateAndFormatPhone(newValue);
+                                    }}
+                                    className={`pr-10 dark:bg-slate-800 ${quickAddForm.phone && !phoneValidation.isValid ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500' : ''}`}
+                                    placeholder="+237 6XX XXX XXX ou 6XX XXX XXX"
+                                    required
+                                />
+                                {quickAddForm.phone && (
+                                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                        {phoneValidation.isValid ? (
+                                            <Check className="h-5 w-5 text-green-500" />
+                                        ) : (
+                                            <X className="h-5 w-5 text-rose-500" />
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {quickAddForm.phone && (
+                                <div className="mt-1">
+                                    {phoneValidation.isValid ? (
+                                        <p className="text-xs text-green-600 dark:text-green-400">
+                                            {phoneValidation.country && `✓ ${phoneValidation.country}: `}
+                                            {phoneValidation.formattedNumber}
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-rose-600 dark:text-rose-400">
+                                            {phoneValidation.errorType === 'format' &&
+                                                "Format invalide. Utilisez +237 pour le Cameroun ou +33 pour la France."}
+                                            {phoneValidation.errorType === 'length' &&
+                                                "Nombre de chiffres incorrect. Cameroun: 9 chiffres, France: 10 chiffres."}
+                                            {phoneValidation.errorType === 'characters' &&
+                                                "Caractères non autorisés. Utilisez uniquement des chiffres, +, espaces."}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Formats acceptés: +237 6XX XXX XXX (Cameroun), +33 X XX XX XX XX (France)
+                            </p>
+                        </div>
+
+                        <div>
+                            <Label htmlFor="quick_email">{t('common.email')}</Label>
+                            <Input
+                                id="quick_email"
+                                type="email"
+                                value={quickAddForm.email}
+                                onChange={e => setQuickAddForm({ ...quickAddForm, email: e.target.value })}
+                                className="mt-1 dark:bg-slate-800"
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="quick_tags">{t('common.tags')}</Label>
+                            <Select>
+                                <SelectTrigger className="mt-1 dark:bg-slate-800">
+                                    <SelectValue placeholder={t('common.selectTags')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {tags.map(tag => (
+                                        <SelectItem key={tag.id} value={tag.id.toString()}>
+                                            {tag.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                {t('clients.tagsDescription')}
+                            </p>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="mt-6">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowQuickAddModal(false)}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            onClick={handleQuickAdd}
+                            disabled={!quickAddForm.name || !quickAddForm.phone}
+                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                        >
+                            <Save className="mr-2 h-4 w-4" />
+                            {t('common.save')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={showDeleteConfirmModal} onOpenChange={setShowDeleteConfirmModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-rose-600 dark:text-rose-400">
+                            {clientToDelete
+                                ? t('clients.deleteConfirmation')
+                                : t('clients.bulkDeleteConfirmation', { count: clientsToDelete.length })}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {clientToDelete
+                                ? t('clients.deleteWarning')
+                                : t('clients.bulkDeleteWarning', { count: clientsToDelete.length })}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <DialogFooter className="mt-6">
+                        <Button variant="outline"
+                            onClick={() => {
+                                setClientToDelete(null);
+                                setClientsToDelete([]);
+                                setShowDeleteConfirmModal(false);
+                            }}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleDeleteConfirm}
+                            className="bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700"
+                        >
+                            <Trash className="mr-2 h-4 w-4" />
+                            {t('common.delete')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AuthenticatedLayout>
+    );
+}
+
+// Additional icons used in the component
+function Shield(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+        </svg>
+    );
+}
+
+function ChevronRight(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M9 18l6-6-6-6" />
+        </svg>
+    );
+}
+
+function FileSpreadsheet(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <polyline points="14 2 14 8 20 8" />
+            <path d="M8 13h2" />
+            <path d="M8 17h2" />
+            <path d="M14 13h2" />
+            <path d="M14 17h2" />
+        </svg>
+    );
+}
+
+function ArrowDownAZ(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="m3 16 4 4 4-4" />
+            <path d="M7 20V4" />
+            <path d="M21 8h-4l3 4h-3v4h4" />
+            <path d="M15 8h-2v8h2" />
+        </svg>
+    );
+}
+
+function ArrowUpAZ(props: React.SVGProps<SVGSVGElement>) {
+    return (
+        <svg
+            {...props}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="m3 8 4-4 4 4" />
+            <path d="M7 4v16" />
+            <path d="M21 16h-4l3-4h-3V8h4" />
+            <path d="M15 16h-2V8h2" />
+        </svg>
     );
 }

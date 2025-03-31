@@ -9,10 +9,19 @@ import { Link } from '@inertiajs/react';
 import axios from 'axios';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
+import { Check, X } from 'lucide-react';
 
 interface Tag {
     id: number;
     name: string;
+}
+
+// Interface pour la validation du téléphone
+interface PhoneValidation {
+    isValid: boolean;
+    formattedNumber: string;
+    errorType: string;
+    country: string;
 }
 
 export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
@@ -34,9 +43,149 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
     const [newTagName, setNewTagName] = useState('');
     const [isAddingTag, setIsAddingTag] = useState(false);
 
+    // État pour la validation du téléphone
+    const [phoneValidation, setPhoneValidation] = useState<PhoneValidation>({
+        isValid: true,
+        formattedNumber: '',
+        errorType: '',
+        country: '',
+    });
+
     useEffect(() => {
         setData('tags', selectedTags);
     }, [selectedTags]);
+
+    // Validation et formatage avancés du numéro de téléphone
+    const validateAndFormatPhone = (phone: string): PhoneValidation => {
+        // Réinitialiser la validation
+        const validation = {
+            isValid: false,
+            formattedNumber: '',
+            errorType: '',
+            country: '',
+        };
+
+        // Ignorer si vide
+        if (!phone.trim()) {
+            validation.isValid = true;
+            return validation;
+        }
+
+        // Nettoyage du numéro
+        const cleanedPhone = phone.replace(/\s+/g, '').replace(/[()-]/g, '');
+
+        // Détecter le format international
+        const isInternational = /^(\+|00)/.test(cleanedPhone);
+
+        // Tests spécifiques aux pays
+        if (isInternational) {
+            // Format international
+            if (/^\+237[6-9][0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'Cameroun';
+            } else if (/^\+33[1-9][0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'France';
+            } else if (/^\+241[0-7][0-9]{7}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'Gabon';
+            } else if (/^\+225[0-9]{8,10}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'Côte d\'Ivoire';
+            } else if (/^\+221[7,6][0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'Sénégal';
+            } else if (/^\+32[0-9]{8,9}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'Belgique';
+            } else if (/^\+41[0-9]{9}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'Suisse';
+            } else if (/^\+[0-9]{10,14}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = cleanedPhone;
+                validation.country = 'International';
+            } else {
+                validation.errorType = 'format';
+            }
+        } else {
+            // Formats locaux
+            // Cameroun: commence par 6 et a 9 chiffres
+            if (/^6[0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+237${cleanedPhone}`;
+                validation.country = 'Cameroun';
+            }
+            // France: commence par 0 et a 10 chiffres
+            else if (/^0[1-9][0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+33${cleanedPhone.substring(1)}`;
+                validation.country = 'France';
+            }
+            // Gabon: commence par 0 et a 8 chiffres
+            else if (/^0[1-7][0-9]{6}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+241${cleanedPhone.substring(1)}`;
+                validation.country = 'Gabon';
+            }
+            // Côte d'Ivoire
+            else if (/^0[1-9][0-9]{7,9}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+225${cleanedPhone.substring(1)}`;
+                validation.country = 'Côte d\'Ivoire';
+            }
+            // Sénégal
+            else if (/^(7|6)[0-9]{8}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+221${cleanedPhone}`;
+                validation.country = 'Sénégal';
+            }
+            // Belgique
+            else if (/^0[0-9]{8,9}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+32${cleanedPhone.substring(1)}`;
+                validation.country = 'Belgique';
+            }
+            // Suisse
+            else if (/^0[0-9]{9}$/.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `+41${cleanedPhone.substring(1)}`;
+                validation.country = 'Suisse';
+            } else {
+                // Déterminer le type d'erreur pour un message adapté
+                if (/^[0-9]+$/.test(cleanedPhone)) {
+                    validation.errorType = 'length';
+                } else {
+                    validation.errorType = 'characters';
+                }
+            }
+        }
+
+        return validation;
+    };
+
+    // Mise à jour de la validation du téléphone lors de la modification
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newValue = e.target.value;
+        setData('phone', newValue);
+
+        const validation = validateAndFormatPhone(newValue);
+        setPhoneValidation(validation);
+
+        // Si le numéro est valide, stockez également le format E.164
+        if (validation.isValid && validation.formattedNumber) {
+            // Nous gardons le numéro visible tel que saisi par l'utilisateur pour une meilleure UX
+            // Mais nous pouvons stocker le format normalisé si nécessaire
+            // setData('phone', validation.formattedNumber);
+        }
+    };
 
     const handleTagToggle = (tagId: number) => {
         setSelectedTags(prev =>
@@ -71,7 +220,17 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        post(route('clients.store'), {
+        // Valider le numéro de téléphone avant de soumettre
+        const validation = validateAndFormatPhone(data.phone);
+        if (!validation.isValid) {
+            error(t('clients.invalidPhoneFormat'));
+            return;
+        }
+
+        // Utiliser le numéro formaté pour la soumission
+        const formData = { ...data, phone: validation.formattedNumber };
+
+        post(route('clients.store', formData), {
             onSuccess: () => {
                 success('clients.createSuccess');
                 reset();
@@ -121,15 +280,55 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
                                         <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             {t('common.phone')} *
                                         </label>
-                                        <input
-                                            type="tel"
-                                            id="phone"
-                                            name="phone"
-                                            value={data.phone}
-                                            onChange={(e) => setData('phone', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                                            required
-                                        />
+                                        <div className="relative mt-1">
+                                            <input
+                                                type="tel"
+                                                id="phone"
+                                                name="phone"
+                                                value={data.phone}
+                                                onChange={handlePhoneChange}
+                                                className={`block w-full rounded-md pr-10 shadow-sm focus:outline-none dark:bg-gray-700 dark:text-white ${errors.phone || (data.phone && !phoneValidation.isValid)
+                                                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                                                    : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600'
+                                                    }`}
+                                                placeholder="+237 6XX XXX XXX, +33 6XX XXX XXX, ..."
+                                                required
+                                            />
+                                            {data.phone && (
+                                                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                                    {phoneValidation.isValid ? (
+                                                        <Check className="h-5 w-5 text-green-500" />
+                                                    ) : (
+                                                        <X className="h-5 w-5 text-red-500" />
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {data.phone && (
+                                            <div className="mt-1">
+                                                {phoneValidation.isValid ? (
+                                                    <p className="text-xs text-green-600 dark:text-green-400">
+                                                        {phoneValidation.country && `✓ ${phoneValidation.country}: `}
+                                                        {phoneValidation.formattedNumber}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs text-red-600 dark:text-red-400">
+                                                        {phoneValidation.errorType === 'format' &&
+                                                            "Format invalide. Utilisez le format international (+XXX) ou local."}
+                                                        {phoneValidation.errorType === 'length' &&
+                                                            "Nombre de chiffres incorrect. Vérifiez le format selon votre pays."}
+                                                        {phoneValidation.errorType === 'characters' &&
+                                                            "Caractères non autorisés. Utilisez uniquement des chiffres, +, espaces."}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                            Formats acceptés: international (+XXX) ou local (selon le pays)
+                                        </p>
+
                                         {errors.phone && (
                                             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.phone}</p>
                                         )}

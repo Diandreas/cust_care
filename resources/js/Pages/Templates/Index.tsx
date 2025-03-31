@@ -279,19 +279,21 @@ export default function TemplatesIndex({
                                                         >
                                                             {t('common.edit')}
                                                         </button>
-                                                        <Link
-                                                            href={route('templates.destroy', template.id)}
-                                                            method="delete"
-                                                            as="button"
-                                                            className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
-                                                            onClick={(e: React.MouseEvent) => {
-                                                                if (!confirm(t('templates.confirmDelete'))) {
-                                                                    e.preventDefault();
-                                                                }
-                                                            }}
-                                                        >
-                                                            {t('common.delete')}
-                                                        </Link>
+                                                        {!template.is_global && (
+                                                            <Link
+                                                                href={route('templates.destroy', template.id)}
+                                                                method="delete"
+                                                                as="button"
+                                                                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
+                                                                onClick={(e: React.MouseEvent) => {
+                                                                    if (!confirm(t('templates.confirmDelete'))) {
+                                                                        e.preventDefault();
+                                                                    }
+                                                                }}
+                                                            >
+                                                                {t('common.delete')}
+                                                            </Link>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div className="mt-4 rounded-md bg-gray-50 p-4 dark:bg-gray-700">
