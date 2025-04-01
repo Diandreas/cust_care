@@ -5,7 +5,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Toaster, toast } from 'react-hot-toast';
-import { ChevronLeft, ChevronRight, CalendarDays, Check, X, Settings, AlertTriangle, Users, Tag, BellRing, ListFilter, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Check, X, Settings, AlertTriangle, Users, Tag, BellRing, ListFilter, Calendar, MessageSquare } from 'lucide-react';
 import BigCalendar from '@/Components/BigCalendar';
 import EventForm from '@/Components/EventForm';
 
@@ -136,6 +136,10 @@ export default function AutomaticEventsIndex({
     const [slotInfo, setSlotInfo] = useState<{ start: Date; end: Date } | null>(null);
     const [selectedCalendarEvent, setSelectedCalendarEvent] = useState<CalendarEvent | null>(null);
 
+    // États pour la création de campagne à partir du calendrier
+    const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
+    const [selectedEventForCampaign, setSelectedEventForCampaign] = useState<EventType | null>(null);
+
     // Formulaire pour la création d'un événement
     const { data: createData, setData: setCreateData, post, processing: createProcessing, errors: createErrors, reset: resetCreate } = useForm({
         name: '',
@@ -164,6 +168,15 @@ export default function AutomaticEventsIndex({
         custom_template: '',
         days_before: 0,
         audience_override: null as any
+    });
+
+    // Formulaire pour la création de campagne
+    const { data: campaignData, setData: setCampaignData, post: postCampaign, processing: campaignProcessing, errors: campaignErrors, reset: resetCampaign } = useForm({
+        name: '',
+        message_content: '',
+        client_ids: [] as number[],
+        send_now: false,
+        scheduled_at: ''
     });
 
     // Préparer les événements par mois pour la vue calendrier
@@ -457,6 +470,33 @@ export default function AutomaticEventsIndex({
         setConfirmingActivation(null);
     };
 
+    // Initialiser une campagne à partir d'un événement
+    const initCampaignFromEvent = (event: EventType) => {
+        setSelectedEventForCampaign(event);
+        setCampaignData({
+            name: `Campagne basée sur ${event.name}`,
+            message_content: event.custom_template || event.default_template,
+            client_ids: [],
+            send_now: false,
+            scheduled_at: new Date().toISOString().slice(0, 16)
+        });
+        setShowCreateCampaignModal(true);
+    };
+
+    // Soumettre le formulaire de campagne
+    const submitCampaignForm = () => {
+        postCampaign(route('campaigns.store'), {
+            onSuccess: () => {
+                setShowCreateCampaignModal(false);
+                toast.success('Campagne créée avec succès');
+                resetCampaign();
+            },
+            onError: () => {
+                toast.error('Erreur lors de la création de la campagne');
+            }
+        });
+    };
+
     // Constantes pour l'interface
     const months = [
         'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -689,145 +729,39 @@ export default function AutomaticEventsIndex({
                 {Object.keys(eventCategories).map((categoryKey) => {
                     const category = eventCategories[categoryKey];
                     return (
-                        <div key={categoryKey} className="overflow-hidden bg-white shadow-sm dark:bg-gray-800 sm:rounded-lg">
-                            <div className="border-b border-gray-200 bg-white px-4 py-5 dark:border-gray-700 dark:bg-gray-800 sm:px-6">
-                                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">{category.name}</h3>
-                                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{category.description}</p>
+                        <div key={categoryKey} className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                            <div className="bg-gray-50 px-4 py-3 dark:bg-gray-900">
+                                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">{category.name}</h3>
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{category.description}</p>
                             </div>
-                            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                                {category.events.length === 0 ? (
-                                    <li className="px-4 py-5 sm:px-6">
-                                        <div className="text-center text-gray-500 dark:text-gray-400">
-                                            {t('automatic-events.noEvents')}
-                                        </div>
-                                    </li>
-                                ) : (
-                                    category.events.map((event) => (
-                                        <li key={event.id} className="px-4 py-5 sm:px-6">
-                                            {editingId === event.id ? (
-                                                <form onSubmit={(e) => handleEditSubmit(e, event.id)}>
-                                                    <div className="mb-4">
-                                                        <label htmlFor="edit_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            {t('automatic-events.name')} *
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            id="edit_name"
-                                                            name="name"
-                                                            value={editData.name}
-                                                            onChange={(e) => setEditData('name', e.target.value)}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                            required
-                                                        />
-                                                        {editErrors.name && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{editErrors.name}</p>}
-                                                    </div>
-
-                                                    <div className="mb-4">
-                                                        <label htmlFor="edit_message_template" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                            {t('automatic-events.messageTemplate')} *
-                                                        </label>
-                                                        <textarea
-                                                            id="edit_message_template"
-                                                            name="message_template"
-                                                            rows={5}
-                                                            value={editData.message_template}
-                                                            onChange={(e) => setEditData('message_template', e.target.value)}
-                                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                            required
-                                                        ></textarea>
-                                                        {editErrors.message_template && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{editErrors.message_template}</p>}
-                                                    </div>
-
-                                                    <div className="mb-6">
-                                                        <div className="flex items-center">
-                                                            <input
-                                                                id={`edit_is_active_${event.id}`}
-                                                                name="is_active"
-                                                                type="checkbox"
-                                                                checked={editData.is_active}
-                                                                onChange={(e) => setEditData('is_active', e.target.checked)}
-                                                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                                                            />
-                                                            <label htmlFor={`edit_is_active_${event.id}`} className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                                                                {t('automatic-events.isActive')}
-                                                            </label>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex justify-end space-x-3">
-                                                        <button
-                                                            type="button"
-                                                            onClick={cancelEditing}
-                                                            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                                        >
-                                                            {t('common.cancel')}
-                                                        </button>
-                                                        <button
-                                                            type="submit"
-                                                            disabled={editProcessing}
-                                                            className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
-                                                        >
-                                                            {t('common.save')}
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            ) : (
-                                                <div className="space-y-4">
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-                                                                {event.name}
-                                                                <span className={`ml-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${event.is_active
-                                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                                                                    : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                                                                    }`}>
-                                                                    {event.is_active ? t('common.active') : t('common.inactive')}
-                                                                </span>
-                                                            </h4>
-                                                            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                                                {event.description}
-                                                            </p>
-                                                        </div>
-                                                        <div className="flex space-x-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => editEvent(event)}
-                                                                className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                                            >
-                                                                <Settings className="h-4 w-4 mr-1" />
-                                                                {t('common.configure')}
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => startEditing(event)}
-                                                                className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                                            >
-                                                                {t('common.edit')}
-                                                            </button>
-                                                            <Link
-                                                                href={route('automatic-events.destroy', event.id)}
-                                                                method="delete"
-                                                                as="button"
-                                                                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
-                                                                onClick={(e: React.MouseEvent) => {
-                                                                    if (!confirm(t('automatic-events.confirmDelete'))) {
-                                                                        e.preventDefault();
-                                                                    }
-                                                                }}
-                                                            >
-                                                                {t('common.delete')}
-                                                            </Link>
-                                                        </div>
-                                                    </div>
-                                                    <div className="mt-4 rounded-md bg-gray-50 p-4 dark:bg-gray-700">
-                                                        <p className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">{event.custom_template || event.default_template}</p>
-                                                    </div>
+                            <div className="bg-white px-4 py-3 dark:bg-gray-800">
+                                <div className="grid gap-3 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                                    {category.events.map(event => (
+                                        <div key={event.id} className="rounded-md border p-3 shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="font-medium">{event.name}</h4>
+                                                <div className="flex space-x-1">
+                                                    <button
+                                                        onClick={() => editEvent(event)}
+                                                        className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                                                        title="Configurer"
+                                                    >
+                                                        <Settings className="h-5 w-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => initCampaignFromEvent(event)}
+                                                        className="p-1 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400"
+                                                        title="Créer une campagne à partir de cet événement"
+                                                    >
+                                                        <MessageSquare className="h-5 w-5" />
+                                                    </button>
                                                 </div>
-                                            )}
-                                        </li>
-                                    ))
-                                )}
-                            </ul>
+                                            </div>
+                                            <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">{event.description}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
                     );
                 })}
@@ -1349,6 +1283,125 @@ export default function AutomaticEventsIndex({
         );
     };
 
+    // Rendu de la modale de création de campagne
+    const renderCreateCampaignModal = () => {
+        if (!showCreateCampaignModal || !selectedEventForCampaign) return null;
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black opacity-50" onClick={() => setShowCreateCampaignModal(false)}></div>
+                <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-auto">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Création de campagne</h3>
+                        <button onClick={() => setShowCreateCampaignModal(false)} className="text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    <form onSubmit={(e) => { e.preventDefault(); submitCampaignForm(); }} className="space-y-4">
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Nom de la campagne
+                            </label>
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                value={campaignData.name}
+                                onChange={(e) => setCampaignData('name', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                required
+                            />
+                            {campaignErrors.name && <p className="mt-1 text-sm text-red-600">{campaignErrors.name}</p>}
+                        </div>
+
+                        <div>
+                            <label htmlFor="message_content" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Contenu du message
+                            </label>
+                            <textarea
+                                id="message_content"
+                                name="message_content"
+                                rows={4}
+                                value={campaignData.message_content}
+                                onChange={(e) => setCampaignData('message_content', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                required
+                            />
+                            {campaignErrors.message_content && <p className="mt-1 text-sm text-red-600">{campaignErrors.message_content}</p>}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Programmation
+                            </label>
+                            <div className="mt-2 space-y-2">
+                                <div className="flex items-center">
+                                    <input
+                                        id="send_now"
+                                        name="send_now"
+                                        type="checkbox"
+                                        checked={campaignData.send_now}
+                                        onChange={(e) => setCampaignData('send_now', e.target.checked)}
+                                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                    />
+                                    <label htmlFor="send_now" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                        Envoyer immédiatement
+                                    </label>
+                                </div>
+
+                                {!campaignData.send_now && (
+                                    <div>
+                                        <label htmlFor="scheduled_at" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Date d'envoi programmée
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            id="scheduled_at"
+                                            name="scheduled_at"
+                                            value={campaignData.scheduled_at}
+                                            onChange={(e) => setCampaignData('scheduled_at', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                            required={!campaignData.send_now}
+                                        />
+                                        {campaignErrors.scheduled_at && <p className="mt-1 text-sm text-red-600">{campaignErrors.scheduled_at}</p>}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="pt-4 flex justify-end space-x-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowCreateCampaignModal(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={campaignProcessing}
+                                className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                            >
+                                {campaignProcessing ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Traitement...
+                                    </>
+                                ) : (
+                                    'Créer la campagne'
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+
     // Rendu du BigCalendar
     const renderBigCalendarView = () => {
         return (
@@ -1516,6 +1569,7 @@ export default function AutomaticEventsIndex({
             {/* Modals partagés entre les vues */}
             {renderEventConfigModal()}
             {renderActivationConfirmation()}
+            {renderCreateCampaignModal()}
         </AuthenticatedLayout>
     );
 }

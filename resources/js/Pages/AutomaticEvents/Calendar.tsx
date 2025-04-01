@@ -3,7 +3,7 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Toaster, toast } from 'react-hot-toast';
-import { ChevronLeft, ChevronRight, CalendarDays, Check, X, Settings, AlertTriangle, Users, Tag, BellRing } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Check, X, Settings, AlertTriangle, Users, Tag, BellRing, MessageSquare } from 'lucide-react';
 
 interface EventType {
     id: number;
@@ -85,6 +85,8 @@ export default function EventCalendar({
         smsCount: number,
         period: string
     } | null>(null);
+    const [showCreateCampaignModal, setShowCreateCampaignModal] = useState(false);
+    const [selectedEventForCampaign, setSelectedEventForCampaign] = useState<EventType | null>(null);
 
     const months = [
         'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -97,6 +99,25 @@ export default function EventCalendar({
         custom_template: '',
         days_before: 0,
         audience_override: null as any
+    });
+
+    // Formulaire pour la création de campagne
+    const { data: campaignData, setData: setCampaignData, post: postCampaign, processing: campaignProcessing, errors: campaignErrors, reset: resetCampaign } = useForm<{
+        name: string;
+        message_content: string;
+        client_ids: number[];
+        audience_type: string;
+        selected_tags: any[];
+        send_now: boolean;
+        scheduled_at: string;
+    }>({
+        name: '',
+        message_content: '',
+        client_ids: [] as number[],
+        audience_type: 'all', // all, tags, specific
+        selected_tags: [] as any[],
+        send_now: false,
+        scheduled_at: ''
     });
 
     // Préparer les événements par mois
@@ -357,6 +378,58 @@ export default function EventCalendar({
         setConfirmingActivation(null);
     };
 
+    // Initialiser une campagne à partir d'un événement
+    const initCampaignFromEvent = (event: EventType) => {
+        setSelectedEventForCampaign(event);
+        // @ts-ignore
+        setCampaignData({
+            name: `Campagne basée sur ${event.name}`,
+            message_content: event.custom_template || event.default_template,
+            client_ids: [],
+            audience_type: event.audience_logic || 'all',
+            selected_tags: event.audience_override?.tags || [],
+            send_now: false,
+            scheduled_at: new Date().toISOString().slice(0, 16)
+        });
+        setShowCreateCampaignModal(true);
+    };
+
+    // Soumettre le formulaire de campagne
+    const submitCampaignForm = () => {
+        // Préparer les données d'audience pour l'envoi au serveur
+        let clientIds: number[] = [];
+
+        if (campaignData.audience_type === 'all') {
+            // Aucun traitement nécessaire, le serveur considérera tous les clients
+        } else if (campaignData.audience_type === 'specific_tags' && campaignData.selected_tags.length > 0) {
+            // La sélection des clients sera faite côté serveur basée sur les tags
+        }
+
+        // Préparer les données à envoyer
+        const formData = {
+            name: campaignData.name,
+            message_content: campaignData.message_content,
+            client_ids: clientIds,
+            audience_type: campaignData.audience_type,
+            selected_tags: campaignData.selected_tags,
+            send_now: campaignData.send_now,
+            scheduled_at: campaignData.scheduled_at || undefined,
+            event_id: selectedEventForCampaign?.id  // Lier la campagne à l'événement d'origine
+        };
+
+        postCampaign(route('campaigns.store'), {
+            data: formData,
+            onSuccess: () => {
+                setShowCreateCampaignModal(false);
+                toast.success('Campagne créée avec succès');
+                resetCampaign();
+            },
+            onError: () => {
+                toast.error('Erreur lors de la création de la campagne');
+            }
+        });
+    };
+
     // Rendu du calendrier mensuel
     const renderMonthView = () => {
         const currentMonth = currentDate.getMonth();
@@ -454,6 +527,14 @@ export default function EventCalendar({
                                             title="Configurer"
                                         >
                                             <Settings className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                                        </button>
+
+                                        <button
+                                            onClick={() => initCampaignFromEvent(event)}
+                                            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                                            title="Créer une campagne à partir de cet événement"
+                                        >
+                                            <MessageSquare className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                                         </button>
 
                                         <button
@@ -871,6 +952,256 @@ export default function EventCalendar({
         );
     };
 
+    // Rendu de la modale de création de campagne
+    const renderCreateCampaignModal = () => {
+        if (!showCreateCampaignModal || !selectedEventForCampaign) return null;
+
+        const availableTags = clientsStats.byTag || [];
+
+        // Calcul du nombre estimé de destinataires
+        let estimatedRecipients = 0;
+        if (campaignData.audience_type === 'all') {
+            estimatedRecipients = clientsStats.total;
+        } else if (campaignData.audience_type === 'specific_tags' && campaignData.selected_tags.length > 0) {
+            // Calculer le nombre de destinataires pour chaque tag sélectionné
+            estimatedRecipients = campaignData.selected_tags.reduce((total, tagId) => {
+                const tagInfo = availableTags.find(t => t.tag === tagId);
+                return total + (tagInfo ? tagInfo.count : 0);
+            }, 0);
+        }
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black opacity-50" onClick={() => setShowCreateCampaignModal(false)}></div>
+                <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl mx-auto overflow-y-auto max-h-[90vh]">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Création de campagne</h3>
+                        <button onClick={() => setShowCreateCampaignModal(false)} className="text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300">
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md mb-4">
+                        <p className="text-sm text-blue-800 dark:text-blue-300">
+                            Vous créez une campagne basée sur l'événement <strong>{selectedEventForCampaign.name}</strong>.
+                            Vous pouvez personnaliser le message et l'audience avant de valider.
+                        </p>
+                    </div>
+
+                    <form onSubmit={(e) => { e.preventDefault(); submitCampaignForm(); }} className="space-y-4">
+                        <div>
+                            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Nom de la campagne
+                            </label>
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                value={campaignData.name}
+                                onChange={(e) => setCampaignData('name', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                required
+                            />
+                            {campaignErrors.name && <p className="mt-1 text-sm text-red-600">{campaignErrors.name}</p>}
+                        </div>
+
+                        <div>
+                            <label htmlFor="message_content" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Contenu du message
+                            </label>
+                            <textarea
+                                id="message_content"
+                                name="message_content"
+                                rows={4}
+                                value={campaignData.message_content}
+                                onChange={(e) => setCampaignData('message_content', e.target.value)}
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                required
+                            />
+                            {campaignErrors.message_content && <p className="mt-1 text-sm text-red-600">{campaignErrors.message_content}</p>}
+                            <div className="mt-1 text-xs text-gray-500">
+                                Variables disponibles: {"{client.name}"}, {"{client.phone}"}, {"{date}"}
+                            </div>
+                        </div>
+
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                Audience
+                            </h4>
+
+                            <div className="space-y-3">
+                                <div className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        id="audience_all"
+                                        name="audience_type"
+                                        value="all"
+                                        checked={campaignData.audience_type === 'all'}
+                                        onChange={() => setCampaignData('audience_type', 'all')}
+                                        className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600"
+                                    />
+                                    <label htmlFor="audience_all" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                        Tous les clients ({clientsStats.total} clients)
+                                    </label>
+                                </div>
+
+                                <div className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        id="audience_tags"
+                                        name="audience_type"
+                                        value="tags"
+                                        checked={campaignData.audience_type === 'specific_tags'}
+                                        onChange={() => setCampaignData('audience_type', 'specific_tags')}
+                                        className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600"
+                                    />
+                                    <label htmlFor="audience_tags" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                        Clients avec tags spécifiques
+                                    </label>
+                                </div>
+
+                                {campaignData.audience_type === 'specific_tags' && (
+                                    <div className="ml-6 mt-2">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                            Sélectionnez les tags
+                                        </label>
+                                        <div className="max-h-32 overflow-y-auto p-2 border border-gray-300 dark:border-gray-600 rounded-md">
+                                            {availableTags.length === 0 ? (
+                                                <p className="text-sm text-gray-500">Aucun tag disponible</p>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    {availableTags.map(tag => (
+                                                        <div key={tag.tag} className="flex items-center">
+                                                            <input
+                                                                type="checkbox"
+                                                                id={`tag-${tag.tag}`}
+                                                                checked={campaignData.selected_tags.includes(tag.tag)}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        setCampaignData('selected_tags', [...campaignData.selected_tags, tag.tag]);
+                                                                    } else {
+                                                                        setCampaignData('selected_tags', campaignData.selected_tags.filter(t => t !== tag.tag));
+                                                                    }
+                                                                }}
+                                                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600"
+                                                            />
+                                                            <label htmlFor={`tag-${tag.tag}`} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                                                {tag.tag} ({tag.count} clients)
+                                                            </label>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Programmation
+                            </label>
+                            <div className="mt-2 space-y-2">
+                                <div className="flex items-center">
+                                    <input
+                                        id="send_now"
+                                        name="send_now"
+                                        type="checkbox"
+                                        checked={campaignData.send_now}
+                                        onChange={(e) => setCampaignData('send_now', e.target.checked)}
+                                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                    />
+                                    <label htmlFor="send_now" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                                        Envoyer immédiatement
+                                    </label>
+                                </div>
+
+                                {!campaignData.send_now && (
+                                    <div>
+                                        <label htmlFor="scheduled_at" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Date d'envoi programmée
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            id="scheduled_at"
+                                            name="scheduled_at"
+                                            value={campaignData.scheduled_at}
+                                            onChange={(e) => setCampaignData('scheduled_at', e.target.value)}
+                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
+                                            required={!campaignData.send_now}
+                                        />
+                                        {campaignErrors.scheduled_at && <p className="mt-1 text-sm text-red-600">{campaignErrors.scheduled_at}</p>}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Ajout du récapitulatif avant validation */}
+                        <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                            <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                Récapitulatif
+                            </h4>
+
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md">
+                                <dl className="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <div className="grid grid-cols-3 py-2">
+                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Événement d'origine</dt>
+                                        <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{selectedEventForCampaign.name}</dd>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 py-2">
+                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Destinataires</dt>
+                                        <dd className="col-span-2 text-sm text-gray-900 dark:text-white">
+                                            {estimatedRecipients} clients ciblés
+                                        </dd>
+                                    </div>
+
+                                    <div className="grid grid-cols-3 py-2">
+                                        <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Envoi</dt>
+                                        <dd className="col-span-2 text-sm text-gray-900 dark:text-white">
+                                            {campaignData.send_now
+                                                ? 'Immédiat après création'
+                                                : `Programmé pour le ${new Date(campaignData.scheduled_at).toLocaleString()}`
+                                            }
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        </div>
+
+                        <div className="pt-4 flex justify-end space-x-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowCreateCampaignModal(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-600"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={campaignProcessing}
+                                className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+                            >
+                                {campaignProcessing ? (
+                                    <>
+                                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Traitement...
+                                    </>
+                                ) : (
+                                    'Créer la campagne'
+                                )}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <AuthenticatedLayout
             user={auth.user}
@@ -932,6 +1263,7 @@ export default function EventCalendar({
 
             {renderEventConfigModal()}
             {renderActivationConfirmation()}
+            {renderCreateCampaignModal()}
         </AuthenticatedLayout>
     );
 }

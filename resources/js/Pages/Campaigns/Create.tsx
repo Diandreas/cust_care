@@ -6,6 +6,16 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 import AdvancedRecipientSelector from '@/Components/AdvancedRecipientSelector';
 import MessagePreview from '@/Components/MessagePreview';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from '@/Components/ui/dialog';
+import { Button } from '@/Components/ui/button';
+import { AlertCircle, AlertTriangle, Check, X } from 'lucide-react';
 
 interface Client {
     id: number;
@@ -35,6 +45,17 @@ interface CreateCampaignProps {
     [key: string]: unknown;
 }
 
+// Types pour les modales
+interface AlertModalProps {
+    title: string;
+    message: string;
+    open: boolean;
+    onClose: () => void;
+    onConfirm?: () => void;
+    confirmLabel?: string;
+    isError?: boolean;
+}
+
 export default function CreateCampaign({
     auth,
     templates,
@@ -51,6 +72,11 @@ export default function CreateCampaign({
     const [previewClient, setPreviewClient] = useState<Client | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // États pour les modales
+    const [alertModal, setAlertModal] = useState<AlertModalProps | null>(null);
+    const [showConfirmRecipientsModal, setShowConfirmRecipientsModal] = useState(false);
+    const [showConfirmCreateModal, setShowConfirmCreateModal] = useState(false);
+
     const { data, setData, post, processing, errors } = useForm({
         name: '',
         message_content: '',
@@ -60,6 +86,19 @@ export default function CreateCampaign({
         selected_all_clients: false,
         filter_criteria: {} as any,
     });
+
+    // Fonction pour afficher une modale d'alerte
+    const showAlert = (title: string, message: string, isError: boolean = false, onConfirm?: () => void) => {
+        setAlertModal({
+            title,
+            message,
+            open: true,
+            onClose: () => setAlertModal(null),
+            onConfirm,
+            confirmLabel: onConfirm ? t('common.ok') : undefined,
+            isError
+        });
+    };
 
     // Gérer le changement de template
     const handleTemplateChange = (templateId: number) => {
@@ -92,7 +131,7 @@ export default function CreateCampaign({
         }
     };
 
-    // Gérer la soumission du formulaire - MODIFIÉ
+    // Gérer la soumission du formulaire
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -109,36 +148,37 @@ export default function CreateCampaign({
 
         // Vérifications des champs obligatoires
         if (!data.name) {
-            alert(t('campaigns.nameRequired'));
-            setStep(1);
+            showAlert(t('common.error'), t('campaigns.nameRequired'), true, () => setStep(1));
             return;
         }
 
         if (!data.message_content) {
-            alert(t('campaigns.messageRequired'));
-            setStep(2);
+            showAlert(t('common.error'), t('campaigns.messageRequired'), true, () => setStep(2));
             return;
         }
 
         if (data.client_ids.length === 0) {
-            alert(t('campaigns.recipientsRequired'));
-            setStep(3);
+            showAlert(t('common.error'), t('campaigns.recipientsRequired'), true, () => setStep(3));
             return;
         }
 
         // Vérifier la programmation si l'envoi n'est pas immédiat
         if (!data.send_now && !data.scheduled_at) {
-            alert(t('campaigns.scheduleRequired'));
+            showAlert(t('common.error'), t('campaigns.scheduleRequired'), true);
             return;
         }
 
-        // Demander confirmation avant création de la campagne
-        if (confirm(t('campaigns.confirmCreation'))) {
-            setIsSubmitting(true);
-            post(route('campaigns.store'), {
-                onFinish: () => setIsSubmitting(false)
-            });
-        }
+        // Afficher la modale de confirmation avant création de la campagne
+        setShowConfirmCreateModal(true);
+    };
+
+    // Confirmer la création de la campagne
+    const confirmCreateCampaign = () => {
+        setIsSubmitting(true);
+        setShowConfirmCreateModal(false);
+        post(route('campaigns.store'), {
+            onFinish: () => setIsSubmitting(false)
+        });
     };
 
     // Récupérer tous les clients disponibles
@@ -159,26 +199,30 @@ export default function CreateCampaign({
     // Suivant du formulaire multi-étapes
     const handleNext = () => {
         if (step === 1 && !data.name) {
-            alert(t('campaigns.nameRequired'));
+            showAlert(t('common.error'), t('campaigns.nameRequired'), true);
             return;
         }
         if (step === 2 && !data.message_content) {
-            alert(t('campaigns.messageRequired'));
+            showAlert(t('common.error'), t('campaigns.messageRequired'), true);
             return;
         }
         if (step === 3 && data.client_ids.length === 0) {
-            alert(t('campaigns.recipientsRequired'));
+            showAlert(t('common.error'), t('campaigns.recipientsRequired'), true);
             return;
         }
 
         // Si on est à l'étape 3 et qu'il y a des destinataires sélectionnés, demander confirmation
         if (step === 3 && data.client_ids.length > 0) {
-            if (confirm(t('campaigns.confirmRecipients', { count: data.client_ids.length }))) {
-                setStep(step + 1);
-            }
+            setShowConfirmRecipientsModal(true);
             return;
         }
 
+        setStep(step + 1);
+    };
+
+    // Confirmer les destinataires et passer à l'étape suivante
+    const confirmRecipients = () => {
+        setShowConfirmRecipientsModal(false);
         setStep(step + 1);
     };
 
@@ -696,6 +740,102 @@ export default function CreateCampaign({
                     </div>
                 </div>
             </div>
+
+            {/* Modale d'alerte */}
+            {alertModal && (
+                <Dialog open={alertModal.open} onOpenChange={(open) => !open && alertModal.onClose()}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className={alertModal.isError ? "text-rose-600 dark:text-rose-400" : ""}>
+                                {alertModal.title}
+                            </DialogTitle>
+                            <DialogDescription>
+                                {alertModal.message}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter className="mt-6">
+                            <Button
+                                onClick={() => {
+                                    alertModal.onClose();
+                                    if (alertModal.onConfirm) {
+                                        alertModal.onConfirm();
+                                    }
+                                }}
+                                className={alertModal.isError ? "bg-rose-600 text-white hover:bg-rose-700" : ""}
+                            >
+                                {alertModal.confirmLabel || t('common.close')}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Modale de confirmation des destinataires */}
+            <Dialog open={showConfirmRecipientsModal} onOpenChange={setShowConfirmRecipientsModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('campaigns.confirmRecipientsTitle')}</DialogTitle>
+                        <DialogDescription>
+                            {t('campaigns.confirmRecipients', { count: data.client_ids.length })}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-6">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowConfirmRecipientsModal(false)}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            onClick={confirmRecipients}
+                            className="bg-indigo-600 text-white hover:bg-indigo-700"
+                        >
+                            <Check className="mr-2 h-4 w-4" />
+                            {t('common.confirm')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modale de confirmation de création de campagne */}
+            <Dialog open={showConfirmCreateModal} onOpenChange={setShowConfirmCreateModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('campaigns.confirmCreationTitle')}</DialogTitle>
+                        <DialogDescription>
+                            {t('campaigns.confirmCreation')}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-6">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowConfirmCreateModal(false)}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            onClick={confirmCreateCampaign}
+                            disabled={processing || isSubmitting}
+                            className="bg-indigo-600 text-white hover:bg-indigo-700"
+                        >
+                            {(processing || isSubmitting) ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    {t('common.processing')}
+                                </>
+                            ) : (
+                                <>
+                                    <Check className="mr-2 h-4 w-4" />
+                                    {t('campaigns.createCampaign')}
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AuthenticatedLayout>
     );
 }
