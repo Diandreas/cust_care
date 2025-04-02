@@ -39,7 +39,6 @@ export default function AuthenticatedLayout({ user, header, children }: Authenti
         { name: t('navigation.campaigns'), href: route('campaigns.index'), icon: Sparkles, current: url.startsWith('/campaigns') },
         { name: t('navigation.messages'), href: route('messages.index'), icon: MessageCircle, current: url.startsWith('/messages') },
         { name: t('navigation.templates'), href: route('templates.index'), icon: FileText, current: url.startsWith('/templates') },
-        { name: t('navigation.events'), href: route('automatic-events.index'), icon: Calendar, current: url.startsWith('/automatic-events') },
         { name: t('navigation.subscription'), href: route('subscription.index'), icon: CreditCard, current: url.startsWith('/subscription') },
     ];
 

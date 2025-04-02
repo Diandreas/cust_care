@@ -28,33 +28,6 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Table des événements automatiques
-        Schema::create('automatic_events', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('name');
-            $table->enum('event_type', ['birthday', 'holiday', 'custom']);
-            $table->text('message_template');
-            $table->boolean('is_active')->default(true);
-            $table->date('trigger_date')->nullable();
-            $table->timestamps();
-        });
-
-        // Table de configuration des événements par utilisateur
-        Schema::create('user_event_configs', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('event_type_id')->constrained()->onDelete('cascade');
-            $table->boolean('is_active')->default(true);
-            $table->text('custom_template')->nullable();
-            $table->integer('days_before')->default(0);
-            $table->json('audience_override')->nullable();
-            $table->timestamp('last_processed_at')->nullable();
-            $table->timestamps();
-            
-            // S'assurer qu'un utilisateur n'a qu'une configuration par type d'événement
-            $table->unique(['user_id', 'event_type_id']);
-        });
 
         // Table des événements du calendrier
         Schema::create('calendar_events', function (Blueprint $table) {
@@ -78,8 +51,6 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('calendar_events');
-        Schema::dropIfExists('user_event_configs');
-        Schema::dropIfExists('automatic_events');
         Schema::dropIfExists('event_types');
     }
 };
