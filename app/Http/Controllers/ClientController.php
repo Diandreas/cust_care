@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Client;
 use App\Models\Tag;
-use App\Models\Message;
 use App\Models\User;
+use App\Models\Visit;
+use App\Models\EventType;
+use App\Models\Campaign;
+use App\Models\ClientEventConfig;
 use App\Exports\ClientsExport;
 use App\Imports\ClientsImport;
 use Illuminate\Http\Request;
@@ -13,13 +16,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Visit;
 
 /**
  * @property-read User $user L'utilisateur authentifié
@@ -621,6 +624,9 @@ class ClientController extends Controller
             $client->tags()->attach($tags);
         }
         
+        // Créer automatiquement des événements personnels pour le client
+        $this->createPersonalEvents($client);
+        
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -890,5 +896,224 @@ class ClientController extends Controller
             'client' => $client,
             'visits' => $visits
         ]);
+    }
+    
+    /**
+     * Crée automatiquement des événements personnels pour un client
+     * et active les campagnes correspondantes si nécessaire
+     * 
+     * @param Client $client Le client pour lequel créer les événements
+     * @return void
+     */
+    private function createPersonalEvents(Client $client)
+    {
+        try {
+            // Vérifier si l'utilisateur a accès aux événements personnels
+            $user = Auth::user();
+            $subscription = $this->getUserSubscription($user);
+            if (!isset($subscription['features']['canUsePersonalEvents']) || !$subscription['features']['canUsePersonalEvents']) {
+                Log::info("Événements personnels non créés pour le client {$client->id} car l'utilisateur n'a pas accès à cette fonctionnalité");
+                return;
+            }
+            
+            // Vérifier si les types d'événements requis existent
+            $birthdayType = EventType::where('code', 'birthday')->first();
+            $namedayType = EventType::where('code', 'nameday')->first();
+            
+            if (!$birthdayType && !$namedayType) {
+                Log::warning("Aucun type d'événement personnel trouvé (birthday ou nameday). Événements personnels non créés.");
+                return;
+            }
+            
+            // Créer un template d'événement d'anniversaire si le client a une date d'anniversaire
+            // et si le type d'événement existe
+            if (!empty($client->birthday) && $birthdayType) {
+                $this->createBirthdayEvent($client, $birthdayType);
+            }
+            
+            // Créer un template d'événement pour la fête du prénom si disponible
+            // et si le type d'événement existe
+            if (!empty($client->name_day) && $namedayType) {
+                $this->createNameDayEvent($client, $namedayType);
+            }
+            
+            Log::info("Templates d'événements personnels créés avec succès pour le client {$client->id}");
+        } catch (\Exception $e) {
+            // Enregistrer l'erreur mais ne pas interrompre le processus de création du client
+            Log::error("Erreur lors de la création des templates d'événements personnels pour le client {$client->id}: " . $e->getMessage());
+            Log::error($e->getTraceAsString());
+        }
+    }
+    
+    /**
+     * Crée un template d'événement d'anniversaire pour un client
+     * et génère une campagne associée si la date est dans le futur
+     * 
+     * @param Client $client Le client pour lequel créer l'événement
+     * @param EventType $eventType Le type d'événement à utiliser
+     * @return void
+     */
+    private function createBirthdayEvent(Client $client, EventType $eventType)
+    {
+        try {
+            // Créer le template d'événement personnalisé pour ce client (configuration)
+            $config = ClientEventConfig::create([
+                'client_id' => $client->id,
+                'event_type_id' => $eventType->id,
+                'is_active' => true,
+                'custom_template' => null, // Utiliser le modèle par défaut
+                'days_before' => $eventType->default_days_before ?? 7,
+            ]);
+            
+            // Obtenir la date du prochain anniversaire
+            $birthDate = Carbon::parse($client->birthday);
+            $nextBirthday = $this->getUpcomingEventDate($birthDate);
+            
+            // Si le prochain anniversaire est dans le futur, activer l'événement en créant une campagne
+            $today = Carbon::now();
+            if ($nextBirthday->gt($today)) {
+                $this->activateEventAsCampaign($client, $eventType, $nextBirthday, $config->days_before);
+            }
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la création du template d'événement d'anniversaire: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Crée un template d'événement pour la fête du prénom d'un client
+     * et génère une campagne associée si la date est dans le futur
+     * 
+     * @param Client $client Le client pour lequel créer l'événement
+     * @param EventType $eventType Le type d'événement à utiliser
+     * @return void
+     */
+    private function createNameDayEvent(Client $client, EventType $eventType)
+    {
+        try {
+            // Créer le template d'événement personnalisé pour ce client (configuration)
+            $config = ClientEventConfig::create([
+                'client_id' => $client->id,
+                'event_type_id' => $eventType->id,
+                'is_active' => true,
+                'custom_template' => null, // Utiliser le modèle par défaut
+                'days_before' => $eventType->default_days_before ?? 5,
+            ]);
+            
+            // Obtenir la date de la prochaine fête
+            $nameDayDate = Carbon::parse($client->name_day);
+            $nextNameDay = $this->getUpcomingEventDate($nameDayDate);
+            
+            // Si la prochaine fête est dans le futur, activer l'événement en créant une campagne
+            $today = Carbon::now();
+            if ($nextNameDay->gt($today)) {
+                $this->activateEventAsCampaign($client, $eventType, $nextNameDay, $config->days_before);
+            }
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la création du template d'événement de fête: " . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Active un événement en créant une campagne personnelle
+     * 
+     * @param Client $client Le client concerné
+     * @param EventType $eventType Le type d'événement (le template)
+     * @param Carbon $eventDate La date de l'événement
+     * @param int $daysBefore Le nombre de jours avant l'événement pour programmer la campagne
+     * @return Campaign|null La campagne créée ou null en cas d'erreur
+     */
+    private function activateEventAsCampaign(Client $client, EventType $eventType, Carbon $eventDate, int $daysBefore)
+    {
+        try {
+            // Calculer la date d'envoi
+            $scheduledDate = (clone $eventDate)->subDays($daysBefore);
+            
+            // Ne pas créer de campagne si la date programmée est dans le passé
+            if ($scheduledDate->lt(Carbon::now())) {
+                return null;
+            }
+            
+            // Déterminer le type d'événement pour le nom de la campagne
+            $eventTypeName = $eventType->code === 'birthday' ? 'Anniversaire' : 'Fête';
+            
+            // Préparer les données de campagne, en vérifiant les champs disponibles
+            $campaignData = [
+                'name' => "{$eventTypeName}: {$client->name}",
+                'user_id' => Auth::id(),
+                'message_content' => $eventType->default_template,
+                'audience_type' => 'specific', // Audience spécifique pour un client
+                'scheduled_at' => $scheduledDate,
+                'event_type_id' => $eventType->id,
+                'status' => 'scheduled',
+            ];
+            
+            // Vérifier si le modèle Campaign a le champ is_personal avant de l'inclure
+            $campaignModel = new Campaign();
+            if (Schema::hasColumn($campaignModel->getTable(), 'is_personal')) {
+                $campaignData['is_personal'] = true;
+            }
+            
+            // Créer la campagne (événement activé)
+            $campaign = Campaign::create($campaignData);
+            
+            // Associer le client à la campagne
+            $campaign->clients()->attach($client->id);
+            
+            Log::info("Événement personnel activé comme campagne pour le client {$client->id}, type {$eventType->code}, programmé pour le {$scheduledDate->format('Y-m-d')}");
+            
+            return $campaign;
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de l'activation de l'événement en campagne: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Obtient la date du prochain événement annuel
+     * 
+     * @param Carbon $date La date de référence de l'événement
+     * @return Carbon La date du prochain événement
+     */
+    private function getUpcomingEventDate(Carbon $date)
+    {
+        $now = Carbon::now();
+        $eventDate = Carbon::create($now->year, $date->month, $date->day);
+        
+        // Si la date est déjà passée cette année, prendre celle de l'année prochaine
+        if ($eventDate->lt($now)) {
+            $eventDate->addYear();
+        }
+        
+        return $eventDate;
+    }
+
+    public function suggestCampaignsForCurrentMonth(Request $request)
+    {
+        try {
+            $start = Carbon::now()->startOfMonth();
+            $end = Carbon::now()->endOfMonth();
+
+            $eventTypes = EventType::where('is_active', true)->get();
+
+            $suggestions = [];
+            foreach ($eventTypes as $eventType) {
+                $suggestions[] = [
+                    'event_type' => $eventType->name,
+                    'suggested_campaign_message' => "Campagne pour " . $eventType->name . " programmée ce mois",
+                    'default_template' => $eventType->default_template,
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'suggestions' => $suggestions
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Erreur lors de la suggestion de campagne: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => "Une erreur est survenue: " . $e->getMessage()
+            ], 500);
+        }
     }
 }

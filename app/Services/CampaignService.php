@@ -79,34 +79,6 @@ class CampaignService
         return $results;
     }
     
-    /**
-     * Envoyer une campagne par WhatsApp via Twilio
-     * 
-     * @param array $campaign Les données de la campagne
-     * @param array $recipients Liste des destinataires
-     * @return array Résultats des envois
-     */
-    public function sendWhatsAppCampaign($campaign, $recipients)
-    {
-        $results = [];
-        
-        foreach ($recipients as $recipient) {
-            // Remplacer les variables dynamiques dans le message
-            $message = str_replace(
-                ['{name}', '{first_name}'],
-                [$recipient['name'], $recipient['first_name']],
-                $campaign['content']
-            );
-            
-            // Envoyer le message WhatsApp
-            $result = $this->twilioService->sendWhatsApp($recipient['phone_number'], $message);
-            $results[] = [
-                'recipient' => $recipient['phone_number'],
-                'status' => $result->status,
-                'sid' => $result->sid
-            ];
-        }
-        
-        return $results;
-    }
+  
+   
 } 

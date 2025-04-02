@@ -188,19 +188,25 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::resource('campaigns', CampaignController::class);
         Route::put('campaigns/{campaign}/status', [CampaignController::class, 'changeStatus'])->name('campaigns.status');
         
-        // Diagnostics et retries pour les campagnes échouées
-        Route::get('campaigns/{campaign}/diagnostics', [CampaignRetryController::class, 'diagnostics'])->name('campaigns.diagnostics');
-        Route::post('campaigns/{campaign}/retry-failed', [CampaignRetryController::class, 'retryFailed'])->name('campaigns.retry.failed');
-        Route::post('campaigns/{campaign}/retry-all', [CampaignRetryController::class, 'retryAll'])->name('campaigns.retry.all');
-
-        // Messages
-        Route::resource('messages', MessageController::class)->except(['edit', 'update', 'destroy']);
-
-        // Modèles
-        Route::resource('templates', TemplateController::class)->except(['create', 'edit', 'show']);
-
+        // Messages et templates
+        Route::resource('messages', MessageController::class);
+        Route::resource('templates', TemplateController::class);
+        
         // Événements automatiques
-        Route::resource('automatic-events', AutomaticEventsController::class)->except(['create', 'edit', 'show']);
+        Route::get('automatic-events', [AutomaticEventsController::class, 'index'])->name('automatic-events.index');
+        Route::post('automatic-events/create-all-configs', [AutomaticEventsController::class, 'createAllDefaultConfigs'])->name('automatic-events.create-all-configs');
+        Route::patch('automatic-events/{id}', [AutomaticEventsController::class, 'update'])->name('automatic-events.update');
+        Route::post('automatic-events/{id}/test', [AutomaticEventsController::class, 'testEvent'])->name('automatic-events.test');
+        
+        // Nouvelles routes pour les campagnes liées aux événements
+        Route::post('automatic-events/{id}/activate-campaign', [AutomaticEventsController::class, 'activateCampaign'])->name('campaigns.store-from-event');
+        Route::post('automatic-events/activate-bulk', [AutomaticEventsController::class, 'activateBulk'])->name('automatic-events.activate-bulk');
+        
+        // Importation de clients
+        Route::get('client-import', [ClientImportController::class, 'index'])->name('client-import');
+        Route::post('client-import/upload', [ClientImportController::class, 'upload'])->name('client-import.upload');
+        Route::post('client-import/process', [ClientImportController::class, 'process'])->name('client-import.process');
+        Route::get('client-import/template', [ClientImportController::class, 'downloadTemplate'])->name('client-import.template');
     });
     
     // Pour le développement seulement - Activation directe d'abonnement
