@@ -97,6 +97,22 @@ class Client extends Model
     /**
      * Scope pour les clients inactifs
      */
+
+     /**
+ * Scope pour filtrer les messages reçus
+ */
+    public function scopeReceived($query)
+    {
+    return $query->where('type', 'received');
+    }
+
+    /**
+     * Scope pour filtrer les messages envoyés
+     */
+    public function scopeSent($query)
+    {
+    return $query->where('type', 'personal')->orWhere('type', 'promotional');
+    }
     public function scopeInactive(Builder $query)
     {
         return $query->whereDoesntHave('messages', function ($q) {
