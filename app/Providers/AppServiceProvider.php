@@ -7,6 +7,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Notification;
 use App\Channels\TwilioChannel;
 use App\Services\TwilioService;
+use Illuminate\Support\Facades\Schema;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -29,5 +30,8 @@ class AppServiceProvider extends ServiceProvider
         Notification::extend('twilio', function ($app) {
             return new TwilioChannel($app->make(TwilioService::class));
         });
+
+        // Définir la longueur maximale pour les index de champs string
+        Schema::defaultStringLength(191);
     }
 }
