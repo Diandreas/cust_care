@@ -799,111 +799,106 @@ export default function ClientsIndex({
                     )}
 
                     <div className="mb-6 space-y-4">
-                        {/* Top bar with actions */}
-                        <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-                            <div className="flex flex-1 items-center space-x-2">
-                                <Input
-                                    type="text"
-                                    placeholder={t('common.searchClients')}
-                                    value={data.search}
-                                    onChange={(e) => setData('search', e.target.value)}
-                                    className="h-9 w-full md:w-[300px]"
-                                />
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={handleSearch}
-                                    disabled={processing}
-                                >
-                                    <Search className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="hidden md:flex"
-                                    onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-                                >
-                                    <Filter className="mr-2 h-4 w-4" />
-                                    {t('common.filters')}
-                                </Button>
+                        {/* Search and actions bar */}
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+                                <form onSubmit={handleSearch} className="flex w-full gap-2 md:w-auto md:flex-1">
+                                    <div className="relative flex-grow">
+                                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                        <Input
+                                            value={data.search}
+                                            onChange={(e) => setData('search', e.target.value)}
+                                            placeholder={t('common.searchClients')}
+                                            className="w-full pl-9 dark:bg-slate-800 dark:text-gray-100"
+                                        />
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                                    >
+                                        {t('common.search')}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        type="button"
+                                        onClick={() => setShowFiltersPanel(!showFiltersPanel)}
+                                        className="flex items-center justify-center gap-2 border-gray-300 shadow-sm dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                    >
+                                        <Filter className="h-4 w-4" />
+                                        {t('common.filters')}
+                                        {(data.tag_id || data.date_range || data.birthday_month) && (
+                                            <Badge className="ml-1 h-5 w-5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 p-0 text-center text-xs">
+                                                {[data.tag_id, data.date_range, data.birthday_month].filter(Boolean).length}
+                                            </Badge>
+                                        )}
+                                    </Button>
+                                </form>
+                                <div className="flex gap-2">
+                                    <Tabs
+                                        value={viewMode}
+                                        onValueChange={(val) => setViewMode(val as 'table' | 'grid')}
+                                        className="w-auto"
+                                    >
+                                        <TabsList className="grid w-full grid-cols-2">
+                                            <TabsTrigger value="table" className="flex items-center gap-2">
+                                                <List className="h-4 w-4" />
+                                                {t('common.tableView')}
+                                            </TabsTrigger>
+                                            <TabsTrigger value="grid" className="flex items-center gap-2">
+                                                <LayoutGrid className="h-4 w-4" />
+                                                {t('common.gridView')}
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    </Tabs>
+                                </div>
                             </div>
 
-                            <div className="flex items-center space-x-2">
-                                <div className="hidden items-center rounded-md border border-gray-200 dark:border-gray-800 md:flex">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`rounded-r-none ${viewMode === 'table' ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
-                                        onClick={() => setViewMode('table')}
-                                    >
-                                        <List className="mr-1 h-4 w-4" />
-                                        {t('common.tableView')}
-                                    </Button>
-                                    <Separator orientation="vertical" className="h-6" />
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className={`rounded-l-none ${viewMode === 'grid' ? 'bg-gray-100 dark:bg-gray-800' : ''}`}
-                                        onClick={() => setViewMode('grid')}
-                                    >
-                                        <LayoutGrid className="mr-1 h-4 w-4" />
-                                        {t('common.gridView')}
-                                    </Button>
-                                </div>
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    onClick={() => setShowQuickAddModal(true)}
+                                    className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                                >
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    {t('clients.quickAdd')}
+                                </Button>
+
+                                <Link
+                                    href={route('clients.create')}
+                                    className="inline-flex items-center justify-center rounded-lg border border-blue-500 bg-white px-4 py-2 text-sm font-medium text-blue-600 shadow-sm transition-all hover:bg-blue-50 hover:shadow-md dark:border-blue-600 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700"
+                                >
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    {t('common.addDetailed')}
+                                </Link>
+
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                        <Button size="sm" variant="outline">
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            {t('common.add')}
+                                        <Button
+                                            variant="outline"
+                                            className="flex items-center justify-center gap-2 border-gray-300 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                            {t('common.import')}
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => setShowQuickAddModal(true)}>
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            {t('clients.quickAdd')}
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onSelect={() => setShowImportModal(true)}>
+                                            {t('import.fromCSV')}
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem asChild>
-                                            <Link href={route('clients.create')}>
-                                                <FileText className="mr-2 h-4 w-4" />
-                                                {t('clients.fullForm')}
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setShowSimpleImportModal(true)}>
-                                            <Upload className="mr-2 h-4 w-4" />
-                                            {t('clients.simpleImport')}
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setShowImportModal(true)}>
-                                            <Upload className="mr-2 h-4 w-4" />
-                                            {t('clients.advancedImport')}
+                                        <DropdownMenuItem onSelect={() => setShowSimpleImportModal(true)}>
+                                            {t('import.simpleFormat')}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
-                                {selectedClients.length > 0 && (
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="default" size="sm">
-                                                {selectedClients.length} {t('clients.selected')}
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => handleBulkAction('sms')}>
-                                                <MessageSquare className="mr-2 h-4 w-4" />
-                                                {t('clients.sendMessage')}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleBulkAction('export')}>
-                                                <Download className="mr-2 h-4 w-4" />
-                                                {t('clients.exportSelected')}
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem
-                                                onClick={() => handleBulkAction('delete')}
-                                                className="text-red-600 dark:text-red-400 focus:bg-red-50 dark:focus:bg-red-950"
-                                            >
-                                                <Trash className="mr-2 h-4 w-4" />
-                                                {t('clients.deleteSelected')}
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                )}
+
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center justify-center gap-2 border-gray-300 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                    onClick={() => setShowExportModal(true)}
+                                >
+                                    <Download className="h-4 w-4" />
+                                    {t('common.export')}
+                                </Button>
                             </div>
                         </div>
 
@@ -1882,18 +1877,18 @@ export default function ClientsIndex({
                                     ) : (
                                         <p className="text-xs text-rose-600 dark:text-rose-400">
                                             {phoneValidation.errorType === 'format' &&
-                                                t('phone.formatError')}
+                                                "Format invalide. Utilisez +237 pour le Cameroun ou +33 pour la France."}
                                             {phoneValidation.errorType === 'length' &&
-                                                t('phone.lengthError')}
+                                                "Nombre de chiffres incorrect. Cameroun: 9 chiffres, France: 10 chiffres."}
                                             {phoneValidation.errorType === 'characters' &&
-                                                t('phone.charactersError')}
+                                                "Caractères non autorisés. Utilisez uniquement des chiffres, +, espaces."}
                                         </p>
                                     )}
                                 </div>
                             )}
 
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {t('phone.acceptedFormats')}
+                                Formats acceptés: +237 6XX XXX XXX (Cameroun), +33 X XX XX XX XX (France)
                             </p>
                         </div>
 

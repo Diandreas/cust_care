@@ -75,7 +75,18 @@
         "remove": "Remove",
         "occurrences": "occurrences",
         "errorMessage": "Error Message",
-        "recipient": "Recipient"
+        "recipient": "Recipient",
+        "gender": "Gender",
+        "error": "An error occurred",
+        "call": "Call",
+        "saving": "Saving...",
+        "backToClient": "Back to client",
+        "chooseFile": "Choose file",
+        "importGuide": "Import Guide",
+        "exportGuide": "Export Guide",
+        "close": "Close",
+        "date": "Date",
+        "selectTags": "Select tags"
     },
     "auth": {
         "login": "Log in",
@@ -149,6 +160,46 @@
             "recipients": "recipients",
             "noCampaigns": "No upcoming campaigns",
             "viewAll": "View all campaigns"
+        },
+        "timeRange": {
+            "last7Days": "Last 7 days",
+            "last30Days": "Last 30 days",
+            "last12Months": "Last 12 months",
+            "refreshing": "Refreshing...",
+            "refresh": "Refresh"
+        },
+        "actions": {
+            "exportData": "Export Data",
+            "filterData": "Filter Data",
+            "dashboardSettings": "Dashboard Settings"
+        },
+        "charts": {
+            "clientDistribution": "Client Distribution",
+            "segmentationByTags": "Segmentation by tags",
+            "messageStatus": "Message Status",
+            "campaignStatus": "Campaign Status",
+            "campaignTrends": "Campaign Trends",
+            "clients": "clients",
+            "messages": "messages",
+            "campaigns": "campaigns",
+            "deliveryRate": "delivery rate",
+            "successRate": "success rate",
+            "sent": "sent",
+            "failed": "failed",
+            "pending": "pending",
+            "draft": "draft",
+            "scheduled": "scheduled",
+            "filter": "Filter"
+        },
+        "alerts": {
+            "smsQuotaLow": "SMS Quota Low",
+            "smsQuotaDepleted": "SMS Quota Depleted",
+            "purchaseAdditional": "Purchase additional SMS →",
+            "purchaseNow": "Purchase SMS now →"
+        },
+        "activity": {
+            "recentActivity": "Recent Activity",
+            "viewAll": "View All"
         }
     },
     "clients": {
@@ -161,7 +212,41 @@
         "sendMessage": "Send Message",
         "updateCategory": "Update Category",
         "exportSelected": "Export Selected",
-        "deleteSelected": "Delete Selected"
+        "deleteSelected": "Delete Selected",
+        "deleteSuccess": "Clients successfully deleted!",
+        "createSuccess": "Client successfully created!",
+        "updateSuccess": "Client successfully updated!",
+        "search": "Search clients",
+        "all": "All clients",
+        "filterByTags": "Filter by tags",
+        "filterByCategories": "Filter by categories",
+        "selected": "clients selected",
+        "invalidPhoneFormat": "Invalid phone format",
+        "selectGender": "Select gender",
+        "client": "Client",
+        "edit": "Edit profile",
+        "updateError": "Error updating client",
+        "history": "History",
+        "clientSince": "Client since",
+        "lastContact": "Last contact",
+        "lastVisit": "Last visit",
+        "editInfo": "Edit information",
+        "name": "Name",
+        "phone": "Phone",
+        "email": "Email",
+        "address": "Address",
+        "quickAdd": "Quick Add",
+        "fullForm": "Complete Form",
+        "simpleImport": "Simple Import",
+        "advancedImport": "Advanced Import",
+        "importSuccess": "Clients imported successfully",
+        "importError": "Error while importing clients",
+        "quickAddDescription": "Add a new client with minimal information",
+        "tagsDescription": "Optional: Select tags to help categorize this client",
+        "deleteConfirmation": "Confirm Deletion",
+        "bulkDeleteConfirmation": "Confirm Multiple Deletion",
+        "deleteWarning": "This action cannot be undone. All client data will be permanently deleted.",
+        "bulkDeleteWarning": "This action cannot be undone. Data for {count} clients will be permanently deleted."
     },
     "import": {
         "title": "Import Clients",
@@ -172,7 +257,14 @@
         "fieldMappingDescription": "Map columns from your file to fields in our system",
         "ignore": "Ignore this field",
         "import": "Import",
-        "importError": "An error occurred during import"
+        "importError": "An error occurred during import",
+        "fileFormats": "Supported formats: CSV (.csv)",
+        "simpleTitle": "Simple Import",
+        "simpleDescription": "Add multiple clients at once with basic phone and name information.",
+        "contactList": "Contact List",
+        "contactsPlaceholder": "Enter contacts, one per line: Name, Phone",
+        "contactsExample": "Example: John Doe, +237612345678",
+        "importing": "Importing..."
     },
     "export": {
         "title": "Export Clients",
@@ -181,7 +273,10 @@
         "csv": "CSV File",
         "excel": "Excel File",
         "includeFields": "Fields to include",
-        "export": "Export"
+        "export": "Export",
+        "format": "Export Format",
+        "csvDescription": "Simple comma-separated values format",
+        "excelDescription": "Microsoft Excel spreadsheet format"
     },
     "bulk": {
         "sendSms": "Send SMS to Multiple Clients",
@@ -258,7 +353,8 @@
             "sending": "Sending",
             "failed": "Failed",
             "cancelled": "Cancelled",
-            "partiallySent": "Partially Sent"
+            "partiallySent": "Partially Sent",
+            "free": "Free"
         },
         "scheduledDate": "Scheduled Date",
         "delivery": "Delivery",
@@ -338,7 +434,8 @@
         "status": {
             "sent": "Sent",
             "delivered": "Delivered",
-            "failed": "Failed"
+            "failed": "Failed",
+            "pending": "Pending"
         },
         "type": {
             "promotional": "Promotional",
@@ -350,7 +447,23 @@
         "status": "Status",
         "campaign": "Campaign",
         "actions": "Actions",
-        "delivered": "Delivered"
+        "delivered": "Delivered",
+        "contentRequired": "Please enter a message",
+        "sendSuccess": "Message sent successfully",
+        "sendError": "Error sending message",
+        "sendDirect": "Send direct message",
+        "contentPlaceholder": "Enter your message here...",
+        "characters": "characters",
+        "templates": "Message templates",
+        "sending": "Sending...",
+        "templates": {
+            "appointment": "Hello {{name}}, we confirm your appointment. See you soon!",
+            "proposal": "Hello {{name}}, would you like to schedule an appointment soon?",
+            "thanks": "Hello {{name}}, thank you for your visit today. Don't hesitate to contact us if you have any questions.",
+            "appointmentConfirmation": "Appointment confirmation",
+            "appointmentProposal": "Appointment suggestion",
+            "thanksAfterVisit": "Thank you after visit"
+        }
     },
     "categories": {
         "create": "Create Category",
@@ -372,7 +485,12 @@
         "promotion": "Promotion",
         "reminder": "Appointment Reminder",
         "birthday": "Birthday Wishes",
-        "holiday": "Holiday Greetings"
+        "holiday": "Holiday Greetings",
+        "edit": "Edit Template",
+        "delete": "Delete Template",
+        "view": "View Template",
+        "confirmationTitle": "Confirm Template Deletion",
+        "confirmationText": "Are you sure you want to delete this template? This action cannot be undone."
     },
     "automatic-events": {
         "title": "Automatic Events",
@@ -502,7 +620,12 @@
             "name": "Key Name",
             "key": "API Key",
             "lastUsed": "Last Used"
-        }
+        },
+        "updateProfileInfo": "Update your account's profile information and email address.",
+        "unverifiedEmail": "Your email address is unverified.",
+        "resendVerification": "Click here to re-send the verification email.",
+        "verificationLinkSent": "A new verification link has been sent to your email address.",
+        "saved": "Saved."
     },
     "welcome": {
         "hero": {
@@ -526,6 +649,33 @@
                 "title": "Automatic Events",
                 "description": "Automate messages for birthdays, holidays, and other important events."
             }
+        },
+        "howItWorks": {
+            "title": "How It Works",
+            "subtitle": "Get started in three simple steps",
+            "step1": {
+                "title": "Create your account",
+                "description": "Sign up and choose the plan that best fits your needs"
+            },
+            "step2": {
+                "title": "Import your contacts",
+                "description": "Add your clients and organize them into relevant segments"
+            },
+            "step3": {
+                "title": "Launch your campaigns",
+                "description": "Create, schedule and track your SMS campaigns with ease"
+            }
+        },
+        "testimonials": {
+            "title": "They already use EliteSMS",
+            "subtitle": "Discover how businesses like yours are transforming their customer communications",
+            "quote1": "Thanks to EliteSMS, we increased our retention rate by 30% in just 3 months. An essential tool for our store.",
+            "quote2": "Automating birthday messages has created a strong connection with our customers. They appreciate this personalized attention.",
+            "quote3": "The value for money is unbeatable. We efficiently manage our communication with over 1,500 customers thanks to this platform."
+        },
+        "gallery": {
+            "title": "EliteSMS in action",
+            "subtitle": "Discover our platform through these screenshots"
         },
         "pricing": {
             "title": "Pricing Plans",
@@ -571,5 +721,55 @@
             "rights": "All rights reserved."
         }
     },
-    "error": "An error occurred"
+    "phone": {
+        "formatError": "Invalid format. Use international format (+XXX) or local format.",
+        "lengthError": "Incorrect number of digits. Check the format for your country.",
+        "charactersError": "Invalid characters. Use only digits, +, and spaces.",
+        "acceptedFormats": "Accepted formats: international (+XXX) or local (depends on country)"
+    },
+    "visits": {
+        "register": "Register visit",
+        "registerNew": "Register a new visit",
+        "notes": "Visit notes",
+        "notesPlaceholder": "Visit details, services provided, observations...",
+        "notesHint": "These notes will be associated with the visit recorded today.",
+        "notesRequired": "Please enter notes for the visit",
+        "registeredSuccess": "Visit registered successfully",
+        "registrationError": "Error registering visit",
+        "historyTitle": "Visit History for {{client}}",
+        "backToClient": "Back to client",
+        "recordNewVisit": "Record new visit",
+        "clientInfo": "Client information",
+        "history": "Visit history",
+        "date": "Date",
+        "recordedBy": "Recorded by",
+        "noHistory": "No visit history found for this client."
+    },
+    "tags": {
+        "nameRequired": "Tag name is required",
+        "createSuccess": "Tag created successfully",
+        "createError": "Error creating tag",
+        "createNew": "Create new tag",
+        "newTagPlaceholder": "Enter tag name...",
+        "noTagsAvailable": "No tags available",
+        "manageTagsLink": "Manage all tags"
+    },
+    "gender": {
+        "male": "Male",
+        "female": "Female",
+        "other": "Other"
+    },
+    "sms": {
+        "sendToSelected": "Send SMS to {count} clients",
+        "bulkDescription": "Compose and send a message to all selected clients",
+        "content": "Message Content",
+        "preview": "Preview Message",
+        "send": "Send Message",
+        "characters": "characters",
+        "segments": "segments",
+        "characterCount": "Character count",
+        "segmentCount": "Segment count",
+        "recipientCount": "Recipient count",
+        "totalMessages": "Total messages"
+    }
 }

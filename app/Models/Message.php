@@ -16,6 +16,7 @@ class Message extends Model
         'content',
         'status',
         'type',
+        'is_reply',
         'sent_at',
         'delivered_at',
     ];
@@ -23,6 +24,7 @@ class Message extends Model
     protected $casts = [
         'sent_at' => 'datetime',
         'delivered_at' => 'datetime',
+        'is_reply' => 'boolean',
     ];
 
     public function user()
