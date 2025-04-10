@@ -68,6 +68,22 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
     // Obtenir les détails des clients sélectionnés
     const selectedClientsDetails = clients.filter(client => selectedClients.includes(client.id));
 
+    // Gérer la sélection d'un tag sans passer automatiquement à l'étape suivante
+    const handleTagClick = (tagId: number, event: React.MouseEvent) => {
+        // Empêcher la propagation de l'événement pour éviter des comportements indésirables
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (selectedTags.includes(tagId)) {
+            setSelectedTags(selectedTags.filter(id => id !== tagId));
+        } else {
+            setSelectedTags([...selectedTags, tagId]);
+        }
+
+        // Toujours afficher la prévisualisation après la sélection d'un tag
+        setShowPreview(true);
+    };
+
     return (
         <div className="space-y-4">
             {/* Interface de recherche */}
@@ -99,13 +115,7 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
                     {tags.map(tag => (
                         <button
                             key={tag.id}
-                            onClick={() => {
-                                if (selectedTags.includes(tag.id)) {
-                                    setSelectedTags(selectedTags.filter(id => id !== tag.id));
-                                } else {
-                                    setSelectedTags([...selectedTags, tag.id]);
-                                }
-                            }}
+                            onClick={(e) => handleTagClick(tag.id, e)}
                             className={`px-3 py-1 rounded-full text-xs font-medium ${selectedTags.includes(tag.id)
                                 ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300'
                                 : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
@@ -124,44 +134,58 @@ const AdvancedRecipientSelector: React.FC<AdvancedRecipientSelectorProps> = ({
                 </div>
                 <button
                     type="button"
-                    onClick={() => setShowPreview(!showPreview)}
-                    className="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowPreview(!showPreview);
+                    }}
+                    className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
                     {showPreview ? t('campaigns.hideList') : t('campaigns.showList')}
                 </button>
             </div>
 
-            {/* Prévisualisation des clients sélectionnés */}
-            {showPreview && selectedClientsDetails.length > 0 && (
-                <div className="mt-4 border border-gray-200 rounded-md p-4 dark:border-gray-700">
-                    <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        {t('campaigns.selectedRecipients')}
-                    </h5>
-                    <div className="max-h-60 overflow-y-auto">
-                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {selectedClientsDetails.slice(0, 50).map(client => (
-                                <li key={client.id} className="py-2 flex justify-between items-center">
-                                    <div className="text-sm text-gray-800 dark:text-gray-200">
-                                        {client.name} <span className="text-gray-500 dark:text-gray-400">({client.phone})</span>
-                                    </div>
-                                    {client.tags.length > 0 && (
-                                        <div className="flex flex-wrap gap-1">
-                                            {client.tags.map(tag => (
-                                                <span key={tag.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                                    {tag.name}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
-                            {selectedClientsDetails.length > 50 && (
-                                <li className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
-                                    {t('common.moreResults', { count: selectedClientsDetails.length - 50 })}
-                                </li>
-                            )}
-                        </ul>
+            {/* Prévisualisation des clients sélectionnés - Toujours afficher un résumé des clients sélectionnés */}
+            {selectedClientsDetails.length > 0 && (
+                <div className={`mt-4 border border-gray-200 rounded-md p-4 dark:border-gray-700 ${showPreview ? '' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                        <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            {t('campaigns.selectedRecipients')}
+                        </h5>
+                        {!showPreview && selectedClientsDetails.length > 0 && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {t('campaigns.clientsCount', { count: selectedClientsDetails.length })}
+                            </span>
+                        )}
                     </div>
+
+                    {showPreview && (
+                        <div className="max-h-60 overflow-y-auto">
+                            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {selectedClientsDetails.slice(0, 50).map(client => (
+                                    <li key={client.id} className="py-2 flex justify-between items-center">
+                                        <div className="text-sm text-gray-800 dark:text-gray-200">
+                                            {client.name} <span className="text-gray-500 dark:text-gray-400">({client.phone})</span>
+                                        </div>
+                                        {client.tags.length > 0 && (
+                                            <div className="flex flex-wrap gap-1">
+                                                {client.tags.map(tag => (
+                                                    <span key={tag.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                                        {tag.name}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </li>
+                                ))}
+                                {selectedClientsDetails.length > 50 && (
+                                    <li className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                                        {t('common.moreResults', { count: selectedClientsDetails.length - 50 })}
+                                    </li>
+                                )}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

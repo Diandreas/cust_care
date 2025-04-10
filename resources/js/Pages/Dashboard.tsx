@@ -37,14 +37,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/Components/ui/dropdown-menu";
+import { formatDistanceToNow } from 'date-fns';
 
-export default function Dashboard({ auth, stats }) {
+interface DashboardProps {
+  auth: any;
+  stats: {
+    subscription?: {
+      isFreePlan: boolean;
+    };
+  };
+  recentMessages: Array<{
+    id: string | number;
+    client_name: string;
+    content: string;
+    sent_at: string;
+    created_at: string;
+    status: 'sent' | 'delivered' | 'failed';
+  }>;
+}
+
+export default function Dashboard({ auth, stats, recentMessages }: DashboardProps) {
   const { t } = useTranslation();
   const [timeRange, setTimeRange] = useState('month');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Date formatting utility
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString(undefined, {
       day: 'numeric',
       month: 'short',
@@ -53,20 +71,8 @@ export default function Dashboard({ auth, stats }) {
   };
 
   // Format time for recent activities
-  const formatTimeSince = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-
-    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d ago`;
-
-    return formatDate(dateString);
+  const getTimeAgo = (dateString: string): string => {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
   };
 
   // Simulated refresh function
@@ -653,7 +659,7 @@ export default function Dashboard({ auth, stats }) {
                           <div className="space-y-0.5 flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <p className="text-xs font-medium">{activity.client.name}</p>
-                              <p className="text-xs text-gray-500">{formatTimeSince(activity.date.toString())}</p>
+                              <p className="text-xs text-gray-500">{getTimeAgo(activity.date.toString())}</p>
                             </div>
                             <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{activity.content}</p>
                           </div>
@@ -728,9 +734,10 @@ export default function Dashboard({ auth, stats }) {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs font-medium h-8 pl-3">Client</TableHead>
-                        <TableHead className="text-xs font-medium h-8">Message</TableHead>
-                        <TableHead className="text-xs font-medium h-8 pr-3">Date</TableHead>
+                        <TableHead>{t('common.recipient')}</TableHead>
+                        <TableHead>{t('common.message')}</TableHead>
+                        <TableHead>{t('common.date')}</TableHead>
+                        <TableHead>{t('messages.status')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -740,6 +747,13 @@ export default function Dashboard({ auth, stats }) {
                             <TableCell className="text-xs py-1 pl-3">{message.client.name}</TableCell>
                             <TableCell className="text-xs py-1 max-w-xs truncate">{message.content}</TableCell>
                             <TableCell className="text-xs py-1 pr-3">{formatDate(message.created_at)}</TableCell>
+                            <TableCell>
+                              <Badge variant={message.status === 'sent' ? 'success' : message.status === 'delivered' ? 'success' : 'destructive'}>
+                                {message.status === 'sent' ? t('messages.status.sent') :
+                                  message.status === 'delivered' ? t('messages.status.delivered') :
+                                    t('messages.status.failed')}
+                              </Badge>
+                            </TableCell>
                           </TableRow>
                         ))
                       ) : (

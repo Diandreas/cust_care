@@ -11,7 +11,7 @@ import {
     CalendarDays, Phone, Mail, MapPin, Tag, Clock, MessageSquare,
     CheckCircle, AlertCircle, FileText, User, MessageCircle, Home,
     Edit, Save, X, Plus, Check, ArrowLeft, Send, ChevronDown,
-    Calendar, Activity, PieChart, Users, Copy, Share2, Trash2
+    Calendar, Activity, PieChart, Users, Copy, Share2, Trash2, MessageCircleOff, PlusCircle
 } from 'lucide-react';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -24,6 +24,7 @@ interface Message {
     status: string;
     sent_at: string;
     created_at: string;
+    sent_by_client?: boolean;
     campaign?: {
         id: number;
         name: string;
@@ -81,6 +82,7 @@ interface ClientFormData {
     gender: string;
     address: string;
     notes: string;
+    [key: string]: any;
 }
 
 export default function Show({ auth, client: initialClient, tags: initialTags }: ClientShowProps) {
@@ -379,7 +381,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             role="menuitem"
                                         >
                                             <Send className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('common.sendMessage')}
+                                            {t('common.send')}
                                         </button>
                                         <button
                                             onClick={() => setIsAddingVisit(true)}
@@ -395,19 +397,11 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             role="menuitem"
                                         >
                                             <Edit className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('clients.edit')}
+                                            {t('common.edit')}
                                         </button>
-                                        <a
-                                            href={`tel:${client.phone}`}
-                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                            role="menuitem"
-                                        >
-                                            <Phone className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('common.call')}
-                                        </a>
                                         <div className="border-t border-gray-100 dark:border-gray-700"></div>
                                         <button
-                                            className="flex w-full items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                            className="flex w-full items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                                             role="menuitem"
                                         >
                                             <Trash2 className="mr-3 h-4 w-4" />
@@ -626,11 +620,9 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                     </span>
                                                 </div>
                                                 <div className="ml-3">
-                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">Téléphone</p>
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.phone')}</p>
                                                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                        <a href={`tel:${client.phone}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                                            {client.phone}
-                                                        </a>
+                                                        {client.phone}
                                                     </p>
                                                 </div>
                                             </li>
@@ -643,7 +635,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                         </span>
                                                     </div>
                                                     <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Email</p>
+                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.email')}</p>
                                                         <p className="text-sm text-gray-500 dark:text-gray-400">
                                                             <a href={`mailto:${client.email}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                                                                 {client.email}
@@ -661,7 +653,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                         </span>
                                                     </div>
                                                     <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Adresse</p>
+                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.address')}</p>
                                                         <p className="text-sm text-gray-500 dark:text-gray-400">
                                                             {client.address}
                                                             <a
@@ -669,7 +661,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                                 target="_blank"
                                                                 className="block text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 mt-1"
                                                             >
-                                                                Voir sur Google Maps
+                                                                {t('common.viewOnGoogleMaps', 'Voir sur Google Maps')}
                                                             </a>
                                                         </p>
                                                     </div>
@@ -684,7 +676,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                         </span>
                                                     </div>
                                                     <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Date de naissance</p>
+                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.birthday')}</p>
                                                         <p className="text-sm text-gray-500 dark:text-gray-400">
                                                             {formatDate(client.birthday)}
                                                         </p>
@@ -700,9 +692,9 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                         </span>
                                                     </div>
                                                     <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">Genre</p>
+                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.gender')}</p>
                                                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                            {client.gender === 'male' ? 'Homme' : client.gender === 'female' ? 'Femme' : 'Autre'}
+                                                            {client.gender === 'male' ? t('gender.male') : client.gender === 'female' ? t('gender.female') : t('gender.other')}
                                                         </p>
                                                     </div>
                                                 </li>
@@ -714,7 +706,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                                                 <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
                                                     <Tag className="h-4 w-4 mr-1 text-gray-500" />
-                                                    Tags
+                                                    {t('common.tags')}
                                                 </h4>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {client.tags.map(tag => (
@@ -906,7 +898,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                     onClick={() => setIsEditing(false)}
                                                     className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
                                                 >
-                                                    Annuler
+                                                    {t('common.cancel')}
                                                 </button>
                                                 <button
                                                     type="submit"
@@ -919,12 +911,12 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                             </svg>
-                                                            Enregistrement...
+                                                            {t('common.saving')}
                                                         </>
                                                     ) : (
                                                         <>
                                                             <Save className="mr-2 h-4 w-4" />
-                                                            Enregistrer
+                                                            {t('common.save')}
                                                         </>
                                                     )}
                                                 </button>
@@ -945,28 +937,21 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                         className="flex flex-col items-center justify-center p-3 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
                                     >
                                         <Send className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">Message</span>
+                                        <span className="text-xs font-medium">{t('common.send')}</span>
                                     </button>
                                     <button
                                         onClick={() => setIsAddingVisit(true)}
                                         className="flex flex-col items-center justify-center p-3 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20 transition-colors"
                                     >
                                         <Home className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">Visite</span>
+                                        <span className="text-xs font-medium">{t('visits.register')}</span>
                                     </button>
-                                    <a
-                                        href={`tel:${client.phone}`}
-                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 transition-colors"
-                                    >
-                                        <Phone className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">Appeler</span>
-                                    </a>
                                     <button
                                         onClick={() => setIsEditing(true)}
                                         className="flex flex-col items-center justify-center p-3 rounded-lg text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-colors"
                                     >
                                         <Edit className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">Modifier</span>
+                                        <span className="text-xs font-medium">{t('common.edit')}</span>
                                     </button>
                                     {client.email && (
                                         <a
@@ -974,14 +959,14 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             className="flex flex-col items-center justify-center p-3 rounded-lg text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 transition-colors"
                                         >
                                             <Mail className="h-5 w-5 mb-1" />
-                                            <span className="text-xs font-medium">Email</span>
+                                            <span className="text-xs font-medium">{t('common.email')}</span>
                                         </a>
                                     )}
                                     <button
                                         className="flex flex-col items-center justify-center p-3 rounded-lg text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
                                     >
                                         <Share2 className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">Partager</span>
+                                        <span className="text-xs font-medium">{t('common.share', 'Partager')}</span>
                                     </button>
                                 </div>
                             </div>
@@ -990,86 +975,44 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                         {/* Statistiques et Activités */}
                         <div className="md:col-span-2 space-y-6">
                             {/* Résumé des statistiques */}
-                            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-all group">
+                            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
                                     <div className="flex items-center">
-                                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-100 group-hover:bg-indigo-200 dark:bg-indigo-900/30 dark:group-hover:bg-indigo-800/40 transition-colors">
-                                            <MessageSquare className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                                        <div className="flex-shrink-0">
+                                            <MessageCircle className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Messages</p>
-                                            <p className="text-2xl font-semibold text-gray-900 dark:text-white">{messageStats.total}</p>
+                                        <div className="ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                    {t('stats.totalMessages')}
+                                                </dt>
+                                                <dd>
+                                                    <div className="text-lg font-medium text-gray-900 dark:text-white">
+                                                        {client.messages_count}
+                                                    </div>
+                                                </dd>
+                                            </dl>
                                         </div>
-                                    </div>
-                                    <div className="mt-3 h-1 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                                        <div className="h-1 rounded-full bg-indigo-500" style={{ width: `${deliveryRate}%` }}></div>
-                                    </div>
-                                    <p className="mt-1 text-xs text-right text-gray-500 dark:text-gray-400">
-                                        {deliveryRate}% livrés
-                                    </p>
-                                </div>
-
-                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-all group">
-                                    <div className="flex items-center">
-                                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 group-hover:bg-green-200 dark:bg-green-900/30 dark:group-hover:bg-green-800/40 transition-colors">
-                                            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Messages Livrés</p>
-                                            <p className="text-2xl font-semibold text-gray-900 dark:text-white">{messageStats.delivered}</p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-3 flex items-center">
-                                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                            <CheckCircle className="mr-1 h-3 w-3" />
-                                            Taux: {deliveryRate}%
-                                        </span>
                                     </div>
                                 </div>
-
-                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-all group">
+                                <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
                                     <div className="flex items-center">
-                                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 group-hover:bg-amber-200 dark:bg-amber-900/30 dark:group-hover:bg-amber-800/40 transition-colors">
-                                            <Home className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                        <div className="flex-shrink-0">
+                                            <Calendar className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Visites</p>
-                                            <p className="text-2xl font-semibold text-gray-900 dark:text-white">{totalVisits}</p>
-                                        </div>
-                                    </div>
-                                    <div className="mt-3 flex items-center space-x-1">
-                                        <button
-                                            onClick={() => {
-                                                setActiveTab('visits');
-                                                setIsAddingVisit(true);
-                                            }}
-                                            className="inline-flex items-center text-xs font-medium text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
-                                        >
-                                            <Plus className="mr-1 h-3 w-3" />
-                                            Ajouter une visite
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm hover:shadow-md transition-all group">
-                                    <div className="flex items-center">
-                                        <div className="mr-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 group-hover:bg-blue-200 dark:bg-blue-900/30 dark:group-hover:bg-blue-800/40 transition-colors">
-                                            <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Dernière Visite</p>
-                                            <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
-                                                {visits.length > 0 ? formatTimeAgo(visits[0].visit_date) : 'Aucune'}
-                                            </p>
+                                        <div className="ml-5 w-0 flex-1">
+                                            <dl>
+                                                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                                                    {t('stats.totalVisits')}
+                                                </dt>
+                                                <dd>
+                                                    <div className="text-lg font-medium text-gray-900 dark:text-white">
+                                                        {client.visits.length}
+                                                    </div>
+                                                </dd>
+                                            </dl>
                                         </div>
                                     </div>
-                                    {visits.length > 0 && (
-                                        <div className="mt-3 flex items-center">
-                                            <span className="inline-flex items-center text-xs text-gray-500 dark:text-gray-400">
-                                                {formatDate(visits[0].visit_date)}
-                                            </span>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
@@ -1087,7 +1030,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             <MessageCircle className="h-4 w-4 mr-2" />
                                             Messages
                                             <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                                {messageStats.total}
+                                                {client.messages_count}
                                             </span>
                                         </button>
                                         <button
@@ -1100,7 +1043,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             <Home className="h-4 w-4 mr-2" />
                                             Visites
                                             <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                                {totalVisits}
+                                                {client.visits.length}
                                             </span>
                                         </button>
                                     </nav>
@@ -1109,7 +1052,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                 <div className="p-4">
                                     {activeTab === 'messages' && (
                                         <div className="overflow-hidden">
-                                            {messages.length === 0 ? (
+                                            {client.messages.length === 0 ? (
                                                 <div className="text-center py-10">
                                                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/30">
                                                         <MessageCircle className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
@@ -1152,7 +1095,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                                                                {messages.map((message) => (
+                                                                {client.messages.slice(0, 5).map((message) => (
                                                                     <tr key={message.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
                                                                         <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
                                                                             {formatDateTime(message.sent_at)}
@@ -1196,7 +1139,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
                                     {activeTab === 'visits' && (
                                         <div>
-                                            {visits.length === 0 ? (
+                                            {client.visits.length === 0 ? (
                                                 <div className="text-center py-10">
                                                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
                                                         <Home className="h-8 w-8 text-amber-600 dark:text-amber-400" />
@@ -1229,7 +1172,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                         </button>
                                                     </div>
                                                     <div className="space-y-4">
-                                                        {visits.map((visit) => (
+                                                        {client.visits.map((visit) => (
                                                             <div key={visit.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 hover:shadow-md transition-shadow">
                                                                 <div className="flex items-center justify-between mb-2">
                                                                     <div className="flex items-center">
@@ -1262,6 +1205,57 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                         </div>
                                     )}
                                 </div>
+                            </div>
+
+                            <div>
+                                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4 flex items-center">
+                                    <MessageCircle className="h-5 w-5 mr-2 text-indigo-500" />
+                                    {t('messages.lastMessage')}
+                                </h3>
+                                {client.messages.length > 0 ? (
+                                    <div className="overflow-hidden bg-white dark:bg-gray-800 shadow sm:rounded-md">
+                                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                                            {client.messages.slice(0, 5).map(message => (
+                                                <li key={message.id}>
+                                                    <div className="block hover:bg-gray-50 dark:hover:bg-gray-700">
+                                                        <div className="px-4 py-4 sm:px-6">
+                                                            <div className="flex items-center justify-between">
+                                                                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400 truncate">{formatDateTime(message.sent_at)}</p>
+                                                                <div className="ml-2 flex-shrink-0 flex">
+                                                                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                                        {message.sent_by_client ? t('messages.fromClient') : t('messages.fromUser')}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="mt-2 flex justify-between">
+                                                                <div className="sm:flex">
+                                                                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                                                                        {message.content}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-6 bg-white dark:bg-gray-800 shadow sm:rounded-md">
+                                        <MessageCircleOff className="mx-auto h-12 w-12 text-gray-400" />
+                                        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">{t('messages.noMessages')}</h3>
+                                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('messages.sendFirstMessage')}</p>
+                                        <div className="mt-6">
+                                            <button
+                                                onClick={() => setIsAddingMessage(true)}
+                                                className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                                            >
+                                                <PlusCircle className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
+                                                {t('messages.newMessage')}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

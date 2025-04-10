@@ -35,10 +35,10 @@ import { Alert, AlertDescription } from '@/Components/ui/alert';
 
 // Icons
 import {
-    Search, Filter, LayoutGrid, List, Plus, Upload, Download,
-    MoreHorizontal, Check, X, MessageSquare, Eye, Edit, Trash,
-    Phone, Mail, Calendar, Clock, RefreshCw, Tag, Info,
-    FileText, Save, MessageSquarePlus, Users
+    Search, SlidersHorizontal, LayoutGrid, List, PlusCircle, Upload, Download,
+    MoreHorizontal, Check, X, MessageSquare, Eye, Edit, Trash2,
+    Phone, Mail, Calendar, Clock, RefreshCw, Tag, AlertCircle,
+    FileText, Save, MessageSquarePlus, Users2, ShieldCheck, Zap, Import, UserPlus
 } from 'lucide-react';
 
 interface Client {
@@ -126,7 +126,7 @@ export default function ClientsIndex({
     const [quickAddForm, setQuickAddForm] = useState({
         name: '',
         phone: '',
-        email: '',
+        gender: '',
         tagIds: [] as number[]
     });
 
@@ -292,7 +292,7 @@ export default function ClientsIndex({
                         else if (normalizedHeader.includes('note'))
                             initialMapping[header] = 'notes';
                         else
-                            initialMapping[header] = '';
+                            initialMapping[header] = 'ignore';
                     });
                     setFieldMapping(initialMapping);
 
@@ -329,7 +329,12 @@ export default function ClientsIndex({
 
         const formData = new FormData();
         formData.append('file', selectedFile);
-        formData.append('mapping', JSON.stringify(fieldMapping));
+
+        // Transformer le mapping pour exclure les valeurs "ignore" avant de l'envoyer
+        const filteredMapping = Object.fromEntries(
+            Object.entries(fieldMapping).filter(([_, value]) => value !== 'ignore')
+        );
+        formData.append('mapping', JSON.stringify(filteredMapping));
         formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
 
         axios.post(route('clients.import'), formData, {
@@ -449,7 +454,7 @@ export default function ClientsIndex({
         axios.post(route('clients.store'), {
             name: quickAddForm.name,
             phone: normalizedPhone,
-            email: quickAddForm.email,
+            gender: quickAddForm.gender,
             tag_ids: quickAddForm.tagIds
         })
             .then(response => {
@@ -458,7 +463,7 @@ export default function ClientsIndex({
                 setQuickAddForm({
                     name: '',
                     phone: '',
-                    email: '',
+                    gender: '',
                     tagIds: []
                 });
 
@@ -684,8 +689,8 @@ export default function ClientsIndex({
     // Generate avatar background color based on name
     const getAvatarColor = (name: string) => {
         const colors = [
-            'bg-blue-500', 'bg-indigo-500', 'bg-cyan-500', 'bg-purple-500',
-            'bg-green-500', 'bg-teal-500', 'bg-amber-500', 'bg-rose-500'
+            'bg-indigo-500', 'bg-purple-500', 'bg-pink-500', 'bg-violet-500',
+            'bg-fuchsia-500', 'bg-rose-500', 'bg-blue-500', 'bg-cyan-500'
         ];
         const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
         return colors[index];
@@ -698,21 +703,21 @@ export default function ClientsIndex({
         >
             <Head title={t('common.clients')} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    {/* Stats Cards - Blue Theme */}
+            <div className="py-4">
+                <div className="mx-auto max-w-7xl">
+                    {/* Stats Cards - Updated Gradient Theme */}
                     <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        <Card className="overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                        <Card className="overflow-hidden border-border/60 transition-all hover:shadow-md dark:bg-slate-800/90 dark:border-slate-700/60">
                             <CardContent className="p-4">
                                 <div className="flex items-center">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 shadow-lg shadow-blue-500/20 dark:shadow-blue-600/30">
-                                        <Users className="h-6 w-6 text-white" />
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-md shadow-indigo-500/20 dark:shadow-indigo-500/10">
+                                        <Users2 className="h-5 w-5 text-white" />
                                     </div>
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.totalClients')}</div>
                                         <div className="text-2xl font-semibold text-gray-900 dark:text-white">
                                             {stats.totalClients.toLocaleString()}
-                                            <span className="ml-2 text-sm font-medium text-blue-500 dark:text-blue-400">
+                                            <span className="ml-2 text-sm font-medium text-indigo-500 dark:text-indigo-400">
                                                 +{stats.newClientsThisMonth} {t('stats.thisMonth')}
                                             </span>
                                         </div>
@@ -721,11 +726,11 @@ export default function ClientsIndex({
                             </CardContent>
                         </Card>
 
-                        <Card className="overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                        <Card className="overflow-hidden border-border/60 transition-all hover:shadow-md dark:bg-slate-800/90 dark:border-slate-700/60">
                             <CardContent className="p-4">
                                 <div className="flex items-center">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 shadow-lg shadow-blue-500/20 dark:shadow-blue-600/30">
-                                        <Users className="h-6 w-6 text-white" />
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-md shadow-indigo-500/20 dark:shadow-indigo-500/10">
+                                        <Zap className="h-5 w-5 text-white" />
                                     </div>
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.activeClients')}</div>
@@ -740,17 +745,17 @@ export default function ClientsIndex({
                             </CardContent>
                         </Card>
 
-                        <Card className="overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                        <Card className="overflow-hidden border-border/60 transition-all hover:shadow-md dark:bg-slate-800/90 dark:border-slate-700/60">
                             <CardContent className="p-4">
                                 <div className="flex items-center">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 shadow-lg shadow-blue-500/20 dark:shadow-blue-600/30">
-                                        <MessageSquare className="h-6 w-6 text-white" />
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-md shadow-indigo-500/20 dark:shadow-indigo-500/10">
+                                        <MessageSquare className="h-5 w-5 text-white" />
                                     </div>
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.smsSent')}</div>
                                         <div className="text-2xl font-semibold text-gray-900 dark:text-white">
                                             {stats.totalSmsSent.toLocaleString()}
-                                            <span className="ml-2 text-sm font-medium text-blue-500 dark:text-blue-400">
+                                            <span className="ml-2 text-sm font-medium text-indigo-500 dark:text-indigo-400">
                                                 {subscription.smsBalance} {t('stats.smsRemaining')}
                                             </span>
                                         </div>
@@ -759,11 +764,11 @@ export default function ClientsIndex({
                             </CardContent>
                         </Card>
 
-                        <Card className="overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                        <Card className="overflow-hidden border-border/60 transition-all hover:shadow-md dark:bg-slate-800/90 dark:border-slate-700/60">
                             <CardContent className="p-4">
                                 <div className="flex items-center">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 shadow-lg shadow-blue-500/20 dark:shadow-blue-600/30">
-                                        <Shield className="h-6 w-6 text-white" />
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-md shadow-indigo-500/20 dark:shadow-indigo-500/10">
+                                        <ShieldCheck className="h-5 w-5 text-white" />
                                     </div>
                                     <div className="ml-4">
                                         <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('stats.subscription')}</div>
@@ -783,13 +788,14 @@ export default function ClientsIndex({
 
                     {/* Alert for duplicates */}
                     {duplicateClients.length > 0 && (
-                        <Alert className="mb-6 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                            <Info className="h-4 w-4" />
+                        <Alert className="mb-6 border-indigo-200 bg-indigo-50/90 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-900/30 dark:text-indigo-300">
+                            <AlertCircle className="h-4 w-4" />
                             <AlertDescription className="flex items-center justify-between">
                                 <span>{duplicateClients.length} {t('clients.possibleDuplicates')}</span>
                                 <Button
-                                    variant="link"
-                                    className="text-blue-600 dark:text-blue-400"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/50"
                                     onClick={() => { }} // Add handler for duplicates management
                                 >
                                     {t('clients.manageDuplicates')}
@@ -809,13 +815,13 @@ export default function ClientsIndex({
                                             value={data.search}
                                             onChange={(e) => setData('search', e.target.value)}
                                             placeholder={t('common.searchClients')}
-                                            className="w-full pl-9 dark:bg-slate-800 dark:text-gray-100"
+                                            className="w-full pl-9 border-border/60 bg-white dark:bg-slate-800/80 dark:text-gray-100 dark:border-slate-700/60"
                                         />
                                     </div>
                                     <Button
                                         type="submit"
                                         disabled={processing}
-                                        className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                                        className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
                                     >
                                         {t('common.search')}
                                     </Button>
@@ -823,12 +829,12 @@ export default function ClientsIndex({
                                         variant="outline"
                                         type="button"
                                         onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-                                        className="flex items-center justify-center gap-2 border-gray-300 shadow-sm dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                        className="flex items-center justify-center gap-2 border-border/60 shadow-sm transition-colors duration-200 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200"
                                     >
-                                        <Filter className="h-4 w-4" />
+                                        <SlidersHorizontal className="h-4 w-4" />
                                         {t('common.filters')}
                                         {(data.tag_id || data.date_range || data.birthday_month) && (
-                                            <Badge className="ml-1 h-5 w-5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 p-0 text-center text-xs">
+                                            <Badge className="ml-1 h-5 w-5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 p-0 text-center text-xs">
                                                 {[data.tag_id, data.date_range, data.birthday_month].filter(Boolean).length}
                                             </Badge>
                                         )}
@@ -840,12 +846,12 @@ export default function ClientsIndex({
                                         onValueChange={(val) => setViewMode(val as 'table' | 'grid')}
                                         className="w-auto"
                                     >
-                                        <TabsList className="grid w-full grid-cols-2">
-                                            <TabsTrigger value="table" className="flex items-center gap-2">
+                                        <TabsList className="grid w-full grid-cols-2 bg-muted/60 dark:bg-slate-800/80 dark:border dark:border-slate-700/60 p-0.5">
+                                            <TabsTrigger value="table" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-slate-700">
                                                 <List className="h-4 w-4" />
                                                 {t('common.tableView')}
                                             </TabsTrigger>
-                                            <TabsTrigger value="grid" className="flex items-center gap-2">
+                                            <TabsTrigger value="grid" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-slate-700">
                                                 <LayoutGrid className="h-4 w-4" />
                                                 {t('common.gridView')}
                                             </TabsTrigger>
@@ -857,17 +863,17 @@ export default function ClientsIndex({
                             <div className="flex flex-wrap gap-2">
                                 <Button
                                     onClick={() => setShowQuickAddModal(true)}
-                                    className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                                    className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
                                 >
-                                    <Plus className="mr-2 h-4 w-4" />
+                                    <PlusCircle className="mr-2 h-4 w-4" />
                                     {t('clients.quickAdd')}
                                 </Button>
 
                                 <Link
                                     href={route('clients.create')}
-                                    className="inline-flex items-center justify-center rounded-lg border border-blue-500 bg-white px-4 py-2 text-sm font-medium text-blue-600 shadow-sm transition-all hover:bg-blue-50 hover:shadow-md dark:border-blue-600 dark:bg-slate-800 dark:text-blue-400 dark:hover:bg-slate-700"
+                                    className="inline-flex items-center justify-center rounded-lg border border-indigo-500 bg-white px-4 py-2 text-sm font-medium text-indigo-600 shadow-sm transition-all hover:bg-indigo-50 hover:shadow-md dark:border-indigo-600 dark:bg-slate-800/80 dark:text-indigo-400 dark:hover:bg-slate-700/90"
                                 >
-                                    <Edit className="mr-2 h-4 w-4" />
+                                    <UserPlus className="mr-2 h-4 w-4" />
                                     {t('common.addDetailed')}
                                 </Link>
 
@@ -875,17 +881,17 @@ export default function ClientsIndex({
                                     <DropdownMenuTrigger asChild>
                                         <Button
                                             variant="outline"
-                                            className="flex items-center justify-center gap-2 border-gray-300 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                            className="flex items-center justify-center gap-2 border-border/60 bg-white shadow-sm hover:bg-gray-50 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200 dark:hover:bg-slate-700/90"
                                         >
-                                            <Upload className="h-4 w-4" />
+                                            <Import className="h-4 w-4" />
                                             {t('common.import')}
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent>
-                                        <DropdownMenuItem onSelect={() => setShowImportModal(true)}>
+                                    <DropdownMenuContent className="dark:bg-slate-800 dark:border-slate-700/60">
+                                        <DropdownMenuItem onSelect={() => setShowImportModal(true)} className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
                                             {t('import.fromCSV')}
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => setShowSimpleImportModal(true)}>
+                                        <DropdownMenuItem onSelect={() => setShowSimpleImportModal(true)} className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
                                             {t('import.simpleFormat')}
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
@@ -893,7 +899,7 @@ export default function ClientsIndex({
 
                                 <Button
                                     variant="outline"
-                                    className="flex items-center justify-center gap-2 border-gray-300 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                    className="flex items-center justify-center gap-2 border-border/60 bg-white shadow-sm hover:bg-gray-50 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200 dark:hover:bg-slate-700/90"
                                     onClick={() => setShowExportModal(true)}
                                 >
                                     <Download className="h-4 w-4" />
@@ -912,7 +918,7 @@ export default function ClientsIndex({
                             leaveFrom="opacity-100 translate-y-0"
                             leaveTo="opacity-0 translate-y-1"
                         >
-                            <Card className="mt-2 dark:border-gray-700 dark:bg-slate-800">
+                            <Card className="mt-2 border-border/60 dark:border-slate-700/60 dark:bg-slate-800/90">
                                 <CardContent className="pt-6">
                                     <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                                         <div>
@@ -922,7 +928,7 @@ export default function ClientsIndex({
                                             <select
                                                 value={data.tag_id}
                                                 onChange={(e) => setData('tag_id', e.target.value)}
-                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white"
                                             >
                                                 <option value="">{t('common.all')}</option>
                                                 {tags.map((tag) => (
@@ -939,7 +945,7 @@ export default function ClientsIndex({
                                             <select
                                                 value={data.date_range}
                                                 onChange={(e) => setData('date_range', e.target.value)}
-                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white"
                                             >
                                                 <option value="">{t('common.all')}</option>
                                                 <option value="today">{t('filters.today')}</option>
@@ -956,7 +962,7 @@ export default function ClientsIndex({
                                             <select
                                                 value={data.birthday_month}
                                                 onChange={(e) => setData('birthday_month', e.target.value)}
-                                                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                                className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white"
                                             >
                                                 <option value="">{t('common.all')}</option>
                                                 <option value="1">{t('months.january')}</option>
@@ -982,10 +988,10 @@ export default function ClientsIndex({
                                                     value={data.sort_by}
                                                     onValueChange={(val) => setData('sort_by', val)}
                                                 >
-                                                    <SelectTrigger className="rounded-r-none dark:border-gray-600 dark:bg-slate-700 dark:text-white">
+                                                    <SelectTrigger className="rounded-r-none border-border/60 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white">
                                                         <SelectValue placeholder={t('common.name')} />
                                                     </SelectTrigger>
-                                                    <SelectContent>
+                                                    <SelectContent className="dark:bg-slate-800 dark:border-slate-700/60">
                                                         <SelectItem value="name">{t('common.name')}</SelectItem>
                                                         <SelectItem value="created_at">{t('common.dateAdded')}</SelectItem>
                                                         <SelectItem value="last_contact">{t('common.lastContact')}</SelectItem>
@@ -997,13 +1003,9 @@ export default function ClientsIndex({
                                                     type="button"
                                                     variant="outline"
                                                     onClick={() => setData('sort_direction', data.sort_direction === 'asc' ? 'desc' : 'asc')}
-                                                    className="rounded-l-none border border-l-0 dark:border-gray-600 dark:bg-slate-600 dark:text-gray-200"
+                                                    className="rounded-l-none border border-l-0 border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200"
                                                 >
-                                                    {data.sort_direction === 'asc' ? (
-                                                        <ArrowDownAZ className="h-4 w-4" />
-                                                    ) : (
-                                                        <ArrowUpAZ className="h-4 w-4" />
-                                                    )}
+                                                    {data.sort_direction === 'asc' ? '↑' : '↓'}
                                                 </Button>
                                             </div>
                                         </div>
@@ -1025,7 +1027,7 @@ export default function ClientsIndex({
                                                     replace: true,
                                                 });
                                             }}
-                                            className="dark:border-gray-600 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
+                                            className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
                                         >
                                             {t('common.resetFilters')}
                                         </Button>
@@ -1036,7 +1038,7 @@ export default function ClientsIndex({
                                                     replace: true,
                                                 });
                                             }}
-                                            className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                                            className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
                                         >
                                             {t('common.applyFilters')}
                                         </Button>
@@ -1047,9 +1049,9 @@ export default function ClientsIndex({
 
                         {/* Bulk action bar */}
                         {selectedClients.length > 0 && (
-                            <Card className="sticky top-20 z-10 mt-2 bg-gradient-to-r from-blue-50 to-blue-100 shadow-md transition-all dark:from-blue-900/30 dark:to-blue-800/30 dark:shadow-blue-900/20">
+                            <Card className="sticky top-20 z-10 mt-2 border-none bg-gradient-to-r from-indigo-100 to-purple-100 shadow-md transition-all dark:from-indigo-900/30 dark:to-purple-900/30 dark:border-indigo-800/40">
                                 <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
-                                    <div className="flex items-center text-blue-700 dark:text-blue-300">
+                                    <div className="flex items-center text-indigo-700 dark:text-indigo-300">
                                         <Check className="mr-2 h-5 w-5" />
                                         <span className="font-medium">
                                             {selectedClients.length} {t('clients.selectedClients')}
@@ -1058,7 +1060,7 @@ export default function ClientsIndex({
                                     <div className="flex flex-wrap gap-2">
                                         <Button
                                             onClick={() => handleBulkAction('sms')}
-                                            className="rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                                            className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
                                         >
                                             <MessageSquare className="mr-2 h-4 w-4" />
                                             {t('clients.sendMessage')}
@@ -1067,18 +1069,18 @@ export default function ClientsIndex({
                                             <DropdownMenuTrigger asChild>
                                                 <Button
                                                     variant="outline"
-                                                    className="dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                                    className="border-border/60 bg-white/80 dark:border-slate-700/80 dark:bg-slate-800/90 dark:text-gray-200 dark:hover:bg-slate-700/90"
                                                 >
                                                     {t('common.moreActions')}
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent>
-                                                <DropdownMenuItem onSelect={() => setShowExportModal(true)}>
+                                            <DropdownMenuContent className="dark:bg-slate-800 dark:border-slate-700/60">
+                                                <DropdownMenuItem onSelect={() => setShowExportModal(true)} className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
                                                     {t('clients.exportSelected')}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem
                                                     onSelect={() => handleBulkAction('delete')}
-                                                    className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400"
+                                                    className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400 dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90"
                                                 >
                                                     {t('clients.deleteSelected')}
                                                 </DropdownMenuItem>
@@ -1087,7 +1089,7 @@ export default function ClientsIndex({
                                         <Button
                                             variant="outline"
                                             onClick={() => setSelectedClients([])}
-                                            className="dark:border-gray-600 dark:bg-slate-800 dark:text-gray-200 dark:hover:bg-slate-700"
+                                            className="border-border/60 bg-white/80 dark:border-slate-700/80 dark:bg-slate-800/90 dark:text-gray-200 dark:hover:bg-slate-700/90"
                                         >
                                             <X className="mr-2 h-4 w-4" />
                                             {t('common.cancel')}
@@ -1100,15 +1102,16 @@ export default function ClientsIndex({
 
                     {/* Table View */}
                     {viewMode === 'table' && (
-                        <Card className="overflow-hidden shadow-md dark:bg-slate-800">
+                        <Card className="overflow-hidden border-border/60 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/90">
                             <div className="overflow-x-auto">
                                 <Table>
-                                    <TableHeader className="bg-gray-50 dark:bg-slate-700">
+                                    <TableHeader className="bg-gray-50/80 dark:bg-slate-700/80">
                                         <TableRow>
                                             <TableHead className="w-10 px-6">
                                                 <Checkbox
                                                     checked={clients.data.length > 0 && selectedClients.length === clients.data.length}
                                                     onCheckedChange={toggleAllClients}
+                                                    className="border-border/80 dark:border-slate-600"
                                                 />
                                             </TableHead>
                                             <TableHead
@@ -1153,7 +1156,7 @@ export default function ClientsIndex({
                                                     )}
                                                 </div>
                                             </TableHead>
-                                            <TableHead className="px-6">{t('common.actions')}</TableHead>
+                                            <TableHead className="px-6 text-right">{t('common.actions')}</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1161,15 +1164,15 @@ export default function ClientsIndex({
                                             <TableRow>
                                                 <TableCell colSpan={8} className="h-96 text-center">
                                                     <div className="flex flex-col items-center">
-                                                        <Users className="h-12 w-12 text-gray-400" />
+                                                        <Users2 className="h-12 w-12 text-gray-400" />
                                                         <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('clients.noClients')}</h3>
                                                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('clients.noClientsDescription')}</p>
                                                         <div className="mt-6">
                                                             <Link
                                                                 href={route('clients.create')}
-                                                                className="inline-flex items-center rounded-md border border-transparent bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:shadow-blue-600/30"
+                                                                className="inline-flex items-center rounded-md border border-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                                                             >
-                                                                <Plus className="mr-2 h-4 w-4" />
+                                                                <PlusCircle className="mr-2 h-4 w-4" />
                                                                 {t('common.addClient')}
                                                             </Link>
                                                         </div>
@@ -1178,11 +1181,12 @@ export default function ClientsIndex({
                                             </TableRow>
                                         ) : (
                                             clients.data.map((client) => (
-                                                <TableRow key={client.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
+                                                <TableRow key={client.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/70 dark:border-slate-700/60">
                                                     <TableCell className="px-6">
                                                         <Checkbox
                                                             checked={selectedClients.includes(client.id)}
                                                             onCheckedChange={() => toggleClient(client.id)}
+                                                            className="border-border/80 dark:border-slate-600"
                                                         />
                                                     </TableCell>
                                                     <TableCell className="px-6">
@@ -1190,23 +1194,25 @@ export default function ClientsIndex({
                                                             href={route('clients.show', client.id)}
                                                             className="flex items-center"
                                                         >
-                                                            <Avatar className={`${getAvatarColor(client.name)} text-white h-10 w-10`}>
+                                                            <Avatar className={`${getAvatarColor(client.name)} text-white h-9 w-9`}>
                                                                 <AvatarFallback>{getInitials(client.name)}</AvatarFallback>
                                                             </Avatar>
-                                                            <span className="ml-3 font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
+                                                            <span className="ml-3 font-medium text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200">
                                                                 {client.name}
                                                             </span>
                                                         </Link>
                                                     </TableCell>
                                                     <TableCell className="px-6 text-sm text-gray-500 dark:text-gray-400">
-                                                        <a href={`tel:${client.phone}`} className="flex items-center hover:text-blue-600 dark:hover:text-blue-400">
+                                                        <div className="flex items-center">
                                                             <Phone className="mr-2 h-4 w-4" />
-                                                            {formatPhoneNumber(client.phone)}
-                                                        </a>
+                                                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                                                {formatPhoneNumber(client.phone)}
+                                                            </span>
+                                                        </div>
                                                     </TableCell>
                                                     <TableCell className="px-6 text-sm text-gray-500 dark:text-gray-400">
                                                         {client.email && (
-                                                            <a href={`mailto:${client.email}`} className="flex items-center hover:text-blue-600 dark:hover:text-blue-400">
+                                                            <a href={`mailto:${client.email}`} className="flex items-center hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200">
                                                                 <Mail className="mr-2 h-4 w-4" />
                                                                 <span className="truncate max-w-[150px]">{client.email}</span>
                                                             </a>
@@ -1219,7 +1225,7 @@ export default function ClientsIndex({
                                                                     <Badge
                                                                         key={tag.id}
                                                                         variant="secondary"
-                                                                        className="bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                                                        className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
                                                                     >
                                                                         {tag.name}
                                                                     </Badge>
@@ -1243,29 +1249,39 @@ export default function ClientsIndex({
                                                             </div>
                                                         )}
                                                     </TableCell>
-                                                    <TableCell className="px-6 text-sm">
-                                                        <div className="flex space-x-3">
-                                                            <Link
-                                                                href={route('clients.show', client.id)}
-                                                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                                                    <TableCell className="px-6 text-sm text-right">
+                                                        <div className="flex space-x-2 justify-end">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 px-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30"
+                                                                asChild
                                                             >
-                                                                {t('common.show')}
-                                                            </Link>
-                                                            <Link
-                                                                href={route('clients.edit', client.id)}
-                                                                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                                                                <Link href={route('clients.show', client.id)}>
+                                                                    <Eye className="h-4 w-4" />
+                                                                </Link>
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 px-2 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30"
+                                                                asChild
                                                             >
-                                                                {t('common.edit')}
-                                                            </Link>
-                                                            <button
+                                                                <Link href={route('clients.edit', client.id)}>
+                                                                    <Edit className="h-4 w-4" />
+                                                                </Link>
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-8 px-2 text-rose-600 hover:text-rose-800 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/30"
                                                                 onClick={() => {
                                                                     setClientToDelete(client.id);
                                                                     setShowDeleteConfirmModal(true);
                                                                 }}
-                                                                className="text-rose-600 hover:text-rose-900 dark:text-rose-400 dark:hover:text-rose-300"
                                                             >
-                                                                {t('common.delete')}
-                                                            </button>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -1277,7 +1293,7 @@ export default function ClientsIndex({
 
                             {/* Pagination */}
                             {clients.links.length > 3 && (
-                                <div className="border-t border-gray-200 px-4 py-3 dark:border-gray-700 sm:px-6">
+                                <div className="border-t border-border/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
                                     <div className="flex items-center justify-between">
                                         <div className="hidden sm:block">
                                             <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -1296,9 +1312,9 @@ export default function ClientsIndex({
                                                         key={i}
                                                         href={link.url}
                                                         className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
-                                                            ? 'z-10 bg-gradient-to-r from-blue-600 to-blue-600 text-white shadow-md shadow-blue-500/20 dark:shadow-blue-600/30 focus:z-20'
-                                                            : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700'
-                                                            } border border-gray-300 dark:border-gray-600`}
+                                                            ? 'z-10 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm focus:z-20'
+                                                            : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700/90'
+                                                            } border border-border/60 dark:border-slate-700/60 mx-1 rounded-md`}
                                                     >
                                                         {link.label.replace('&laquo;', '←').replace('&raquo;', '→')}
                                                     </Link>
@@ -1311,21 +1327,21 @@ export default function ClientsIndex({
                         </Card>
                     )}
 
-                    {/* Vue en grille améliorée */}
+                    {/* Grid View */}
                     {viewMode === 'grid' && (
                         <div className="space-y-6">
                             {clients.data.length === 0 ? (
-                                <Card className="mt-6 px-6 py-12 text-center shadow-md dark:bg-slate-800">
+                                <Card className="mt-6 px-6 py-12 text-center border-border/60 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/90">
                                     <div className="flex flex-col items-center">
-                                        <Users className="h-12 w-12 text-gray-400" />
+                                        <Users2 className="h-12 w-12 text-gray-400" />
                                         <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">{t('clients.noClients')}</h3>
                                         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('clients.noClientsDescription')}</p>
                                         <div className="mt-6">
                                             <Link
                                                 href={route('clients.create')}
-                                                className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:shadow-blue-600/30"
+                                                className="inline-flex items-center rounded-lg border border-transparent bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                                             >
-                                                <Plus className="mr-2 h-4 w-4" />
+                                                <PlusCircle className="mr-2 h-4 w-4" />
                                                 {t('common.addClient')}
                                             </Link>
                                         </div>
@@ -1333,15 +1349,16 @@ export default function ClientsIndex({
                                 </Card>
                             ) : (
                                 <>
-                                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                                         {clients.data.map((client) => (
-                                            <Card key={client.id} className="relative overflow-hidden transition-all hover:shadow-lg dark:bg-slate-800">
+                                            <Card key={client.id} className="relative overflow-hidden border-border/60 transition-all hover:shadow-md dark:border-slate-700/60 dark:bg-slate-800/90">
                                                 {/* Header with checkbox */}
                                                 <div className="relative">
                                                     <div className="absolute left-3 top-3 z-10">
                                                         <Checkbox
                                                             checked={selectedClients.includes(client.id)}
                                                             onCheckedChange={() => toggleClient(client.id)}
+                                                            className="border-border/80 dark:border-slate-600"
                                                         />
                                                     </div>
                                                     <div className="absolute right-3 top-3 z-10">
@@ -1350,13 +1367,13 @@ export default function ClientsIndex({
                                                                 <Button
                                                                     variant="ghost"
                                                                     size="sm"
-                                                                    className="h-8 w-8 rounded-full p-0 bg-white dark:bg-slate-700"
+                                                                    className="h-8 w-8 rounded-full p-0 hover:bg-white/80 dark:hover:bg-slate-700/80"
                                                                 >
                                                                     <MoreHorizontal className="h-4 w-4" />
                                                                 </Button>
                                                             </DropdownMenuTrigger>
-                                                            <DropdownMenuContent>
-                                                                <DropdownMenuItem>
+                                                            <DropdownMenuContent className="dark:bg-slate-800 dark:border-slate-700/60">
+                                                                <DropdownMenuItem className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
                                                                     <Link
                                                                         href={route('clients.edit', client.id)}
                                                                         className="w-full flex"
@@ -1365,7 +1382,7 @@ export default function ClientsIndex({
                                                                     </Link>
                                                                 </DropdownMenuItem>
                                                                 <DropdownMenuItem
-                                                                    className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400"
+                                                                    className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400 dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90"
                                                                     onSelect={(e) => {
                                                                         e.preventDefault();
                                                                         setClientToDelete(client.id);
@@ -1379,13 +1396,13 @@ export default function ClientsIndex({
                                                     </div>
 
                                                     {/* Avatar and client name */}
-                                                    <div className="flex flex-col items-center p-6">
-                                                        <Avatar className={`${getAvatarColor(client.name)} mb-3 h-20 w-20 text-2xl font-bold text-white shadow-lg`}>
+                                                    <div className="flex flex-col items-center p-5">
+                                                        <Avatar className={`${getAvatarColor(client.name)} mb-3 h-16 w-16 text-xl font-bold text-white shadow-md`}>
                                                             <AvatarFallback>{getInitials(client.name)}</AvatarFallback>
                                                         </Avatar>
                                                         <Link
                                                             href={route('clients.show', client.id)}
-                                                            className="mt-1 truncate text-center text-lg font-medium text-gray-900 hover:text-blue-600 dark:text-white dark:hover:text-blue-400"
+                                                            className="mt-1 truncate text-center text-lg font-medium text-gray-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400 transition-colors duration-200"
                                                         >
                                                             {client.name}
                                                         </Link>
@@ -1397,13 +1414,13 @@ export default function ClientsIndex({
                                                                     <Badge
                                                                         key={tag.id}
                                                                         variant="secondary"
-                                                                        className="bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                                                                        className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
                                                                     >
                                                                         {tag.name}
                                                                     </Badge>
                                                                 ))}
                                                                 {client.tags.length > 2 && (
-                                                                    <Badge variant="outline" className="text-gray-600 dark:text-gray-300">
+                                                                    <Badge variant="outline" className="text-gray-600 dark:text-gray-300 border-border/60 dark:border-slate-700/60">
                                                                         +{client.tags.length - 2}
                                                                     </Badge>
                                                                 )}
@@ -1413,20 +1430,22 @@ export default function ClientsIndex({
                                                 </div>
 
                                                 {/* Contact info */}
-                                                <Separator />
+                                                <Separator className="dark:bg-slate-700/60" />
                                                 <div className="p-4">
                                                     <div className="space-y-2 text-sm">
                                                         <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                            <Phone className="mr-2 h-4 w-4" />
-                                                            <a href={`tel:${client.phone}`} className="hover:text-blue-600 dark:hover:text-blue-400">
-                                                                {formatPhoneNumber(client.phone)}
-                                                            </a>
+                                                            <Phone className="mr-2 h-3.5 w-3.5 text-gray-500 dark:text-gray-500" />
+                                                            <div className="flex items-center">
+                                                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                                                                    {formatPhoneNumber(client.phone)}
+                                                                </span>
+                                                            </div>
                                                         </div>
 
                                                         {client.email && (
                                                             <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                <Mail className="mr-2 h-4 w-4" />
-                                                                <a href={`mailto:${client.email}`} className="truncate hover:text-blue-600 dark:hover:text-blue-400">
+                                                                <Mail className="mr-2 h-3.5 w-3.5 text-gray-500 dark:text-gray-500" />
+                                                                <a href={`mailto:${client.email}`} className="truncate hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200">
                                                                     {client.email}
                                                                 </a>
                                                             </div>
@@ -1434,14 +1453,14 @@ export default function ClientsIndex({
 
                                                         {client.birthday && (
                                                             <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                <Calendar className="mr-2 h-4 w-4" />
+                                                                <Calendar className="mr-2 h-3.5 w-3.5 text-gray-500 dark:text-gray-500" />
                                                                 {formatDate(client.birthday)}
                                                             </div>
                                                         )}
 
                                                         {client.lastContact && (
                                                             <div className="flex items-center text-gray-600 dark:text-gray-400">
-                                                                <Clock className="mr-2 h-4 w-4" />
+                                                                <Clock className="mr-2 h-3.5 w-3.5 text-gray-500 dark:text-gray-500" />
                                                                 {formatDate(client.lastContact)}
                                                             </div>
                                                         )}
@@ -1449,20 +1468,20 @@ export default function ClientsIndex({
                                                 </div>
 
                                                 {/* Quick actions */}
-                                                <Separator />
-                                                <div className="grid grid-cols-2 divide-x divide-gray-200 dark:divide-gray-700">
+                                                <Separator className="dark:bg-slate-700/60" />
+                                                <div className="grid grid-cols-2 divide-x divide-border/60 dark:divide-slate-700/60">
                                                     <Link
                                                         href={route('clients.show', client.id)}
-                                                        className="flex items-center justify-center py-3 text-sm font-medium text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-gray-400 dark:hover:bg-blue-900/20 dark:hover:text-blue-300"
+                                                        className="flex items-center justify-center py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:text-gray-400 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-300"
                                                     >
-                                                        <Eye className="mr-1.5 h-4 w-4" />
+                                                        <Eye className="mr-1.5 h-3.5 w-3.5" />
                                                         {t('common.show')}
                                                     </Link>
                                                     <Link
                                                         href={route('clients.edit', client.id)}
-                                                        className="flex items-center justify-center py-3 text-sm font-medium text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-700 dark:text-gray-400 dark:hover:bg-blue-900/20 dark:hover:text-blue-300"
+                                                        className="flex items-center justify-center py-3 text-sm font-medium text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:text-gray-400 dark:hover:bg-indigo-900/20 dark:hover:text-indigo-300"
                                                     >
-                                                        <Edit className="mr-1.5 h-4 w-4" />
+                                                        <Edit className="mr-1.5 h-3.5 w-3.5" />
                                                         {t('common.edit')}
                                                     </Link>
                                                 </div>
@@ -1472,7 +1491,7 @@ export default function ClientsIndex({
 
                                     {/* Pagination */}
                                     {clients.links.length > 3 && (
-                                        <div className="mt-6 flex items-center justify-between border-t border-gray-200 px-4 py-3 dark:border-gray-700 sm:px-6">
+                                        <div className="mt-6 flex items-center justify-between border-t border-border/60 px-4 py-3 dark:border-slate-700/60 sm:px-6">
                                             <div className="hidden sm:block">
                                                 <p className="text-sm text-gray-700 dark:text-gray-300">
                                                     {t('pagination.showing')} <span className="font-medium">{clients.data.length}</span> {t('pagination.of')} <span className="font-medium">{clients.total}</span> {t('pagination.results')}
@@ -1490,9 +1509,9 @@ export default function ClientsIndex({
                                                             key={i}
                                                             href={link.url}
                                                             className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
-                                                                ? 'z-10 bg-gradient-to-r from-blue-600 to-blue-600 text-white shadow-md shadow-blue-500/20 dark:shadow-blue-600/30 focus:z-20'
-                                                                : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700'
-                                                                } border border-gray-300 dark:border-gray-600`}
+                                                                ? 'z-10 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm focus:z-20'
+                                                                : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700/90'
+                                                                } border border-border/60 dark:border-slate-700/60 mx-1 rounded-md`}
                                                         >
                                                             {link.label.replace('&laquo;', '←').replace('&raquo;', '→')}
                                                         </Link>
@@ -1511,10 +1530,10 @@ export default function ClientsIndex({
             {/* Modals */}
             {/* Import CSV Modal */}
             <Dialog open={showImportModal} onOpenChange={setShowImportModal}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg dark:bg-slate-800 dark:border-slate-700/60">
                     <DialogHeader>
                         <DialogTitle>{t('import.title')}</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="dark:text-gray-400">
                             {t('import.description')}
                         </DialogDescription>
                     </DialogHeader>
@@ -1526,7 +1545,7 @@ export default function ClientsIndex({
                             type="file"
                             accept=".csv"
                             onChange={handleFileChange}
-                            className="mt-1 bg-white dark:bg-slate-800"
+                            className="mt-1 bg-white border-border/60 dark:bg-slate-700 dark:border-slate-600"
                             disabled={importLoading}
                         />
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -1539,10 +1558,10 @@ export default function ClientsIndex({
                             <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 {t('import.preview')}
                             </h3>
-                            <ScrollArea className="mt-2 h-40 rounded-md border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-slate-700">
+                            <ScrollArea className="mt-2 h-40 rounded-md border border-border/60 bg-gray-50/80 p-2 dark:border-slate-700/60 dark:bg-slate-700/80">
                                 <Table>
                                     <TableHeader>
-                                        <TableRow>
+                                        <TableRow className="dark:border-slate-600">
                                             {Object.keys(previewData[0]).map(header => (
                                                 <TableHead key={header} className="px-3 py-2 text-xs">
                                                     {header}
@@ -1552,7 +1571,7 @@ export default function ClientsIndex({
                                     </TableHeader>
                                     <TableBody>
                                         {previewData.map((row, rowIndex) => (
-                                            <TableRow key={rowIndex}>
+                                            <TableRow key={rowIndex} className="dark:border-slate-600">
                                                 {Object.entries(row).map(([key, value]) => (
                                                     <TableCell key={key} className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
                                                         {value}
@@ -1574,8 +1593,8 @@ export default function ClientsIndex({
                             <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
                                 {t('import.fieldMappingDescription')}
                             </p>
-                            <ScrollArea className="mt-2 h-60">
-                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pr-4">
+                            <ScrollArea className="mt-2 h-60 pr-4">
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     {Object.entries(fieldMapping).map(([csvField, appField]) => (
                                         <div key={csvField}>
                                             <Label htmlFor={`mapping_${csvField}`}>{csvField}</Label>
@@ -1587,11 +1606,11 @@ export default function ClientsIndex({
                                                 })}
                                                 disabled={importLoading}
                                             >
-                                                <SelectTrigger id={`mapping_${csvField}`} className="mt-1 w-full dark:bg-slate-800">
+                                                <SelectTrigger id={`mapping_${csvField}`} className="mt-1 w-full border-border/60 dark:bg-slate-700 dark:border-slate-600">
                                                     <SelectValue placeholder={t('import.ignore')} />
                                                 </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="">{t('import.ignore')}</SelectItem>
+                                                <SelectContent className="dark:bg-slate-800 dark:border-slate-700/60">
+                                                    <SelectItem value="ignore">{t('import.ignore')}</SelectItem>
                                                     <SelectItem value="name">{t('common.name')}</SelectItem>
                                                     <SelectItem value="phone">{t('common.phone')}</SelectItem>
                                                     <SelectItem value="email">{t('common.email')}</SelectItem>
@@ -1613,13 +1632,14 @@ export default function ClientsIndex({
                             variant="outline"
                             onClick={() => setShowImportModal(false)}
                             disabled={importLoading}
+                            className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
                         >
                             {t('common.cancel')}
                         </Button>
                         <Button
                             onClick={handleImport}
                             disabled={importLoading || !selectedFile || Object.values(fieldMapping).filter(Boolean).length === 0}
-                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 disabled:opacity-70 dark:shadow-blue-600/30"
+                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200 disabled:opacity-70"
                         >
                             {importLoading ? (
                                 <>
@@ -1634,10 +1654,10 @@ export default function ClientsIndex({
 
             {/* Simple Import Modal */}
             <Dialog open={showSimpleImportModal} onOpenChange={setShowSimpleImportModal}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700/60">
                     <DialogHeader>
                         <DialogTitle>{t('import.simpleTitle')}</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="dark:text-gray-400">
                             {t('import.simpleDescription')}
                         </DialogDescription>
                     </DialogHeader>
@@ -1650,7 +1670,7 @@ export default function ClientsIndex({
                             onChange={(e) => setContactsText(e.target.value)}
                             rows={10}
                             placeholder={t('import.contactsPlaceholder')}
-                            className="mt-1 dark:bg-slate-800"
+                            className="mt-1 border-border/60 dark:bg-slate-700 dark:border-slate-600"
                         />
                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                             {t('import.contactsExample')}
@@ -1662,13 +1682,14 @@ export default function ClientsIndex({
                             variant="outline"
                             onClick={() => setShowSimpleImportModal(false)}
                             disabled={importLoading}
+                            className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
                         >
                             {t('common.cancel')}
                         </Button>
                         <Button
                             onClick={handleSimpleImport}
                             disabled={importLoading || !contactsText.trim()}
-                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
                         >
                             {importLoading ? (
                                 <>
@@ -1683,10 +1704,10 @@ export default function ClientsIndex({
 
             {/* Export Modal */}
             <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700/60">
                     <DialogHeader>
                         <DialogTitle>{t('export.title')}</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="dark:text-gray-400">
                             {selectedClients.length > 0
                                 ? t('export.selectedDescription', { count: selectedClients.length })
                                 : t('export.description')}
@@ -1701,10 +1722,10 @@ export default function ClientsIndex({
                             <Button
                                 variant="outline"
                                 onClick={() => handleExport('csv')}
-                                className="w-full justify-between border-gray-300 bg-white px-6 py-4 text-left hover:bg-blue-50 dark:border-gray-600 dark:bg-slate-800 dark:hover:bg-blue-900/20"
+                                className="w-full justify-between border-border/60 bg-white/80 px-6 py-4 text-left hover:bg-indigo-50 dark:border-slate-700/60 dark:bg-slate-800/90 dark:text-gray-200 dark:hover:bg-indigo-900/20"
                             >
                                 <div className="flex items-center">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-600 dark:from-blue-900/50 dark:to-blue-800/50 dark:text-blue-400 mr-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-600 dark:from-indigo-900/50 dark:to-indigo-800/50 dark:text-indigo-400 mr-3">
                                         <FileText className="h-5 w-5" />
                                     </div>
                                     <div>
@@ -1718,11 +1739,11 @@ export default function ClientsIndex({
                             <Button
                                 variant="outline"
                                 onClick={() => handleExport('excel')}
-                                className="w-full justify-between border-gray-300 bg-white px-6 py-4 text-left hover:bg-green-50 dark:border-gray-600 dark:bg-slate-800 dark:hover:bg-green-900/20"
+                                className="w-full justify-between border-border/60 bg-white/80 px-6 py-4 text-left hover:bg-green-50 dark:border-slate-700/60 dark:bg-slate-800/90 dark:text-gray-200 dark:hover:bg-green-900/20"
                             >
                                 <div className="flex items-center">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-green-100 to-green-200 text-green-600 dark:from-green-900/50 dark:to-green-800/50 dark:text-green-400 mr-3">
-                                        <FileSpreadsheet className="h-5 w-5" />
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-r from-green-100 to-green-200 text-green-600 dark:from-green-900/50 dark:to-green-800/50 dark:text-green-400 mr-3">
+                                        <FileText className="h-5 w-5" />
                                     </div>
                                     <div>
                                         <span className="block font-medium">Excel</span>
@@ -1738,10 +1759,10 @@ export default function ClientsIndex({
 
             {/* Bulk SMS Modal */}
             <Dialog open={showBulkSmsModal} onOpenChange={setShowBulkSmsModal}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700/60">
                     <DialogHeader>
                         <DialogTitle>{t('sms.sendToSelected', { count: selectedClients.length })}</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="dark:text-gray-400">
                             {t('sms.bulkDescription')}
                         </DialogDescription>
                     </DialogHeader>
@@ -1753,7 +1774,7 @@ export default function ClientsIndex({
                             value={bulkSmsContent}
                             onChange={(e) => setBulkSmsContent(e.target.value)}
                             rows={5}
-                            className="mt-1 dark:bg-slate-800"
+                            className="mt-1 border-border/60 dark:bg-slate-700 dark:border-slate-600"
                         />
                         <div className="mt-2 flex justify-between text-xs">
                             <span className="text-gray-500 dark:text-gray-400">
@@ -1761,9 +1782,9 @@ export default function ClientsIndex({
                                 ({smsPreviewInfo.segments} {t('sms.segments')})
                             </span>
                             <Button
-                                variant="link"
+                                variant="ghost"
                                 size="sm"
-                                className="h-auto p-0 text-blue-600 dark:text-blue-400"
+                                className="h-8 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/50"
                                 onClick={() => setShowSmsPreviewModal(true)}
                             >
                                 {t('sms.preview')}
@@ -1775,13 +1796,14 @@ export default function ClientsIndex({
                         <Button
                             variant="outline"
                             onClick={() => setShowBulkSmsModal(false)}
+                            className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
                         >
                             {t('common.cancel')}
                         </Button>
                         <Button
                             onClick={handleBulkSms}
                             disabled={!bulkSmsContent.trim()}
-                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
                         >
                             <MessageSquarePlus className="mr-2 h-4 w-4" />
                             {t('sms.send')}
@@ -1792,13 +1814,13 @@ export default function ClientsIndex({
 
             {/* SMS Preview Modal */}
             <Dialog open={showSmsPreviewModal} onOpenChange={setShowSmsPreviewModal}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700/60">
                     <DialogHeader>
                         <DialogTitle>{t('sms.preview')}</DialogTitle>
                     </DialogHeader>
 
-                    <div className="mt-4 rounded-lg bg-gray-100 p-4 dark:bg-slate-700">
-                        <div className="mb-4 max-w-xs rounded-lg bg-blue-500 p-3 text-white">
+                    <div className="mt-4 rounded-lg bg-gray-100 p-4 dark:bg-slate-700/50">
+                        <div className="mb-4 max-w-xs rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-3 text-white">
                             <p className="whitespace-pre-wrap">{bulkSmsContent}</p>
                         </div>
 
@@ -1811,7 +1833,10 @@ export default function ClientsIndex({
                     </div>
 
                     <DialogFooter>
-                        <Button onClick={() => setShowSmsPreviewModal(false)}>
+                        <Button
+                            onClick={() => setShowSmsPreviewModal(false)}
+                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                        >
                             {t('common.close')}
                         </Button>
                     </DialogFooter>
@@ -1820,10 +1845,10 @@ export default function ClientsIndex({
 
             {/* Quick Add Modal */}
             <Dialog open={showQuickAddModal} onOpenChange={setShowQuickAddModal}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700/60">
                     <DialogHeader>
                         <DialogTitle>{t('clients.quickAdd')}</DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="dark:text-gray-400">
                             {t('clients.quickAddDescription')}
                         </DialogDescription>
                     </DialogHeader>
@@ -1835,7 +1860,7 @@ export default function ClientsIndex({
                                 id="quick_name"
                                 value={quickAddForm.name}
                                 onChange={e => setQuickAddForm({ ...quickAddForm, name: e.target.value })}
-                                className="mt-1 dark:bg-slate-800"
+                                className="mt-1 border-border/60 dark:bg-slate-700 dark:border-slate-600"
                                 required
                             />
                         </div>
@@ -1852,7 +1877,7 @@ export default function ClientsIndex({
                                         setQuickAddForm({ ...quickAddForm, phone: newValue });
                                         validateAndFormatPhone(newValue);
                                     }}
-                                    className={`pr-10 dark:bg-slate-800 ${quickAddForm.phone && !phoneValidation.isValid ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500' : ''}`}
+                                    className={`pr-10 border-border/60 dark:bg-slate-700 dark:border-slate-600 ${quickAddForm.phone && !phoneValidation.isValid ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500' : ''}`}
                                     placeholder="+237 6XX XXX XXX ou 6XX XXX XXX"
                                     required
                                 />
@@ -1893,30 +1918,49 @@ export default function ClientsIndex({
                         </div>
 
                         <div>
-                            <Label htmlFor="quick_email">{t('common.email')}</Label>
-                            <Input
-                                id="quick_email"
-                                type="email"
-                                value={quickAddForm.email}
-                                onChange={e => setQuickAddForm({ ...quickAddForm, email: e.target.value })}
-                                className="mt-1 dark:bg-slate-800"
-                            />
+                            <Label htmlFor="quick_gender">{t('common.gender')}</Label>
+                            <Select
+                                value={quickAddForm.gender}
+                                onValueChange={(value) => setQuickAddForm({ ...quickAddForm, gender: value })}
+                            >
+                                <SelectTrigger id="quick_gender" className="mt-1 border-border/60 dark:bg-slate-700 dark:border-slate-600">
+                                    <SelectValue placeholder={t('clients.selectGender')} />
+                                </SelectTrigger>
+                                <SelectContent className="dark:bg-slate-800 dark:border-slate-700/60">
+                                    <SelectItem value="male">{t('gender.male')}</SelectItem>
+                                    <SelectItem value="female">{t('gender.female')}</SelectItem>
+                                    <SelectItem value="other">{t('gender.other')}</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         <div>
                             <Label htmlFor="quick_tags">{t('common.tags')}</Label>
-                            <Select>
-                                <SelectTrigger className="mt-1 dark:bg-slate-800">
-                                    <SelectValue placeholder={t('common.selectTags')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {tags.map(tag => (
-                                        <SelectItem key={tag.id} value={tag.id.toString()}>
-                                            {tag.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="mt-1 flex flex-wrap gap-2 border border-border/60 rounded-md p-2 dark:border-slate-700/60 dark:bg-slate-700/50">
+                                {tags.map(tag => (
+                                    <div
+                                        key={tag.id}
+                                        onClick={() => {
+                                            // Toggle tag selection
+                                            const newTagIds = quickAddForm.tagIds.includes(tag.id)
+                                                ? quickAddForm.tagIds.filter(id => id !== tag.id)
+                                                : [...quickAddForm.tagIds, tag.id];
+                                            setQuickAddForm({ ...quickAddForm, tagIds: newTagIds });
+                                        }}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors duration-200 ${quickAddForm.tagIds.includes(tag.id)
+                                            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300'
+                                            : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300'
+                                            }`}
+                                    >
+                                        {tag.name}
+                                    </div>
+                                ))}
+                                {tags.length === 0 && (
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                                        {t('tags.noTagsAvailable')}
+                                    </span>
+                                )}
+                            </div>
                             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                                 {t('clients.tagsDescription')}
                             </p>
@@ -1927,13 +1971,14 @@ export default function ClientsIndex({
                         <Button
                             variant="outline"
                             onClick={() => setShowQuickAddModal(false)}
+                            className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
                         >
                             {t('common.cancel')}
                         </Button>
                         <Button
                             onClick={handleQuickAdd}
                             disabled={!quickAddForm.name || !quickAddForm.phone}
-                            className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 dark:shadow-blue-600/30"
+                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
                         >
                             <Save className="mr-2 h-4 w-4" />
                             {t('common.save')}
@@ -1944,14 +1989,14 @@ export default function ClientsIndex({
 
             {/* Delete Confirmation Modal */}
             <Dialog open={showDeleteConfirmModal} onOpenChange={setShowDeleteConfirmModal}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700/60">
                     <DialogHeader>
                         <DialogTitle className="text-rose-600 dark:text-rose-400">
                             {clientToDelete
                                 ? t('clients.deleteConfirmation')
                                 : t('clients.bulkDeleteConfirmation', { count: clientsToDelete.length })}
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="dark:text-gray-400">
                             {clientToDelete
                                 ? t('clients.deleteWarning')
                                 : t('clients.bulkDeleteWarning', { count: clientsToDelete.length })}
@@ -1959,12 +2004,14 @@ export default function ClientsIndex({
                     </DialogHeader>
 
                     <DialogFooter className="mt-6">
-                        <Button variant="outline"
+                        <Button
+                            variant="outline"
                             onClick={() => {
                                 setClientToDelete(null);
                                 setClientsToDelete([]);
                                 setShowDeleteConfirmModal(false);
                             }}
+                            className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
                         >
                             {t('common.cancel')}
                         </Button>
@@ -1973,7 +2020,7 @@ export default function ClientsIndex({
                             onClick={handleDeleteConfirm}
                             className="bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700"
                         >
-                            <Trash className="mr-2 h-4 w-4" />
+                            <Trash2 className="mr-2 h-4 w-4" />
                             {t('common.delete')}
                         </Button>
                     </DialogFooter>
@@ -1981,111 +2028,86 @@ export default function ClientsIndex({
             </Dialog>
         </AuthenticatedLayout>
     );
-}
 
-// Additional icons used in the component
-function Shield(props: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-        </svg>
-    );
-}
+    function ShieldCheck(props: React.SVGProps<SVGSVGElement>) {
+        return (
+            <svg
+                {...props}
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                <path d="m9 12 2 2 4-4" />
+            </svg>
+        );
+    }
 
-function ChevronRight(props: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M9 18l6-6-6-6" />
-        </svg>
-    );
-}
+    function ChevronRight(props: React.SVGProps<SVGSVGElement>) {
+        return (
+            <svg
+                {...props}
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <path d="M9 18l6-6-6-6" />
+            </svg>
+        );
+    }
 
-function FileSpreadsheet(props: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-            <polyline points="14 2 14 8 20 8" />
-            <path d="M8 13h2" />
-            <path d="M8 17h2" />
-            <path d="M14 13h2" />
-            <path d="M14 17h2" />
-        </svg>
-    );
-}
+    function Import(props: React.SVGProps<SVGSVGElement>) {
+        return (
+            <svg
+                {...props}
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <path d="M12 3v12"></path>
+                <path d="m8 11 4 4 4-4"></path>
+                <path d="M8 5H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-4"></path>
+            </svg>
+        );
+    }
 
-function ArrowDownAZ(props: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="m3 16 4 4 4-4" />
-            <path d="M7 20V4" />
-            <path d="M21 8h-4l3 4h-3v4h4" />
-            <path d="M15 8h-2v8h2" />
-        </svg>
-    );
-}
-
-function ArrowUpAZ(props: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="m3 8 4-4 4 4" />
-            <path d="M7 4v16" />
-            <path d="M21 16h-4l3-4h-3V8h4" />
-            <path d="M15 16h-2V8h2" />
-        </svg>
-    );
+    function UserPlus(props: React.SVGProps<SVGSVGElement>) {
+        return (
+            <svg
+                {...props}
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+            >
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <line x1="19" x2="19" y1="8" y2="14"></line>
+                <line x1="22" x2="16" y1="11" y2="11"></line>
+            </svg>
+        );
+    }
 }

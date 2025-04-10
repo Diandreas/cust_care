@@ -212,6 +212,7 @@ export default function CreateCampaign({
         }
 
         // Si on est à l'étape 3 et qu'il y a des destinataires sélectionnés, demander confirmation
+        // et ne pas passer automatiquement à l'étape 4
         if (step === 3 && data.client_ids.length > 0) {
             setShowConfirmRecipientsModal(true);
             return;
@@ -779,6 +780,24 @@ export default function CreateCampaign({
                             {t('campaigns.confirmRecipients', { count: data.client_ids.length })}
                         </DialogDescription>
                     </DialogHeader>
+
+                    <div className="my-4 max-h-60 overflow-y-auto border border-gray-200 rounded-md p-4 dark:border-gray-700">
+                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {selectedClientsDetails.slice(0, 15).map(client => (
+                                <li key={client.id} className="py-2 flex justify-between items-center">
+                                    <div className="text-sm text-gray-800 dark:text-gray-200">
+                                        {client.name} <span className="text-gray-500 dark:text-gray-400">({client.phone})</span>
+                                    </div>
+                                </li>
+                            ))}
+                            {selectedClientsDetails.length > 15 && (
+                                <li className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    {t('common.andMoreResults', { count: selectedClientsDetails.length - 15 })}
+                                </li>
+                            )}
+                        </ul>
+                    </div>
+
                     <DialogFooter className="mt-6">
                         <Button
                             variant="outline"

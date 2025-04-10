@@ -1,4 +1,4 @@
-import React, { useState, ReactNode } from 'react';
+import React, { useState, ReactNode, useEffect } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import { User } from '@/types';
 import { ThemeProvider } from '@/Components/theme-provider';
@@ -16,9 +16,9 @@ import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Home, Users2, Sparkles, MessageCircle, FileText, Calendar,
-    CreditCard, Settings, User as UserIcon, LayoutDashboard,
-    Menu, X, LogOut, Bell
+    Home, Users2, Sparkles, MessageCircle, FileText,
+    CreditCard, Settings, User as UserIcon,
+    Menu, X, LogOut, Bell, ChevronRight
 } from 'lucide-react';
 import { useTranslation } from '@/i18n';
 
@@ -26,12 +26,64 @@ interface AuthenticatedLayoutProps {
     user: User;
     header?: ReactNode;
     children: ReactNode;
+    fullWidth?: boolean;
 }
 
-export default function AuthenticatedLayout({ user, header, children }: AuthenticatedLayoutProps) {
+export default function AuthenticatedLayout({
+    user,
+    header,
+    children,
+    fullWidth = false
+}: AuthenticatedLayoutProps) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    // Get the sidebar expanded state from localStorage with a default of false
+    const [sidebarExpanded, setSidebarExpanded] = useState(() => {
+        // Check if we're in a browser environment first to avoid SSR issues
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('sidebarExpanded');
+            return saved !== null ? JSON.parse(saved) : false;
+        }
+        return false;
+    });
+
     const { url } = usePage();
     const { t } = useTranslation();
+    const [isScrolled, setIsScrolled] = useState(false);
+
+    // Persist sidebar expanded state to localStorage whenever it changes
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('sidebarExpanded', JSON.stringify(sidebarExpanded));
+        }
+    }, [sidebarExpanded]);
+
+    // Monitor scroll to apply shadow effects to header
+    useEffect(() => {
+        const handleScroll = () => {
+            setIsScrolled(window.scrollY > 10);
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
+    // Close sidebar when clicking outside (on desktop)
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (sidebarExpanded && !target.closest('.sidebar-container')) {
+                setSidebarExpanded(false);
+            }
+        };
+
+        if (sidebarExpanded) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [sidebarExpanded]);
 
     const navigation = [
         { name: t('navigation.dashboard'), href: route('dashboard'), icon: Home, current: url.startsWith('/dashboard') },
@@ -43,19 +95,35 @@ export default function AuthenticatedLayout({ user, header, children }: Authenti
     ];
 
     const sidebarVariants = {
-        hidden: { x: -300, opacity: 0 },
+        collapsed: {
+            width: "64px",
+            transition: {
+                duration: 0.3,
+                ease: "easeInOut"
+            }
+        },
+        expanded: {
+            width: "240px",
+            transition: {
+                duration: 0.3,
+                ease: "easeInOut"
+            }
+        }
+    };
+
+    const mobileMenuVariants = {
+        hidden: { x: "-100%", opacity: 0 },
         visible: {
             x: 0,
             opacity: 1,
             transition: {
                 type: "spring",
-                stiffness: 250,
                 damping: 25,
-                staggerChildren: 0.05
+                stiffness: 300
             }
         },
         exit: {
-            x: -300,
+            x: "-100%",
             opacity: 0,
             transition: {
                 duration: 0.2,
@@ -64,26 +132,37 @@ export default function AuthenticatedLayout({ user, header, children }: Authenti
         }
     };
 
-    const itemVariants = {
-        hidden: { x: -20, opacity: 0 },
-        visible: {
-            x: 0,
+    const navItemVariants = {
+        collapsed: {
+            opacity: 0,
+            display: "none",
+            transition: {
+                duration: 0.2,
+                ease: "easeInOut"
+            }
+        },
+        expanded: {
             opacity: 1,
-            transition: { type: "spring", stiffness: 300, damping: 24 }
+            display: "block",
+            transition: {
+                delay: 0.1,
+                duration: 0.3,
+                ease: "easeInOut"
+            }
         }
     };
 
-    const fadeInVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { duration: 0.5 }
-        }
+    const handleToggleSidebar = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setSidebarExpanded(!sidebarExpanded);
     };
+
+    // Determine if we're on the campaigns page
+    const isCampaignsPage = url.startsWith('/campaigns');
 
     return (
         <ThemeProvider defaultTheme="light" storageKey="elitesms-theme">
-            <div className="min-h-screen bg-gray-50 dark:bg-slate-950">
+            <div className="min-h-screen bg-background text-foreground">
                 {/* Mobile sidebar */}
                 <AnimatePresence>
                     {sidebarOpen && (
@@ -93,227 +172,296 @@ export default function AuthenticatedLayout({ user, header, children }: Authenti
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.2 }}
-                                className="fixed inset-0 bg-gray-900/80 backdrop-blur"
+                                className="fixed inset-0 bg-charcoal/60 backdrop-blur-sm"
                                 aria-hidden="true"
                                 onClick={() => setSidebarOpen(false)}
                             />
 
                             <motion.div
-                                variants={sidebarVariants}
+                                variants={mobileMenuVariants}
                                 initial="hidden"
                                 animate="visible"
                                 exit="exit"
-                                className="fixed inset-y-0 left-0 flex w-full max-w-xs flex-1 flex-col bg-white dark:bg-slate-900"
+                                className="fixed inset-y-0 left-0 flex w-full max-w-xs flex-1 flex-col bg-card text-card-foreground border-r border-border rounded-r-xl shadow-lg"
                             >
-                                <div className="flex items-center justify-between px-6 py-4">
-                                    <div className="flex items-center">
-                                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-400 to-pink-500 shadow-xl shadow-blue-500/50 dark:shadow-blue-500/70">
+                                <div className="flex items-center justify-between px-4 py-4">
+                                    <Link href={route('dashboard')} className="flex items-center">
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-500/40">
                                             <span className="text-lg font-bold text-white">E</span>
                                         </div>
-                                        <span className="ml-3 text-xl font-semibold text-gray-900 dark:text-white">
-                                            Elite<span className="text-blue-600 dark:text-blue-400">SMS</span>
+                                        <span className="ml-3 text-xl font-semibold">
+                                            Elite<span className="text-indigo-500 dark:text-indigo-400">SMS</span>
                                         </span>
-                                    </div>
+                                    </Link>
                                     <Button
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => setSidebarOpen(false)}
-                                        className="text-gray-600 hover:text-gray-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
+                                        className="text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-full hover:bg-accent/30"
                                         aria-label={t('navigation.closeSidebar')}
                                     >
-                                        <X className="h-6 w-6" />
+                                        <X className="h-5 w-5" />
                                     </Button>
                                 </div>
 
-                                <div className="flex-1 overflow-y-auto px-6 py-2">
-                                    <nav className="flex flex-1 flex-col">
-                                        <ul className="flex flex-1 flex-col gap-y-2">
-                                            {navigation.map((item) => (
-                                                <motion.li
-                                                    key={item.name}
-                                                    variants={itemVariants}
-                                                >
-                                                    <Link
-                                                        href={item.href}
+                                <div className="flex-1 overflow-y-auto px-4 py-2">
+                                    <nav className="flex flex-1 flex-col space-y-2">
+                                        {navigation.map((item) => (
+                                            <Link
+                                                key={item.name}
+                                                href={item.href}
+                                                className={cn(
+                                                    "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200",
+                                                    item.current
+                                                        ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-indigo-500/30"
+                                                        : "text-foreground/80 hover:text-indigo-500 hover:bg-accent/50"
+                                                )}
+                                                aria-current={item.current ? 'page' : undefined}
+                                            >
+                                                <div className={cn(
+                                                    "flex h-8 w-8 items-center justify-center rounded-lg",
+                                                    item.current
+                                                        ? "bg-white/20"
+                                                        : "bg-accent/40"
+                                                )}>
+                                                    <item.icon
                                                         className={cn(
-                                                            "flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-all duration-200",
+                                                            "h-5 w-5",
                                                             item.current
-                                                                ? "bg-gradient-to-r from-blue-600 via-blue-400 to-pink-500 text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-500/50 border border-pink-500/50"
-                                                                : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-300 dark:hover:bg-blue-900/30 hover:border-l-2 hover:border-l-pink-500 hover:shadow-md hover:shadow-blue-500/20 dark:hover:shadow-blue-500/30"
+                                                                ? "text-white"
+                                                                : "text-muted-foreground"
                                                         )}
-                                                        aria-current={item.current ? 'page' : undefined}
-                                                    >
-                                                        <item.icon
-                                                            className={cn(
-                                                                "h-5 w-5",
-                                                                item.current
-                                                                    ? "text-white"
-                                                                    : "text-gray-500 group-hover:text-blue-600 dark:text-gray-400 dark:group-hover:text-blue-400"
-                                                            )}
-                                                            aria-hidden="true"
-                                                        />
-                                                        {item.name}
-                                                    </Link>
-                                                </motion.li>
-                                            ))}
-                                        </ul>
+                                                        aria-hidden="true"
+                                                    />
+                                                </div>
+                                                {item.name}
+                                            </Link>
+                                        ))}
                                     </nav>
+                                </div>
+
+                                <div className="p-4 border-t border-border/30">
+                                    <div className="flex items-center justify-between">
+                                        <ThemeToggle />
+                                        <LanguageSwitcher />
+                                    </div>
                                 </div>
                             </motion.div>
                         </div>
                     )}
                 </AnimatePresence>
 
-                {/* Desktop sidebar */}
-                <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-                    <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white dark:border-blue-900/50 dark:bg-slate-900">
-                        <div className="flex flex-1 flex-col overflow-y-auto">
-                            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-blue-900/50">
-                                <Link href={route('dashboard')} className="flex items-center group">
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-400 to-pink-500 shadow-xl shadow-blue-500/40 dark:shadow-blue-500/70 hover:shadow-xl hover:shadow-pink-500/40 dark:hover:shadow-pink-500/70 transition-shadow duration-300">
-                                        <span className="text-xl font-bold text-white">E</span>
-                                    </div>
-                                    <span className="ml-3 text-xl font-semibold text-gray-900 dark:text-white">
-                                        Elite<span className="text-blue-600 dark:text-blue-400">SMS</span>
-                                    </span>
-                                </Link>
+                {/* Desktop sidebar (collapsed/expanded) */}
+                <motion.div
+                    className={`sidebar-container fixed inset-y-0 left-0 z-30 hidden lg:flex lg:flex-col border-r border-border bg-card text-card-foreground overflow-hidden ${isCampaignsPage ? 'lg:z-20' : 'lg:z-30'}`}
+                    initial="collapsed"
+                    animate={sidebarExpanded ? "expanded" : "collapsed"}
+                    variants={sidebarVariants}
+                >
+                    <div className="flex h-16 shrink-0 items-center justify-center py-6">
+                        <Link href={route('dashboard')} className="flex items-center justify-center">
+
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-indigo-500/40 transition-transform duration-300 hover:scale-105">
+                                <span className="text-lg font-bold text-white">E</span>
                             </div>
+                            <motion.span
+                                className="ml-3 text-xl font-semibold"
+                                variants={navItemVariants}
+                                initial="collapsed"
+                                animate={sidebarExpanded ? "expanded" : "collapsed"}
+                            >
+                                Elite<span className="text-indigo-500 dark:text-indigo-400">SMS</span>
+                            </motion.span>
 
-                            <nav className="mt-6 flex-1 space-y-2 px-4 py-2" aria-label="Sidebar">
-                                {navigation.map((item) => (
-                                    <div key={item.name}>
-                                        <Link
-                                            href={item.href}
-                                            className={cn(
-                                                "group flex items-center gap-3 rounded-md px-4 py-3 text-sm font-medium transition-all duration-200 relative",
-                                                item.current
-                                                    ? "bg-gradient-to-r from-blue-600 via-blue-400 to-pink-500 text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-500/50 border border-pink-500/50"
-                                                    : "text-gray-700 hover:text-blue-700 hover:bg-blue-50 dark:text-gray-300 dark:hover:text-blue-300 dark:hover:bg-blue-900/30 hover:border-l-2 hover:border-l-pink-500 hover:shadow-md hover:shadow-blue-500/20 dark:hover:shadow-blue-500/30"
-                                            )}
-                                            aria-current={item.current ? 'page' : undefined}
-                                        >
-                                            <item.icon
-                                                className={cn(
-                                                    "h-5 w-5",
-                                                    item.current
-                                                        ? "text-white"
-                                                        : "text-gray-500 group-hover:text-blue-600 dark:text-gray-400 dark:group-hover:text-blue-400"
-                                                )}
-                                                aria-hidden="true"
-                                            />
-                                            {item.name}
-                                            {item.current && (
-                                                <div className="absolute -z-10 inset-0 rounded-md bg-gradient-to-r from-blue-600/20 via-blue-400/10 to-pink-500/20 blur-sm"></div>
-                                            )}
-                                        </Link>
-                                    </div>
-                                ))}
-                            </nav>
-                        </div>
+                        </Link>
                     </div>
-                </div>
 
-                <div className="lg:pl-64">
-                    <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center border-b border-gray-200 bg-white dark:border-blue-900/50 dark:bg-slate-900">
-                        <button
-                            type="button"
-                            className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 lg:hidden dark:border-blue-900/50 dark:text-gray-400"
-                            onClick={() => setSidebarOpen(true)}
-                            aria-label={t('navigation.openSidebar')}
-                        >
-                            <span className="sr-only">{t('navigation.openSidebar')}</span>
-                            <Menu className="h-6 w-6" aria-hidden="true" />
-                        </button>
+                    <div className="flex flex-col flex-1 overflow-y-auto py-6">
 
-                        <div className="flex flex-1 justify-between px-4 sm:px-6 lg:px-8">
-                            <div className="flex items-center">{header}</div>
-                            <div className="ml-4 flex items-center gap-4">
-                                <ThemeToggle />
-                                <LanguageSwitcher />
 
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="relative text-gray-600 hover:text-gray-700 dark:text-blue-400 dark:hover:text-blue-300 transition-colors duration-200"
-                                    aria-label={t('navigation.notifications')}
+                        <nav className="flex-1 px-2 py-2 space-y-2">
+                            {navigation.map((item) => (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    className={cn(
+                                        "flex items-center rounded-xl transition-all duration-200 overflow-hidden",
+                                        item.current
+                                            ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-indigo-500/30"
+                                            : "text-foreground/80 hover:text-indigo-500 hover:bg-accent/50",
+                                        sidebarExpanded ? "px-4 py-3" : "justify-center h-12 w-12 mx-auto"
+                                    )}
+                                    aria-current={item.current ? 'page' : undefined}
                                 >
-                                    <Bell className="h-5 w-5" />
-                                    <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-blue-500 to-pink-500 text-[10px] font-bold text-white shadow-lg shadow-pink-500/30 dark:shadow-pink-500/50">
-                                        3
-                                    </span>
-                                    <span className="sr-only">3 unread notifications</span>
-                                </Button>
+                                    <div className={cn(
+                                        "flex items-center justify-center rounded-lg",
+                                        item.current
+                                            ? "bg-white/20"
+                                            : "",
+                                        sidebarExpanded ? "h-8 w-8" : "h-8 w-8"
+                                    )}>
+                                        <item.icon
+                                            className={cn(
+                                                "flex-shrink-0",
+                                                item.current ? "text-white" : "text-muted-foreground",
+                                                sidebarExpanded ? "h-5 w-5" : "h-5 w-5"
+                                            )}
+                                            aria-hidden="true"
+                                        />
+                                    </div>
+                                    <motion.span
+                                        className="ml-3 whitespace-nowrap"
+                                        variants={navItemVariants}
+                                        initial="collapsed"
+                                        animate={sidebarExpanded ? "expanded" : "collapsed"}
+                                    >
+                                        {item.name}
+                                    </motion.span>
+                                </Link>
+                            ))}
+                            <Button
+                                onClick={handleToggleSidebar}
+                                variant="ghost"
+                                size="icon"
+                                className={`relative  rounded-full bg-card text-muted-foreground hover:text-foreground border border-border transform translate-x-1/2 ${sidebarExpanded ? 'rotate-180' : ''} transition-transform duration-300 hover:bg-accent/30 shadow-sm`}
+                            >
+                                <ChevronRight size={16} />
+                            </Button>
+                        </nav>
 
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="ghost"
-                                            className="relative h-10 w-10 rounded-full border-2 border-blue-400 hover:border-pink-500 transition-colors duration-200 shadow-md shadow-blue-500/30 dark:shadow-blue-500/40 hover:shadow-lg hover:shadow-pink-500/30 dark:hover:shadow-pink-500/40"
-                                            aria-label={t('navigation.userMenu')}
-                                        >
-                                            <Avatar>
-                                                <AvatarFallback className="bg-gradient-to-r from-blue-600 via-blue-400 to-pink-500 text-white">
-                                                    {user.name.charAt(0)}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="bg-white dark:bg-slate-900 dark:border-blue-900/50 shadow-xl shadow-blue-500/20 dark:shadow-blue-500/30 w-64">
-                                        <div className="flex items-center justify-start gap-2 p-3">
-                                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 via-blue-400 to-pink-500 shadow-md shadow-pink-500/30 dark:shadow-pink-500/40">
-                                                <span className="text-sm font-bold text-white">{user.name.charAt(0)}</span>
-                                            </div>
-                                            <div className="flex flex-col space-y-1">
-                                                <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
-                                                <p className="text-xs text-gray-600 dark:text-blue-300/70 truncate">{user.email}</p>
-                                            </div>
-                                        </div>
-                                        <DropdownMenuSeparator className="bg-gray-200 dark:bg-blue-800/50" />
-                                        <DropdownMenuItem asChild>
-                                            <Link href={route('profile.edit')} className="flex cursor-pointer items-center text-gray-700 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors duration-150 px-3 py-2 hover:text-blue-700 dark:hover:text-blue-300 group">
-                                                <UserIcon className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" />
-                                                <span>{t('navigation.profile')}</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem asChild>
-                                            <Link href={route('subscription.index')} className="flex cursor-pointer items-center text-gray-700 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors duration-150 px-3 py-2 hover:text-blue-700 dark:hover:text-blue-300 group">
-                                                <CreditCard className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" />
-                                                <span>{t('navigation.subscription')}</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem asChild>
-                                            <Link href={route('dashboard')} className="flex cursor-pointer items-center text-gray-700 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-colors duration-150 px-3 py-2 hover:text-blue-700 dark:hover:text-blue-300 group">
-                                                <Settings className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" />
-                                                <span>{t('navigation.settings')}</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator className="bg-gray-200 dark:bg-blue-800/50" />
-                                        <DropdownMenuItem asChild>
-                                            <Link
-                                                href={route('logout')}
-                                                method="post"
-                                                as="button"
-                                                className="flex w-full cursor-pointer items-center text-pink-600 hover:text-pink-700 dark:text-pink-400 dark:hover:text-pink-300 hover:bg-pink-50 dark:hover:bg-pink-900/20 transition-colors duration-150 px-3 py-2 shadow-sm shadow-pink-500/10 dark:shadow-pink-500/20 hover:shadow-md hover:shadow-pink-500/20 dark:hover:shadow-pink-500/30"
-                                            >
-                                                <LogOut className="mr-2 h-4 w-4" />
-                                                <span>{t('navigation.logout')}</span>
-                                            </Link>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                        <div className="mt-auto px-2">
+                            <div
+                                className={cn(
+                                    "flex items-center",
+                                    sidebarExpanded ? "px-3 py-2" : "justify-center"
+                                )}
+                            >
+                                <ThemeToggle />
+                                {sidebarExpanded && (
+                                    <motion.div
+                                        className="ml-3"
+                                        variants={navItemVariants}
+                                        initial="collapsed"
+                                        animate={sidebarExpanded ? "expanded" : "collapsed"}
+                                    >
+                                        <LanguageSwitcher />
+                                    </motion.div>
+                                )}
                             </div>
                         </div>
                     </div>
+                </motion.div>
+
+                <div className={`${sidebarExpanded ? 'lg:ml-60' : 'lg:ml-16'} transition-all duration-300`}>
+                    {/* Header - Hide on campaigns page as it has its own header */}
+                    {!isCampaignsPage && (
+                        <div className={`sticky top-0 z-20 flex h-16 shrink-0 items-center border-b border-border bg-background/80 backdrop-blur-sm ${isScrolled ? 'shadow-sm' : ''} transition-shadow duration-200`}>
+                            <button
+                                type="button"
+                                className="px-4 text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 lg:hidden"
+                                onClick={() => setSidebarOpen(true)}
+                                aria-label={t('navigation.openSidebar')}
+                            >
+                                <span className="sr-only">{t('navigation.openSidebar')}</span>
+                                <Menu className="h-5 w-5" aria-hidden="true" />
+                            </button>
+
+                            <div className="flex flex-1 justify-between px-4 sm:px-6 lg:px-8">
+                                <div className="flex items-center">{header}</div>
+                                <div className="ml-4 flex items-center gap-4">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="relative text-muted-foreground hover:text-foreground transition-colors duration-200 rounded-full hover:bg-accent/30"
+                                        aria-label={t('navigation.notifications')}
+                                    >
+                                        <Bell className="h-5 w-5" />
+                                        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-[10px] font-bold text-white shadow-sm">
+                                            3
+                                        </span>
+                                        <span className="sr-only">3 unread notifications</span>
+                                    </Button>
+
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                className="relative h-10 w-10 rounded-full border border-primary/30 hover:border-primary/80 transition-colors duration-200 hover:bg-accent/30"
+                                                aria-label={t('navigation.userMenu')}
+                                            >
+                                                <Avatar className="h-9 w-9">
+                                                    <AvatarFallback className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white">
+                                                        {user.name.charAt(0)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-lg border-border/40">
+                                            <div className="flex items-center justify-start gap-3 p-3">
+                                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+                                                    <span className="text-sm font-bold text-white">{user.name.charAt(0)}</span>
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <p className="text-sm font-medium">{user.name}</p>
+                                                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                                </div>
+                                            </div>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem asChild>
+                                                <Link href={route('profile.edit')} className="flex cursor-pointer items-center rounded-lg py-2 hover:bg-accent/50">
+                                                    <UserIcon className="mr-2 h-4 w-4 text-indigo-500" />
+                                                    <span>{t('navigation.profile')}</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <Link href={route('subscription.index')} className="flex cursor-pointer items-center rounded-lg py-2 hover:bg-accent/50">
+                                                    <CreditCard className="mr-2 h-4 w-4 text-indigo-500" />
+                                                    <span>{t('navigation.subscription')}</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                                <Link href={route('dashboard')} className="flex cursor-pointer items-center rounded-lg py-2 hover:bg-accent/50">
+                                                    <Settings className="mr-2 h-4 w-4 text-indigo-500" />
+                                                    <span>{t('navigation.settings')}</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem asChild>
+                                                <Link
+                                                    href={route('logout')}
+                                                    method="post"
+                                                    as="button"
+                                                    className="flex w-full cursor-pointer items-center text-destructive hover:text-destructive/90 rounded-lg py-2 hover:bg-accent/50"
+                                                >
+                                                    <LogOut className="mr-2 h-4 w-4" />
+                                                    <span>{t('navigation.logout')}</span>
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     <motion.main
-                        initial="hidden"
-                        animate="visible"
-                        variants={fadeInVariants}
-                        className="py-6 bg-gray-50 dark:bg-slate-950"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                        className={cn(
+                            "bg-background min-h-screen",
+                            isCampaignsPage ? 'py-0' : 'py-6'
+                        )}
                     >
-                        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                            {children}
-                        </div>
+                        {isCampaignsPage ? (
+                            // Full width content for campaigns page
+                            children
+                        ) : (
+                            // Standard content with padding for other pages
+                            <div className={fullWidth ? 'w-full' : 'mx-auto max-w-7xl px-4 sm:px-6 lg:px-8'}>
+                                {children}
+                            </div>
+                        )}
                     </motion.main>
                 </div>
             </div>

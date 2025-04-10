@@ -55,10 +55,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::post('/clients/{client}/message', [ClientController::class, 'sendMessage']);
     });
     
-    // Calendrier des événements
-    Route::get('/event-calendar', [EventCalendarController::class, 'index'])->name('event-calendar.index');
-    Route::post('/event-calendar/bulk-toggle', [EventCalendarController::class, 'bulkToggle'])->name('event-calendar.bulk-toggle');
-    
+
     // IMPORTANT: Les routes spécifiques doivent être placées AVANT la route resource
     // Route d'exportation des clients
     Route::get('/clients/export', [App\Http\Controllers\ImportExportController::class, 'export'])->name('clients.export');
@@ -193,15 +190,7 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::resource('templates', TemplateController::class);
         
         // Événements automatiques
-        Route::get('automatic-events', [AutomaticEventsController::class, 'index'])->name('automatic-events.index');
-        Route::post('automatic-events/create-all-configs', [AutomaticEventsController::class, 'createAllDefaultConfigs'])->name('automatic-events.create-all-configs');
-        Route::patch('automatic-events/{id}', [AutomaticEventsController::class, 'update'])->name('automatic-events.update');
-        Route::post('automatic-events/{id}/test', [AutomaticEventsController::class, 'testEvent'])->name('automatic-events.test');
-        
-        // Nouvelles routes pour les campagnes liées aux événements
-        Route::post('automatic-events/{id}/activate-campaign', [AutomaticEventsController::class, 'activateCampaign'])->name('campaigns.store-from-event');
-        Route::post('automatic-events/activate-bulk', [AutomaticEventsController::class, 'activateBulk'])->name('automatic-events.activate-bulk');
-        
+       
         // Importation de clients
         Route::get('client-import', [ClientImportController::class, 'index'])->name('client-import');
         Route::post('client-import/upload', [ClientImportController::class, 'upload'])->name('client-import.upload');
@@ -225,6 +214,19 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
 // Routes pour les clients
 Route::middleware(['auth', 'verified'])->group(function () {
+
+// Routes for bulk actions
+Route::post('/campaigns/bulk-disable', [CampaignController::class, 'bulkDisable'])->name('campaigns.bulk-disable');
+Route::post('/campaigns/bulk-enable', [CampaignController::class, 'bulkEnable'])->name('campaigns.bulk-enable');
+Route::post('/campaigns/bulk-delete', [CampaignController::class, 'bulkDelete'])->name('campaigns.bulk-delete');
+
+// Quick add campaign route
+Route::post('/campaigns/quick-add', [CampaignController::class, 'quickAdd'])->name('campaigns.quick-add');
+
+// Reschedule campaign via drag-drop
+Route::put('/campaigns/{campaign}/reschedule', [CampaignController::class, 'reschedule'])->name('campaigns.reschedule');
+
+
     Route::resource('clients', ClientController::class);
     Route::get('clients/export', [ClientController::class, 'export'])->name('clients.export');
     Route::post('clients/import', [ClientController::class, 'import'])->name('clients.import');

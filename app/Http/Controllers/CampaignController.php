@@ -25,6 +25,216 @@ class CampaignController extends Controller
     /**
      * Réessayer l'envoi d'une campagne échouée
      */
+    public function quickAdd(Request $request)
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'subject' => 'nullable|string|max:255',
+        'message_content' => 'required|string',
+        'scheduled_at' => 'required|date',
+        'client_ids' => 'required|array',
+        'client_ids.*' => 'exists:clients,id',
+        'send_now' => 'boolean'
+    ]);
+
+    $user = Auth::user();
+    $clientsCount = count($validated['client_ids']);
+    
+    // Vérifier les quotas SMS
+    if (!$this->usageTracker->canSendSms($user, $clientsCount)) {
+        return redirect()->back()->with('error', 'Votre quota SMS est insuffisant pour cette campagne.');
+    }
+
+    if (!$this->usageTracker->trackCampaignUsage($user)) {
+        return redirect()->route('subscription.index')->with('error', 'Vous avez atteint votre limite de campagnes ce mois-ci.');
+    }
+
+    DB::beginTransaction();
+    try {
+        $campaign = new Campaign();
+        $campaign->user_id = Auth::id();
+        $campaign->name = $validated['name'];
+        $campaign->subject = $validated['subject'] ?? null;
+        $campaign->message_content = $validated['message_content'];
+        $campaign->scheduled_at = $validated['scheduled_at'];
+        
+        // Déterminer le statut en fonction de l'envoi immédiat ou non
+        $campaign->status = $validated['send_now'] ? 'sending' : 'scheduled';
+        
+        $campaign->recipients_count = $clientsCount;
+        $campaign->save();
+
+        $campaign->recipients()->attach($validated['client_ids']);
+        
+        // Si la campagne doit être envoyée immédiatement
+        if ($validated['send_now']) {
+            ProcessCampaignJob::dispatch($campaign);
+        }
+        
+        DB::commit();
+        
+        return redirect()->back()->with('success', 'Campagne créée avec succès.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Quick add campaign failed', ['error' => $e->getMessage()]);
+        return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Handle bulk actions for campaigns
+ */
+public function bulkDisable(Request $request)
+{
+    $validated = $request->validate([
+        'campaign_ids' => 'required|array',
+        'campaign_ids.*' => 'exists:campaigns,id'
+    ]);
+
+    $user = Auth::user();
+    $campaignIds = $validated['campaign_ids'];
+    
+    // Get campaigns that user has access to
+    $campaigns = Campaign::whereIn('id', $campaignIds)
+        ->where('user_id', $user->id)
+        ->whereIn('status', ['draft', 'scheduled'])
+        ->get();
+
+    if ($campaigns->isEmpty()) {
+        return redirect()->back()->with('error', 'Aucune campagne valide à désactiver.');
+    }
+
+    DB::beginTransaction();
+    try {
+        foreach ($campaigns as $campaign) {
+            $campaign->status = 'paused';
+            $campaign->save();
+        }
+        
+        DB::commit();
+        return redirect()->back()->with('success', 'Campagnes désactivées avec succès.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Bulk disable campaigns failed', ['error' => $e->getMessage()]);
+        return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Bulk enable campaigns
+ */
+public function bulkEnable(Request $request)
+{
+    $validated = $request->validate([
+        'campaign_ids' => 'required|array',
+        'campaign_ids.*' => 'exists:campaigns,id'
+    ]);
+
+    $user = Auth::user();
+    $campaignIds = $validated['campaign_ids'];
+    
+    // Get campaigns that user has access to
+    $campaigns = Campaign::whereIn('id', $campaignIds)
+        ->where('user_id', $user->id)
+        ->whereIn('status', ['draft', 'paused', 'cancelled'])
+        ->get();
+
+    if ($campaigns->isEmpty()) {
+        return redirect()->back()->with('error', 'Aucune campagne valide à activer.');
+    }
+
+    DB::beginTransaction();
+    try {
+        foreach ($campaigns as $campaign) {
+            $campaign->status = 'scheduled';
+            $campaign->save();
+        }
+        
+        DB::commit();
+        return redirect()->back()->with('success', 'Campagnes activées avec succès.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Bulk enable campaigns failed', ['error' => $e->getMessage()]);
+        return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Bulk delete campaigns
+ */
+public function bulkDelete(Request $request)
+{
+    $validated = $request->validate([
+        'campaign_ids' => 'required|array',
+        'campaign_ids.*' => 'exists:campaigns,id'
+    ]);
+
+    $user = Auth::user();
+    $campaignIds = $validated['campaign_ids'];
+    
+    // Get campaigns that user has access to and can be deleted
+    $campaigns = Campaign::whereIn('id', $campaignIds)
+        ->where('user_id', $user->id)
+        ->whereNotIn('status', ['sent', 'sending', 'partially_sent'])
+        ->get();
+
+    if ($campaigns->isEmpty()) {
+        return redirect()->back()->with('error', 'Aucune campagne valide à supprimer.');
+    }
+
+    DB::beginTransaction();
+    try {
+        foreach ($campaigns as $campaign) {
+            $campaign->delete();
+        }
+        
+        DB::commit();
+        return redirect()->back()->with('success', 'Campagnes supprimées avec succès.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Bulk delete campaigns failed', ['error' => $e->getMessage()]);
+        return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Reschedule a campaign via drag-and-drop
+ */
+public function reschedule(Request $request, Campaign $campaign)
+{
+    $this->authorize('update', $campaign);
+    
+    $validated = $request->validate([
+        'scheduled_at' => 'required|date'
+    ]);
+    
+    if (in_array($campaign->status, ['sent', 'sending', 'partially_sent'])) {
+        return response()->json([
+            'error' => 'Impossible de reprogrammer une campagne déjà envoyée ou en cours d\'envoi.'
+        ], 422);
+    }
+
+    try {
+        $campaign->scheduled_at = $validated['scheduled_at'];
+        
+        // Si la campagne était annulée ou en pause, la remettre en mode programmé
+        if (in_array($campaign->status, ['cancelled', 'paused'])) {
+            $campaign->status = 'scheduled';
+        }
+        
+        $campaign->save();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Campagne reprogrammée avec succès.'
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Failed to reschedule campaign', ['error' => $e->getMessage()]);
+        return response()->json([
+            'error' => 'Une erreur est survenue lors de la reprogrammation.'
+        ], 500);
+    }}
+    
     public function retry(Campaign $campaign)
     {
         $this->authorize('update', $campaign);
