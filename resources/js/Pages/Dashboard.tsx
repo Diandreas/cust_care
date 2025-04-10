@@ -1,1189 +1,904 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@inertiajs/react';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
 } from '@/Components/ui/card';
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/Components/ui/tabs";
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart
 } from 'recharts';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/Components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/Components/ui/table";
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
+  Alert, AlertDescription, AlertTitle,
 } from "@/Components/ui/alert";
 import { Badge } from "@/Components/ui/badge";
+import { Button } from "@/Components/ui/button";
 import { Avatar, AvatarFallback } from "@/Components/ui/avatar";
 import { Progress } from "@/Components/ui/progress";
-import { 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  Users, 
-  MessageSquare, 
-  SendIcon, 
-  TrendingUp, 
-  Calendar, 
-  UserCheck, 
-  Clock, 
-  Archive, 
-  BarChart2, 
-  AlertTriangle, 
-  XCircle
+import {
+  ArrowUpCircle, ArrowDownCircle, Users, MessageSquare, SendIcon, TrendingUp,
+  Calendar, Clock, BarChart2, AlertTriangle, XCircle, ArrowUpRight, Activity,
+  Download, RefreshCw, Filter, Plus, ChevronRight, MoreHorizontal, Settings
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/Components/ui/dropdown-menu";
 
-// Types pour les statistiques
-interface DashboardStats {
-  total_clients: number;
-  total_messages: number;
-  total_campaigns: number;
-  total_visits: number;
-  recent_messages: {
-    id: number;
-    content: string;
-    created_at: string;
-    client: {
-      id: number;
-      name: string;
-    };
-  }[];
-  upcoming_campaigns: {
-    id: number;
-    name: string;
-    scheduled_at: string;
-    recipients_count: number;
-  }[];
-  subscription: {
-    id: number;
-    plan: string;
-    plan_id: number;
-    clients_limit: number;
-    campaigns_limit: number;
-    campaign_sms_limit: number;
-    personal_sms_quota: number;
-    sms_used: number;
-    campaigns_used: number;
-    next_renewal_date: string;
-    auto_renew: boolean;
-    expires_at: string;
-    sms_usage_percent: number;
-    campaigns_usage_percent: number;
-    sms_quota_low: boolean;
-    sms_quota_exhausted: boolean;
-    isFreePlan: boolean;
-    clientsCount: number;
-  } | null;
-  campaign_stats: {
-    status_counts: {
-      draft: number;
-      scheduled: number;
-      sent: number;
-      failed: number;
-      cancelled: number;
-    };
-    success_rate: number;
-    success_rate_formatted: string;
-    by_month: {
-      month: string;
-      count: number;
-    }[];
-  };
-  message_stats: {
-    status_counts: {
-      sent: number;
-      failed: number;
-      pending: number;
-    };
-    delivery_rate: number;
-    delivery_rate_formatted: string;
-    by_day: {
-      date: string;
-      count: number;
-    }[];
-  };
-  client_stats: {
-    new_this_month: number;
-    growth_rate: number;
-    growth_rate_formatted: string;
-    growth_is_positive: boolean;
-    by_tag: {
-      name: string;
-      count: number;
-    }[];
-  };
-  visit_stats: {
-    total: number;
-    this_month: number;
-    growth_rate: number;
-    growth_rate_formatted: string;
-    growth_is_positive: boolean;
-    by_day: {
-      date: string;
-      count: number;
-    }[];
-  };
-  trends: {
-    active_clients: {
-      count: number;
-      rate: number;
-      rate_formatted: string;
-      trend: number;
-      trend_formatted: string;
-      trend_is_positive: boolean;
-    };
-    engagement: {
-      rate: number;
-      rate_formatted: string;
-      engaged_clients: number;
-      messaged_clients: number;
-    };
-  };
-}
-
-export default function Dashboard({ auth, stats }: PageProps<{ stats: DashboardStats }>) {
+export default function Dashboard({ auth, stats }) {
   const { t } = useTranslation();
   const [timeRange, setTimeRange] = useState('month');
-  const [showAllAlerts, setShowAllAlerts] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  // Date formatting utility
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
   };
 
-  // Calculer les couleurs dynamiquement en fonction des taux
-  const getColorByRate = (rate: number) => {
-    if (rate >= 80) return '#10b981'; // vert
-    if (rate >= 50) return '#3b82f6'; // bleu
-    if (rate >= 30) return '#f59e0b'; // jaune
-    return '#ef4444'; // rouge
+  // Format time for recent activities
+  const formatTimeSince = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+
+    return formatDate(dateString);
   };
 
-  // Données pour les graphiques
+  // Simulated refresh function
+  const refreshData = () => {
+    setIsRefreshing(true);
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 1000);
+  };
+
+  // Chart colors
+  const chartColors = {
+    primary: '#3b82f6',
+    success: '#10b981',
+    warning: '#f59e0b',
+    danger: '#ef4444',
+    neutral: '#6b7280',
+    accent: '#8b5cf6',
+  };
+
+  // Prepare chart data
   const pieData = [
-    { name: t('dashboard.stats.sent'), value: stats.message_stats?.status_counts.sent || 0, color: '#10b981' },
-    { name: t('dashboard.stats.failed'), value: stats.message_stats?.status_counts.failed || 0, color: '#ef4444' },
-    { name: t('dashboard.stats.pending'), value: stats.message_stats?.status_counts.pending || 0, color: '#f59e0b' },
+    { name: 'Sent', value: stats.message_stats?.status_counts.sent || 0, color: chartColors.success },
+    { name: 'Failed', value: stats.message_stats?.status_counts.failed || 0, color: chartColors.danger },
+    { name: 'Pending', value: stats.message_stats?.status_counts.pending || 0, color: chartColors.warning },
   ];
 
   const campaignStatusData = [
-    { name: t('dashboard.stats.draft'), value: stats.campaign_stats?.status_counts.draft || 0, color: '#94a3b8' },
-    { name: t('dashboard.stats.scheduled'), value: stats.campaign_stats?.status_counts.scheduled || 0, color: '#3b82f6' },
-    { name: t('dashboard.stats.sent'), value: stats.campaign_stats?.status_counts.sent || 0, color: '#10b981' },
-    { name: t('dashboard.stats.failed'), value: stats.campaign_stats?.status_counts.failed || 0, color: '#ef4444' },
-    { name: t('dashboard.stats.cancelled'), value: stats.campaign_stats?.status_counts.cancelled || 0, color: '#6b7280' },
+    { name: 'Draft', value: stats.campaign_stats?.status_counts.draft || 0, color: chartColors.neutral },
+    { name: 'Scheduled', value: stats.campaign_stats?.status_counts.scheduled || 0, color: chartColors.primary },
+    { name: 'Sent', value: stats.campaign_stats?.status_counts.sent || 0, color: chartColors.success },
+    { name: 'Failed', value: stats.campaign_stats?.status_counts.failed || 0, color: chartColors.danger },
+    { name: 'Cancelled', value: stats.campaign_stats?.status_counts.cancelled || 0, color: chartColors.neutral },
   ];
 
-  // Préparer les données pour les graphiques de tendance
-  const formatVisitData = () => {
-    if (!stats.visit_stats?.by_day) return [];
-    
-    return stats.visit_stats.by_day.map((item) => ({
-      date: item.date.split(' ')[0],
-      visits: item.count,
-    }));
-  };
-
-  const formatMessageData = () => {
-    if (!stats.message_stats?.by_day) return [];
-    
-    return stats.message_stats.by_day.map((item) => ({
-      date: item.date.split(' ')[0],
-      messages: item.count,
-    }));
-  };
-
-  const formatCampaignData = () => {
-    if (!stats.campaign_stats?.by_month) return [];
-    
-    return stats.campaign_stats.by_month.map((item) => ({
-      month: item.month,
-      campaigns: item.count,
-    }));
-  };
-
-  const visitData = formatVisitData();
-  const messageData = formatMessageData();
-  const campaignData = formatCampaignData();
-
-  const clientTagData = stats.client_stats?.by_tag?.map((tag) => ({
-    name: tag.name,
-    count: tag.count,
-    color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 50%)`,
+  // Format data for charts
+  const visitData = stats.visit_stats?.by_day?.map((item) => ({
+    date: item.date.split(' ')[0],
+    visits: item.count,
   })) || [];
 
-  // Activité récente combinée (visites et messages)
-  const combineRecentActivity = () => {
-    const recentMessages = stats.recent_messages?.map(msg => ({
-      type: 'message',
-      date: new Date(msg.created_at),
-      id: msg.id,
-      client: msg.client,
-      content: msg.content
-    })) || [];
+  const messageData = stats.message_stats?.by_day?.map((item) => ({
+    date: item.date.split(' ')[0],
+    messages: item.count,
+  })) || [];
 
-    return recentMessages.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
-  };
+  const campaignData = stats.campaign_stats?.by_month?.map((item) => ({
+    month: item.month,
+    campaigns: item.count,
+  })) || [];
 
-  const recentActivity = combineRecentActivity();
+  // Client tags data
+  const clientTagData = stats.client_stats?.by_tag?.map((tag, index) => ({
+    name: tag.name,
+    count: tag.count,
+    color: `hsl(${(210 + index * 30) % 360}, 70%, 50%)`,
+  })) || [];
+
+  // Recent activity
+  const recentActivity = stats.recent_messages?.map(msg => ({
+    type: 'message',
+    date: new Date(msg.created_at),
+    id: msg.id,
+    client: msg.client,
+    content: msg.content
+  })).sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5) || [];
 
   return (
     <AuthenticatedLayout
       user={auth.user}
-      header={<h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">{t('dashboard.title')}</h2>}
+      header={
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+            {t('dashboard.title')}
+          </h2>
+          <div className="flex items-center gap-2">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="week">{t('dashboard.timeRange.last7Days')}</SelectItem>
+                <SelectItem value="month">{t('dashboard.timeRange.last30Days')}</SelectItem>
+                <SelectItem value="year">{t('dashboard.timeRange.last12Months')}</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="h-8" onClick={refreshData} disabled={isRefreshing}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? t('dashboard.timeRange.refreshing') : t('dashboard.timeRange.refresh')}</span>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => { }}>
+                  <Download className="mr-2 h-4 w-4" />
+                  <span>{t('dashboard.actions.exportData')}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { }}>
+                  <Filter className="mr-2 h-4 w-4" />
+                  <span>{t('dashboard.actions.filterData')}</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { }}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>{t('dashboard.actions.dashboardSettings')}</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      }
     >
       <Head title={t('dashboard.title')} />
 
-      <div className="py-6">
+      <div className="py-4">
         <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-          {/* Alertes */}
-          {stats.subscription?.sms_quota_low && (
-            <Alert variant="warning" className="mb-6">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Attention : Quota de SMS faible</AlertTitle>
-              <AlertDescription>
-                Vous avez utilisé plus de 80% de votre quota de SMS mensuel.{" "}
-                <Link href={route('subscription.addons.index')} className="font-medium underline">
-                  Acheter des SMS supplémentaires
-                </Link>
-              </AlertDescription>
-            </Alert>
+          {/* Quota Alerts */}
+          {(stats.subscription?.sms_quota_low || stats.subscription?.sms_quota_exhausted) && (
+            <div className="mb-4">
+              {stats.subscription?.sms_quota_low && !stats.subscription?.sms_quota_exhausted && (
+                <Alert variant="warning" className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/20">
+                  <div className="flex items-center">
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    <div>
+                      <AlertTitle className="font-medium text-sm">{t('dashboard.alerts.smsQuotaLow')}</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        <Link href={route('subscription.addons.index')} className="ml-2 text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                          {t('dashboard.alerts.purchaseAdditional')}
+                        </Link>
+                      </AlertDescription>
+                    </div>
+                  </div>
+                </Alert>
+              )}
+
+              {stats.subscription?.sms_quota_exhausted && (
+                <Alert variant="destructive" className="border-l-4 border-l-red-500 bg-red-50 dark:bg-red-900/20">
+                  <div className="flex items-center">
+                    <XCircle className="h-4 w-4 mr-2" />
+                    <div>
+                      <AlertTitle className="font-medium text-sm">{t('dashboard.alerts.smsQuotaDepleted')}</AlertTitle>
+                      <AlertDescription className="text-xs">
+                        <Link href={route('subscription.addons.index')} className="ml-2 text-blue-600 dark:text-blue-400 font-medium hover:underline">
+                          {t('dashboard.alerts.purchaseNow')}
+                        </Link>
+                      </AlertDescription>
+                    </div>
+                  </div>
+                </Alert>
+              )}
+            </div>
           )}
 
-          {stats.subscription?.sms_quota_exhausted && (
-            <Alert variant="destructive" className="mb-6">
-              <XCircle className="h-4 w-4" />
-              <AlertTitle>Alerte : Quota de SMS épuisé</AlertTitle>
-              <AlertDescription>
-                Votre quota de SMS est complètement épuisé. Vous ne pourrez plus envoyer de messages jusqu'à ce que vous achetiez des SMS supplémentaires.{" "}
-                <Link href={route('subscription.addons.index')} className="font-medium underline">
-                  Acheter des SMS maintenant
-                </Link>
-              </AlertDescription>
-            </Alert>
-          )}
+          {/* KPI Section - Top Stats */}
+          <div className="grid grid-cols-12 gap-3 mb-4">
+            {/* Subscription Stats */}
+            {stats.subscription && (
+              <Card className="col-span-4 lg:col-span-2 p-0 h-28">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-xs font-semibold">
+                      {stats.subscription.plan || 'Free Plan'}
+                      {stats.subscription.isFreePlan && (
+                        <Badge variant="outline" className="ml-1 text-xs h-4">Free</Badge>
+                      )}
+                    </CardTitle>
+                    <Link
+                      href={stats.subscription.isFreePlan ? route('subscription.plans') : route('subscription.index')}
+                      className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                    >
+                      {stats.subscription.isFreePlan ? 'Upgrade' : 'Manage'}
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 pt-0">
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span>SMS</span>
+                        <span>{stats.subscription.sms_used}/{stats.subscription.personal_sms_quota}</span>
+                      </div>
+                      <Progress value={stats.subscription.sms_usage_percent} className="h-1" />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span>Clients</span>
+                        <span>{stats.subscription.clientsCount}/{stats.subscription.clients_limit}</span>
+                      </div>
+                      <Progress value={(stats.subscription.clientsCount / stats.subscription.clients_limit) * 100} className="h-1" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-          {/* KPI Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t('dashboard.stats.clients')}</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
+            {/* KPI Cards */}
+            <Card className="col-span-4 lg:col-span-2 p-0 h-28">
+              <CardHeader className="pb-0 px-3 pt-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-medium">{t('dashboard.stats.clients')}</CardTitle>
+                  <Users className="h-3.5 w-3.5 text-blue-500" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total_clients}</div>
+              <CardContent className="px-3 pb-3 pt-0">
+                <div className="text-lg font-bold">{stats.total_clients}</div>
                 {stats.client_stats && (
-                  <div className="flex items-center text-xs text-muted-foreground">
+                  <div className="flex items-center text-xs text-gray-500">
                     {stats.client_stats.growth_is_positive ? (
                       <ArrowUpCircle className="mr-1 h-3 w-3 text-green-500" />
                     ) : (
                       <ArrowDownCircle className="mr-1 h-3 w-3 text-red-500" />
                     )}
-                    <span className={stats.client_stats.growth_is_positive ? "text-green-500" : "text-red-500"}>
-                      {stats.client_stats.growth_rate_formatted}
-                    </span>
-                    <span className="ml-1">ce mois</span>
+                    <span>{stats.client_stats.growth_rate_formatted}</span>
                   </div>
                 )}
+                <div className="text-xs mt-1">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                    {stats.trends?.active_clients.rate_formatted || "0%"} active
+                  </Badge>
+                </div>
               </CardContent>
             </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t('dashboard.stats.messages')}</CardTitle>
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+
+            <Card className="col-span-4 lg:col-span-2 p-0 h-28">
+              <CardHeader className="pb-0 px-3 pt-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-medium">{t('dashboard.stats.messages')}</CardTitle>
+                  <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total_messages}</div>
-                {stats.message_stats && (
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    <span className="text-green-500 mr-1">{stats.message_stats.delivery_rate_formatted}</span>
-                    <span>taux de livraison</span>
+              <CardContent className="px-3 pb-3 pt-0">
+                <div className="text-lg font-bold">{stats.total_messages}</div>
+                <div className="flex items-center text-xs text-gray-500">
+                  <span>{stats.message_stats?.delivery_rate_formatted || "0%"}</span>
+                  <span className="ml-1">delivery rate</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1 w-full mt-1">
+                  <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
+                    {stats.message_stats?.status_counts.sent || 0} sent
+                  </Badge>
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 text-xs">
+                    {stats.message_stats?.status_counts.pending || 0} pending
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-6 lg:col-span-3 p-0 h-28">
+              <CardHeader className="pb-0 px-3 pt-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-medium">{t('dashboard.stats.campaigns')}</CardTitle>
+                  <SendIcon className="h-3.5 w-3.5 text-blue-500" />
+                </div>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 pt-0">
+                <div className="text-lg font-bold">{stats.total_campaigns}</div>
+                <div className="flex items-center text-xs text-gray-500">
+                  <span>{stats.campaign_stats?.success_rate_formatted || "0%"}</span>
+                  <span className="ml-1">success rate</span>
+                </div>
+                <div className="grid grid-cols-3 gap-1 w-full mt-1">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                    {stats.campaign_stats?.status_counts.draft || 0} draft
+                  </Badge>
+                  <Badge variant="outline" className="bg-purple-50 text-purple-700 text-xs">
+                    {stats.campaign_stats?.status_counts.scheduled || 0} scheduled
+                  </Badge>
+                  <Badge variant="outline" className="bg-green-50 text-green-700 text-xs">
+                    {stats.campaign_stats?.status_counts.sent || 0} sent
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="col-span-6 lg:col-span-3 p-0 h-28">
+              <CardHeader className="pb-0 px-3 pt-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-medium">Engagement</CardTitle>
+                  <Activity className="h-3.5 w-3.5 text-blue-500" />
+                </div>
+              </CardHeader>
+              <CardContent className="px-3 pb-3 pt-0 flex">
+                <div className="mr-4">
+                  <div className="text-lg font-bold">{stats.trends?.engagement.rate_formatted || "0%"}</div>
+                  <div className="text-xs text-gray-500">engagement rate</div>
+                  <div className="text-xs mt-1">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                      {stats.trends?.engagement.engaged_clients || 0} engaged
+                    </Badge>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t('dashboard.stats.campaigns')}</CardTitle>
-                <SendIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.total_campaigns}</div>
-                {stats.campaign_stats && (
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    <span className="text-green-500 mr-1">{stats.campaign_stats.success_rate_formatted}</span>
-                    <span>taux de réussite</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{t('dashboard.stats.visits')}</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.visit_stats?.total || 0}</div>
-                {stats.visit_stats && (
-                  <div className="flex items-center text-xs text-muted-foreground">
-                    {stats.visit_stats.growth_is_positive ? (
+                </div>
+                <div>
+                  <div className="text-lg font-bold">{stats.visit_stats?.total || 0}</div>
+                  <div className="flex items-center text-xs text-gray-500">
+                    {stats.visit_stats?.growth_is_positive ? (
                       <ArrowUpCircle className="mr-1 h-3 w-3 text-green-500" />
                     ) : (
                       <ArrowDownCircle className="mr-1 h-3 w-3 text-red-500" />
                     )}
-                    <span className={stats.visit_stats.growth_is_positive ? "text-green-500" : "text-red-500"}>
-                      {stats.visit_stats.growth_rate_formatted}
-                    </span>
-                    <span className="ml-1">ce mois</span>
+                    <span>{stats.visit_stats?.growth_rate_formatted || "0%"}</span>
                   </div>
-                )}
+                  <div className="text-xs mt-1">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 text-xs">
+                      {stats.visit_stats?.this_month || 0} this month
+                    </Badge>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Subscription Info */}
-          {stats.subscription && (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>
-                  {t('subscription.yourSubscription')}
-                  {stats.subscription.isFreePlan && (
-                    <Badge variant="outline" className="ml-2">Plan Gratuit</Badge>
-                  )}
-                </CardTitle>
-                <CardDescription>
-                  {stats.subscription.isFreePlan ? 
-                    t('subscription.limit.freePlanLimit') : 
-                    stats.subscription.plan}
-                </CardDescription>
+          {/* Main Dashboard Content - Without Tabs */}
+          <div className="grid grid-cols-12 gap-3">
+            {/* Main Activity Chart */}
+            <Card className="col-span-12 xl:col-span-8 p-0">
+              <CardHeader className="pb-0 px-3 pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Activity Overview</CardTitle>
+                    <CardDescription className="text-xs">Messages and visits over time</CardDescription>
+                  </div>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                    <Download className="h-3.5 w-3.5 mr-1" />
+                    <span>Export</span>
+                  </Button>
+                </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium">Quota de SMS</h4>
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {stats.subscription.sms_used} / {stats.subscription.personal_sms_quota} SMS
-                      </span>
-                      <span className="text-xs font-semibold text-primary">
-                        {stats.subscription.sms_usage_percent}%
-                      </span>
-                    </div>
-                    <Progress 
-                      value={stats.subscription.sms_usage_percent} 
-                      className={`h-2 ${stats.subscription.sms_usage_percent > 80 ? 'bg-red-200' : ''}`}
-                      indicatorClassName={stats.subscription.sms_usage_percent > 80 ? 'bg-red-500' : undefined}
-                    />
-                  </div>
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium">Limite de clients</h4>
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">
-                        {stats.subscription.clientsCount} / {stats.subscription.clients_limit} clients
-                      </span>
-                      <span className="text-xs font-semibold text-primary">
-                        {Math.round((stats.subscription.clientsCount / stats.subscription.clients_limit) * 100)}%
-                      </span>
-                    </div>
-                    <Progress 
-                      value={Math.round((stats.subscription.clientsCount / stats.subscription.clients_limit) * 100)} 
-                      className={`h-2 ${(stats.subscription.clientsCount / stats.subscription.clients_limit) > 0.8 ? 'bg-yellow-200' : ''}`}
-                      indicatorClassName={(stats.subscription.clientsCount / stats.subscription.clients_limit) > 0.8 ? 'bg-yellow-500' : undefined}
-                    />
-                  </div>
+              <CardContent className="p-3">
+                <div className="h-60">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={[...messageData, ...visitData]}
+                      margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                    >
+                      <defs>
+                        <linearGradient id="colorMessages" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={chartColors.primary} stopOpacity={0.8} />
+                          <stop offset="95%" stopColor={chartColors.primary} stopOpacity={0.1} />
+                        </linearGradient>
+                        <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={chartColors.accent} stopOpacity={0.8} />
+                          <stop offset="95%" stopColor={chartColors.accent} stopOpacity={0.1} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fontSize: 10 }}
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return date.getDate() + '/' + (date.getMonth() + 1);
+                        }}
+                      />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Area
+                        type="monotone"
+                        dataKey="messages"
+                        name="Messages"
+                        stroke={chartColors.primary}
+                        fillOpacity={1}
+                        fill="url(#colorMessages)"
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="visits"
+                        name="Visits"
+                        stroke={chartColors.accent}
+                        fillOpacity={1}
+                        fill="url(#colorVisits)"
+                      />
+                      <Legend wrapperStyle={{ fontSize: '10px' }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {stats.subscription.isFreePlan ? 
-                    "Passez à un plan payant pour plus de fonctionnalités" : 
-                    `Renouvellement le ${formatDate(stats.subscription.next_renewal_date)}`}
-                </p>
-                {stats.subscription.isFreePlan ? (
-                  <Link
-                    href={route('subscription.plans')}
-                    className="inline-flex items-center rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:from-purple-500 hover:to-indigo-500"
-                  >
-                    {t('subscription.upgrade')}
-                  </Link>
-                ) : (
-                  <Link
-                    href={route('subscription.index')}
-                    className="inline-flex items-center rounded-md border border-input bg-background px-3 py-2 text-sm font-semibold ring-offset-background hover:bg-accent hover:text-accent-foreground"
-                  >
-                    {t('subscription.manage')}
-                  </Link>
-                )}
-              </CardFooter>
             </Card>
-          )}
 
-          {/* Tabs de statistiques avancées */}
-          <Tabs defaultValue="overview" className="w-full mb-6">
-            <TabsList className="grid w-full grid-cols-5">
-              <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="campaigns">Campagnes</TabsTrigger>
-              <TabsTrigger value="clients">Clients</TabsTrigger>
-              <TabsTrigger value="subscription">Abonnement</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="overview" className="mt-4">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="col-span-2 md:col-span-1">
-                  <CardHeader>
-                    <CardTitle>Taux d'engagement</CardTitle>
-                    <CardDescription>Engagement des clients avec vos messages</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="text-3xl font-bold">
-                        {stats.trends?.engagement.rate_formatted || "0%"}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {stats.trends?.engagement.engaged_clients || 0} clients engagés sur {stats.trends?.engagement.messaged_clients || 0} contactés
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="col-span-2 md:col-span-1">
-                  <CardHeader>
-                    <CardTitle>Clients actifs</CardTitle>
-                    <CardDescription>Clients avec activité récente</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="text-3xl font-bold">
-                        {stats.trends?.active_clients.rate_formatted || "0%"}
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-sm text-muted-foreground mr-2">
-                          {stats.trends?.active_clients.count || 0} clients
-                        </span>
-                        {stats.trends?.active_clients.trend_is_positive ? (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            ↑ {stats.trends?.active_clients.trend_formatted}
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                            ↓ {stats.trends?.active_clients.trend_formatted}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="col-span-2 md:col-span-1">
-                  <CardHeader>
-                    <CardTitle>Performance d'envoi</CardTitle>
-                    <CardDescription>Taux de succès des messages</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="text-3xl font-bold">
-                        {stats.message_stats?.delivery_rate_formatted || "0%"}
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 w-full">
-                        <div className="flex flex-col items-center justify-center p-2 bg-green-50 rounded-md">
-                          <span className="text-xl font-semibold text-green-700">{stats.message_stats?.status_counts.sent || 0}</span>
-                          <span className="text-xs text-green-600">Envoyés</span>
-                        </div>
-                        <div className="flex flex-col items-center justify-center p-2 bg-yellow-50 rounded-md">
-                          <span className="text-xl font-semibold text-yellow-700">{stats.message_stats?.status_counts.pending || 0}</span>
-                          <span className="text-xs text-yellow-600">En attente</span>
-                        </div>
-                        <div className="flex flex-col items-center justify-center p-2 bg-red-50 rounded-md">
-                          <span className="text-xl font-semibold text-red-700">{stats.message_stats?.status_counts.failed || 0}</span>
-                          <span className="text-xs text-red-600">Échoués</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+            {/* Client Tags / Distribution */}
+            <Card className="col-span-12 xl:col-span-4 p-0">
+              <CardHeader className="pb-0 px-3 pt-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xs font-medium">{t('dashboard.charts.clientDistribution')}</CardTitle>
+                    <CardDescription className="text-xs">{t('dashboard.charts.segmentationByTags')}</CardDescription>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs">
+                    <Filter className="h-3.5 w-3.5 mr-1" />
+                    <span>{t('dashboard.charts.filter')}</span>
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3">
+                <div className="h-60">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={clientTagData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={70}
+                        paddingAngle={2}
+                        dataKey="count"
+                        stroke="#fff"
+                        strokeWidth={1}
+                      >
+                        {clientTagData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) => [`${value} clients`, '']}
+                        contentStyle={{ fontSize: '10px' }}
+                      />
+                      <Legend
+                        layout="vertical"
+                        verticalAlign="middle"
+                        align="right"
+                        iconType="circle"
+                        iconSize={6}
+                        wrapperStyle={{ fontSize: '10px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
 
-              <div className="grid gap-4 md:grid-cols-2 mt-4">
-                <Card className="col-span-2 md:col-span-1">
-                  <CardHeader>
-                    <CardTitle>Activité récente</CardTitle>
-                    <CardDescription>Dernières interactions clients</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {recentActivity.length > 0 ? (
-                        recentActivity.map((activity, index) => (
-                          <div key={index} className="flex items-start space-x-4">
-                            <Avatar className="h-9 w-9 border">
-                              <AvatarFallback className="bg-primary/10">
-                                {activity.client.name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="space-y-1">
-                              <p className="text-sm font-medium leading-none">{activity.client.name}</p>
-                              <p className="text-sm text-muted-foreground line-clamp-1">{activity.content}</p>
-                              <p className="text-xs text-muted-foreground">{formatDate(activity.date.toString())}</p>
+            {/* Message & Campaign Stats */}
+            <div className="col-span-12 xl:col-span-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Message Status Distribution */}
+              <Card className="p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{t('dashboard.charts.messageStatus')}</CardTitle>
+                    <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <div className="h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={30}
+                          outerRadius={50}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="#fff"
+                          strokeWidth={1}
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value) => [`${value} messages`, '']}
+                          contentStyle={{ fontSize: '10px' }}
+                        />
+                        <Legend
+                          layout="vertical"
+                          verticalAlign="bottom"
+                          align="center"
+                          iconType="circle"
+                          iconSize={6}
+                          wrapperStyle={{ fontSize: '10px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Campaign Status Distribution */}
+              <Card className="p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{t('dashboard.charts.campaignStatus')}</CardTitle>
+                    <SendIcon className="h-3.5 w-3.5 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <div className="h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={campaignStatusData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={30}
+                          outerRadius={50}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="#fff"
+                          strokeWidth={1}
+                        >
+                          {campaignStatusData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value) => [`${value} campaigns`, '']}
+                          contentStyle={{ fontSize: '10px' }}
+                        />
+                        <Legend
+                          layout="vertical"
+                          verticalAlign="bottom"
+                          align="center"
+                          iconType="circle"
+                          iconSize={6}
+                          wrapperStyle={{ fontSize: '10px' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Campaign Trends */}
+              <Card className="md:col-span-2 p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{t('dashboard.charts.campaignTrends')}</CardTitle>
+                    <BarChart2 className="h-3.5 w-3.5 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <div className="h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={campaignData}
+                        margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                        <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip contentStyle={{ fontSize: '10px' }} />
+                        <Bar
+                          dataKey="campaigns"
+                          name="Campaigns"
+                          radius={[4, 4, 0, 0]}
+                          barSize={20}
+                        >
+                          {campaignData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={chartColors.primary} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity & Upcoming Campaigns */}
+            <div className="col-span-12 xl:col-span-7 grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Recent Activity */}
+              <Card className="p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{t('dashboard.activity.recentActivity')}</CardTitle>
+                    <Link href={route('messages.index')} className="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 flex items-center">
+                      <span>{t('dashboard.activity.viewAll')}</span>
+                      <ChevronRight className="ml-1 h-3 w-3" />
+                    </Link>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <div className="space-y-2">
+                    {recentActivity.length > 0 ? (
+                      recentActivity.map((activity, index) => (
+                        <div key={index} className="flex items-start gap-2 pb-2 border-b last:border-0 last:pb-0">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-xs">
+                              {activity.client.name[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="space-y-0.5 flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-medium">{activity.client.name}</p>
+                              <p className="text-xs text-gray-500">{formatTimeSince(activity.date.toString())}</p>
                             </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{activity.content}</p>
                           </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-xs text-gray-500">No recent activity</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Upcoming Campaigns */}
+              <Card className="p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">Upcoming Campaigns</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs flex items-center gap-1 px-2"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>New</span>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-3">
+                  <div className="space-y-2">
+                    {stats.upcoming_campaigns && stats.upcoming_campaigns.length > 0 ? (
+                      stats.upcoming_campaigns.map((campaign) => (
+                        <div key={campaign.id} className="flex items-start gap-2 pb-2 border-b last:border-0 last:pb-0">
+                          <div className="rounded-md h-6 w-6 flex items-center justify-center bg-blue-100 dark:bg-blue-900/30">
+                            <Calendar className="h-3 w-3 text-blue-700 dark:text-blue-400" />
+                          </div>
+                          <div className="space-y-0.5 flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-medium">{campaign.name}</p>
+                              <p className="text-xs text-gray-500">{formatDate(campaign.scheduled_at)}</p>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              {campaign.recipients_count} recipients
+                            </Badge>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-center text-xs text-gray-500">No upcoming campaigns</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Quick Stats Table */}
+              <Card className="md:col-span-2 p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">Recent Messages</CardTitle>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 text-xs flex items-center gap-1 px-2"
+                      asChild
+                    >
+                      <Link href={route('messages.index')}>
+                        <span>View All</span>
+                      </Link>
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs font-medium h-8 pl-3">Client</TableHead>
+                        <TableHead className="text-xs font-medium h-8">Message</TableHead>
+                        <TableHead className="text-xs font-medium h-8 pr-3">Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {stats.recent_messages && stats.recent_messages.length > 0 ? (
+                        stats.recent_messages.slice(0, 3).map((message) => (
+                          <TableRow key={message.id} className="h-8">
+                            <TableCell className="text-xs py-1 pl-3">{message.client.name}</TableCell>
+                            <TableCell className="text-xs py-1 max-w-xs truncate">{message.content}</TableCell>
+                            <TableCell className="text-xs py-1 pr-3">{formatDate(message.created_at)}</TableCell>
+                          </TableRow>
                         ))
                       ) : (
-                        <p className="text-center text-muted-foreground py-4">Aucune activité récente</p>
-                      )}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Link href={route('messages.index')} className="text-xs font-medium text-primary hover:underline">
-                      Voir tous les messages
-                    </Link>
-                  </CardFooter>
-                </Card>
-                
-                <Card className="col-span-2 md:col-span-1">
-                  <CardHeader>
-                    <CardTitle>Campagnes à venir</CardTitle>
-                    <CardDescription>Prochains envois programmés</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {stats.upcoming_campaigns && stats.upcoming_campaigns.length > 0 ? (
-                        stats.upcoming_campaigns.map((campaign) => (
-                          <div key={campaign.id} className="flex items-start space-x-4">
-                            <div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/20">
-                              <Calendar className="h-4 w-4 text-blue-700 dark:text-blue-300" />
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-sm font-medium leading-none">{campaign.name}</p>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">
-                                  {campaign.recipients_count} destinataires
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {formatDate(campaign.scheduled_at)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-center text-muted-foreground py-4">Aucune campagne programmée</p>
-                      )}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Link href={route('campaigns.index')} className="text-xs font-medium text-primary hover:underline">
-                      Gérer les campagnes
-                    </Link>
-                  </CardFooter>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="messages" className="mt-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card className="col-span-2">
-                  <CardHeader className="flex flex-row items-center">
-                    <div>
-                      <CardTitle>Tendance des messages</CardTitle>
-                      <CardDescription>Évolution des messages envoyés</CardDescription>
-                    </div>
-                    <div className="ml-auto">
-                      <Select defaultValue="month" onValueChange={setTimeRange}>
-                        <SelectTrigger className="w-[120px]">
-                          <SelectValue placeholder="Période" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="week">Semaine</SelectItem>
-                          <SelectItem value="month">Mois</SelectItem>
-                          <SelectItem value="year">Année</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={messageData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="date" 
-                            tick={{ fontSize: 12 }} 
-                            tickFormatter={(value) => {
-                              const date = new Date(value);
-                              return date.getDate() + '/' + (date.getMonth() + 1);
-                            }}
-                          />
-                          <YAxis tick={{ fontSize: 12 }} />
-                          <Tooltip 
-                            formatter={(value) => [`${value} messages`, 'Envoyés']}
-                            labelFormatter={(label) => {
-                              const date = new Date(label);
-                              return date.toLocaleDateString();
-                            }}
-                          />
-                          <Legend />
-                          <Line 
-                            type="monotone" 
-                            dataKey="messages" 
-                            stroke="#2563eb" 
-                            strokeWidth={2}
-                            dot={{ stroke: '#2563eb', strokeWidth: 2, r: 4 }}
-                            activeDot={{ r: 6, stroke: '#2563eb', strokeWidth: 2 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Statut des messages</CardTitle>
-                    <CardDescription>Répartition par état d'envoi</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => [`${value} messages`, '']} />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Derniers messages</CardTitle>
-                    <CardDescription>Messages récents envoyés</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
                         <TableRow>
-                          <TableHead>Client</TableHead>
-                          <TableHead>Message</TableHead>
-                          <TableHead>Date</TableHead>
+                          <TableCell colSpan={3} className="text-center text-xs text-gray-500">No recent messages</TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {stats.recent_messages && stats.recent_messages.length > 0 ? (
-                          stats.recent_messages.map((message) => (
-                            <TableRow key={message.id}>
-                              <TableCell className="font-medium">{message.client.name}</TableCell>
-                              <TableCell className="max-w-xs truncate">{message.content}</TableCell>
-                              <TableCell>{formatDate(message.created_at)}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={3} className="text-center">Aucun message récent</TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="campaigns" className="mt-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card className="col-span-2">
-                  <CardHeader>
-                    <CardTitle>Évolution des campagnes</CardTitle>
-                    <CardDescription>Nombre de campagnes par mois</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={campaignData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="month" />
-                          <YAxis />
-                          <Tooltip formatter={(value) => [`${value} campagnes`, '']} />
-                          <Legend />
-                          <Bar dataKey="campaigns" name="Campagnes" fill="#3b82f6" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Statut des campagnes</CardTitle>
-                    <CardDescription>Répartition par état d'avancement</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={campaignStatusData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {campaignStatusData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => [`${value} campagnes`, '']} />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Campagnes à venir</CardTitle>
-                    <CardDescription>Prochains envois programmés</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nom</TableHead>
-                          <TableHead>Destinataires</TableHead>
-                          <TableHead>Date</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {stats.upcoming_campaigns && stats.upcoming_campaigns.length > 0 ? (
-                          stats.upcoming_campaigns.map((campaign) => (
-                            <TableRow key={campaign.id}>
-                              <TableCell className="font-medium">{campaign.name}</TableCell>
-                              <TableCell>{campaign.recipients_count}</TableCell>
-                              <TableCell>{formatDate(campaign.scheduled_at)}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={3} className="text-center">Aucune campagne programmée</TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="clients" className="mt-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Répartition par tags</CardTitle>
-                    <CardDescription>Distribution des clients par catégorie</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={clientTagData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="count"
-                          >
-                            {clientTagData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value) => [`${value} clients`, '']} />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Évolution des visites</CardTitle>
-                    <CardDescription>Visites clients au fil du temps</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[300px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={visitData}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis 
-                            dataKey="date" 
-                            tick={{ fontSize: 12 }} 
-                            tickFormatter={(value) => {
-                              const date = new Date(value);
-                              return date.getDate() + '/' + (date.getMonth() + 1);
-                            }}
-                          />
-                          <YAxis tick={{ fontSize: 12 }} />
-                          <Tooltip 
-                            formatter={(value) => [`${value} visites`, 'Nombre']}
-                            labelFormatter={(label) => {
-                              const date = new Date(label);
-                              return date.toLocaleDateString();
-                            }}
-                          />
-                          <Legend />
-                          <Line 
-                            type="monotone" 
-                            dataKey="visits" 
-                            stroke="#10b981" 
-                            strokeWidth={2}
-                            dot={{ stroke: '#10b981', strokeWidth: 2, r: 4 }}
-                            activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card className="col-span-2">
-                  <CardHeader>
-                    <CardTitle>Engagement client</CardTitle>
-                    <CardDescription>Statistiques d'interaction avec les clients</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-6 md:grid-cols-3">
-                      <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                        <UserCheck className="h-8 w-8 text-primary" />
-                        <h3 className="text-xl font-bold">{stats.trends?.active_clients.count || 0}</h3>
-                        <p className="text-sm text-center text-muted-foreground">Clients actifs</p>
-                        <Badge variant={stats.trends?.active_clients.trend_is_positive ? "success" : "destructive"} className="mt-2">
-                          {stats.trends?.active_clients.trend_is_positive ? '↑' : '↓'} {stats.trends?.active_clients.trend_formatted}
-                        </Badge>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Additional Metrics Row */}
+            <div className="col-span-12 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {/* SMS Remaining */}
+              {stats.subscription && (
+                <>
+                  <Card className="p-0">
+                    <CardHeader className="pb-0 px-3 pt-3">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-xs font-medium">SMS Remaining</CardTitle>
+                        <MessageSquare className="h-3.5 w-3.5 text-blue-500" />
                       </div>
-                      
-                      <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                        <Clock className="h-8 w-8 text-primary" />
-                        <h3 className="text-xl font-bold">{stats.client_stats?.new_this_month || 0}</h3>
-                        <p className="text-sm text-center text-muted-foreground">Nouveaux clients ce mois</p>
-                        <Badge variant={stats.client_stats?.growth_is_positive ? "success" : "destructive"} className="mt-2">
-                          {stats.client_stats?.growth_is_positive ? '↑' : '↓'} {stats.client_stats?.growth_rate_formatted}
-                        </Badge>
+                    </CardHeader>
+                    <CardContent className="px-3 pb-3 pt-1">
+                      <div className="text-lg font-bold text-blue-700">
+                        {stats.subscription.personal_sms_quota - stats.subscription.sms_used}
                       </div>
-                      
-                      <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                        <MessageSquare className="h-8 w-8 text-primary" />
-                        <h3 className="text-xl font-bold">{stats.trends?.engagement.rate_formatted || "0%"}</h3>
-                        <p className="text-sm text-center text-muted-foreground">Taux d'engagement global</p>
-                        <p className="text-xs text-center text-muted-foreground">
-                          {stats.trends?.engagement.engaged_clients || 0} sur {stats.trends?.engagement.messaged_clients || 0}
-                        </p>
+                      <div className="text-xs text-gray-500">
+                        {Math.round((1 - stats.subscription.sms_used / stats.subscription.personal_sms_quota) * 100)}% remaining
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="subscription">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card className="col-span-2">
-                  <CardHeader>
-                    <CardTitle>Votre abonnement</CardTitle>
-                    <CardDescription>Détails de votre forfait actuel</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {stats.subscription ? (
-                      <div className="space-y-8">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-2xl font-bold">
-                              Forfait {stats.subscription.plan || 'Gratuit'}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Renouvellement: {stats.subscription.next_renewal_date ? formatDate(stats.subscription.next_renewal_date) : 'N/A'}
-                            </p>
-                          </div>
-                          <Badge variant={stats.subscription.isFreePlan ? "outline" : "default"}>
-                            {stats.subscription.isFreePlan ? "Plan gratuit" : "Plan premium"}
-                          </Badge>
-                        </div>
-                        
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Quota SMS utilisé</span>
-                              <span className="text-sm text-muted-foreground">
-                                {stats.subscription.sms_used} / {stats.subscription.personal_sms_quota}
-                              </span>
-                            </div>
-                            {stats.subscription.sms_usage_percent > 80 ? (
-                              <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-destructive" 
-                                  style={{ width: `${stats.subscription.sms_usage_percent}%` }}
-                                ></div>
-                              </div>
-                            ) : (
-                              <Progress value={stats.subscription.sms_usage_percent} className="h-2" />
-                            )}
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Campagnes utilisées</span>
-                              <span className="text-sm text-muted-foreground">
-                                {stats.subscription.campaigns_used} / {stats.subscription.campaigns_limit}
-                              </span>
-                            </div>
-                            {stats.subscription.campaigns_usage_percent > 80 ? (
-                              <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-destructive" 
-                                  style={{ width: `${stats.subscription.campaigns_usage_percent}%` }}
-                                ></div>
-                              </div>
-                            ) : (
-                              <Progress value={stats.subscription.campaigns_usage_percent} className="h-2" />
-                            )}
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Clients</span>
-                              <span className="text-sm text-muted-foreground">
-                                {stats.subscription.clientsCount} / {stats.subscription.clients_limit}
-                              </span>
-                            </div>
-                            {(stats.subscription.clientsCount / stats.subscription.clients_limit) > 0.8 ? (
-                              <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-destructive" 
-                                  style={{ width: `${(stats.subscription.clientsCount / stats.subscription.clients_limit) * 100}%` }}
-                                ></div>
-                              </div>
-                            ) : (
-                              <Progress value={(stats.subscription.clientsCount / stats.subscription.clients_limit) * 100} className="h-2" />
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="pt-4 border-t grid gap-4 md:grid-cols-3">
-                          <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                            <MessageSquare className="h-8 w-8 text-primary" />
-                            <h3 className="text-xl font-bold">{stats.subscription.personal_sms_quota - stats.subscription.sms_used}</h3>
-                            <p className="text-sm text-center text-muted-foreground">SMS restants</p>
-                          </div>
-                          
-                          <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                            <Calendar className="h-8 w-8 text-primary" />
-                            <h3 className="text-xl font-bold">{stats.subscription.campaigns_limit - stats.subscription.campaigns_used}</h3>
-                            <p className="text-sm text-center text-muted-foreground">Campagnes restantes</p>
-                          </div>
-                          
-                          <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                            <Users className="h-8 w-8 text-primary" />
-                            <h3 className="text-xl font-bold">{stats.subscription.clients_limit - stats.subscription.clientsCount}</h3>
-                            <p className="text-sm text-center text-muted-foreground">Places clients disponibles</p>
-                          </div>
-                        </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="p-0">
+                    <CardHeader className="pb-0 px-3 pt-3">
+                      <div className="flex justify-between items-center">
+                        <CardTitle className="text-xs font-medium">Campaigns Left</CardTitle>
+                        <Calendar className="h-3.5 w-3.5 text-blue-500" />
                       </div>
+                    </CardHeader>
+                    <CardContent className="px-3 pb-3 pt-1">
+                      <div className="text-lg font-bold text-blue-700">
+                        {stats.subscription.campaigns_limit - stats.subscription.campaigns_used}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {Math.round((1 - stats.subscription.campaigns_used / stats.subscription.campaigns_limit) * 100)}% remaining
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              )}
+
+              <Card className="p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-xs font-medium">Active Clients</CardTitle>
+                    <Users className="h-3.5 w-3.5 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 pt-1">
+                  <div className="text-lg font-bold text-blue-700">
+                    {stats.trends?.active_clients.count || 0}
+                  </div>
+                  <div className="text-xs text-gray-500 flex items-center">
+                    {stats.trends?.active_clients.trend_is_positive ? (
+                      <ArrowUpCircle className="mr-1 h-3 w-3 text-green-500" />
                     ) : (
-                      <div className="text-center py-6">
-                        <p className="text-muted-foreground">Aucun abonnement actif</p>
-                        <p className="mt-2">Contactez le support pour activer un abonnement.</p>
-                      </div>
+                      <ArrowDownCircle className="mr-1 h-3 w-3 text-red-500" />
                     )}
-                  </CardContent>
-                  {stats.subscription && (
-                    <CardFooter className="border-t pt-6">
-                      <div className="w-full flex flex-col sm:flex-row justify-between gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Besoin de plus de SMS ou de fonctionnalités?</p>
-                        </div>
-                        <div>
-                          <Link href="/subscription/upgrade" className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
-                            Gérer mon abonnement
-                          </Link>
-                        </div>
-                      </div>
-                    </CardFooter>
-                  )}
-                </Card>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="subscription" className="mt-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card className="col-span-2">
-                  <CardHeader>
-                    <CardTitle>Votre abonnement</CardTitle>
-                    <CardDescription>Détails de votre forfait actuel</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {stats.subscription ? (
-                      <div className="space-y-8">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-2xl font-bold">
-                              Forfait {stats.subscription.plan || 'Gratuit'}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Renouvellement: {stats.subscription.next_renewal_date ? formatDate(stats.subscription.next_renewal_date) : 'N/A'}
-                            </p>
-                          </div>
-                          <Badge variant={stats.subscription.isFreePlan ? "outline" : "default"}>
-                            {stats.subscription.isFreePlan ? "Plan gratuit" : "Plan premium"}
-                          </Badge>
-                        </div>
-                        
-                        <div className="space-y-6">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Quota SMS utilisé</span>
-                              <span className="text-sm text-muted-foreground">
-                                {stats.subscription.sms_used} / {stats.subscription.personal_sms_quota}
-                              </span>
-                            </div>
-                            <Progress 
-                              value={stats.subscription.sms_usage_percent} 
-                              className={`h-2 ${stats.subscription.sms_usage_percent > 80 ? 'bg-destructive/20' : ''}`}
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Campagnes utilisées</span>
-                              <span className="text-sm text-muted-foreground">
-                                {stats.subscription.campaigns_used} / {stats.subscription.campaigns_limit}
-                              </span>
-                            </div>
-                            <Progress 
-                              value={stats.subscription.campaigns_usage_percent} 
-                              className={`h-2 ${stats.subscription.campaigns_usage_percent > 80 ? 'bg-destructive/20' : ''}`}
-                            />
-                          </div>
-                          
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">Clients</span>
-                              <span className="text-sm text-muted-foreground">
-                                {stats.subscription.clientsCount} / {stats.subscription.clients_limit}
-                              </span>
-                            </div>
-                            <Progress 
-                              value={(stats.subscription.clientsCount / stats.subscription.clients_limit) * 100} 
-                              className={`h-2 ${(stats.subscription.clientsCount / stats.subscription.clients_limit) > 0.8 ? 'bg-destructive/20' : ''}`}
-                            />
-                          </div>
-                        </div>
-                        
-                        <div className="pt-4 border-t grid gap-4 md:grid-cols-3">
-                          <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                            <MessageSquare className="h-8 w-8 text-primary" />
-                            <h3 className="text-xl font-bold">{stats.subscription.personal_sms_quota - stats.subscription.sms_used}</h3>
-                            <p className="text-sm text-center text-muted-foreground">SMS restants</p>
-                          </div>
-                          
-                          <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                            <Calendar className="h-8 w-8 text-primary" />
-                            <h3 className="text-xl font-bold">{stats.subscription.campaigns_limit - stats.subscription.campaigns_used}</h3>
-                            <p className="text-sm text-center text-muted-foreground">Campagnes restantes</p>
-                          </div>
-                          
-                          <div className="flex flex-col items-center space-y-2 border rounded-lg p-4">
-                            <Users className="h-8 w-8 text-primary" />
-                            <h3 className="text-xl font-bold">{stats.subscription.clients_limit - stats.subscription.clientsCount}</h3>
-                            <p className="text-sm text-center text-muted-foreground">Places clients disponibles</p>
-                          </div>
-                        </div>
-                      </div>
+                    <span>{stats.trends?.active_clients.trend_formatted}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-xs font-medium">New Clients</CardTitle>
+                    <Clock className="h-3.5 w-3.5 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 pt-1">
+                  <div className="text-lg font-bold text-blue-700">
+                    {stats.client_stats?.new_this_month || 0}
+                  </div>
+                  <div className="text-xs text-gray-500 flex items-center">
+                    {stats.client_stats?.growth_is_positive ? (
+                      <ArrowUpCircle className="mr-1 h-3 w-3 text-green-500" />
                     ) : (
-                      <div className="text-center py-6">
-                        <p className="text-muted-foreground">Aucun abonnement actif</p>
-                        <p className="mt-2">Contactez le support pour activer un abonnement.</p>
-                      </div>
+                      <ArrowDownCircle className="mr-1 h-3 w-3 text-red-500" />
                     )}
-                  </CardContent>
-                  {stats.subscription && (
-                    <CardFooter className="border-t pt-6">
-                      <div className="w-full flex flex-col sm:flex-row justify-between gap-4">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Besoin de plus de SMS ou de fonctionnalités?</p>
-                        </div>
-                        <div>
-                          <Link href={route('subscription.index')} className="inline-flex items-center justify-center whitespace-nowrap rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
-                            Gérer mon abonnement
-                          </Link>
-                        </div>
-                      </div>
-                    </CardFooter>
-                  )}
-                </Card>
-              </div>
-            </TabsContent>
-          </Tabs>
+                    <span>{stats.client_stats?.growth_rate_formatted}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-xs font-medium">Delivery Rate</CardTitle>
+                    <Activity className="h-3.5 w-3.5 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 pt-1">
+                  <div className="text-lg font-bold text-blue-700">
+                    {stats.message_stats?.delivery_rate_formatted || "0%"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {stats.message_stats?.status_counts.sent || 0} of {(stats.message_stats?.status_counts.sent || 0) + (stats.message_stats?.status_counts.failed || 0)} messages
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="p-0">
+                <CardHeader className="pb-0 px-3 pt-3">
+                  <div className="flex justify-between items-center">
+                    <CardTitle className="text-xs font-medium">Success Rate</CardTitle>
+                    <TrendingUp className="h-3.5 w-3.5 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-3 pb-3 pt-1">
+                  <div className="text-lg font-bold text-blue-700">
+                    {stats.campaign_stats?.success_rate_formatted || "0%"}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {stats.campaign_stats?.status_counts.sent || 0} successful campaigns
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="col-span-12 flex flex-wrap gap-2 mt-2 justify-center">
+              <Button size="sm" className="flex items-center gap-1">
+                <Plus className="h-3.5 w-3.5" />
+                <span>New Campaign</span>
+              </Button>
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <Users className="h-3.5 w-3.5" />
+                <span>Manage Clients</span>
+              </Button>
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span>Send Message</span>
+              </Button>
+              <Button variant="outline" size="sm" className="flex items-center gap-1">
+                <Download className="h-3.5 w-3.5" />
+                <span>Export Reports</span>
+              </Button>
+              {stats.subscription?.isFreePlan && (
+                <Button variant="secondary" size="sm" className="flex items-center gap-1">
+                  <ArrowUpCircle className="h-3.5 w-3.5" />
+                  <span>Upgrade Plan</span>
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </AuthenticatedLayout>
