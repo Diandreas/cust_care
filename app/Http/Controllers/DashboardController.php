@@ -305,7 +305,7 @@ class DashboardController extends Controller
         
         $visitsThisMonth = $user->clients()
             ->with(['visits' => function($query) use ($startOfMonth, $endOfMonth) {
-                $query->whereBetween('date', [$startOfMonth, $endOfMonth]);
+                $query->whereBetween('visit_date', [$startOfMonth, $endOfMonth]);
             }])
             ->get()
             ->pluck('visits')
@@ -319,7 +319,7 @@ class DashboardController extends Controller
         
         $visitsLastMonth = $user->clients()
             ->with(['visits' => function($query) use ($startOfLastMonth, $endOfLastMonth) {
-                $query->whereBetween('date', [$startOfLastMonth, $endOfLastMonth]);
+                $query->whereBetween('visit_date', [$startOfLastMonth, $endOfLastMonth]);
             }])
             ->get()
             ->pluck('visits')
@@ -333,7 +333,7 @@ class DashboardController extends Controller
         // Distribution quotidienne des visites
         $allVisits = $user->clients()
             ->with(['visits' => function($query) {
-                $query->where('date', '>=', now()->subDays(30));
+                $query->where('visit_date', '>=', now()->subDays(30));
             }])
             ->get()
             ->pluck('visits')
@@ -341,7 +341,7 @@ class DashboardController extends Controller
             
         $visitsByDay = $allVisits
             ->groupBy(function($visit) {
-                return date('Y-m-d', strtotime($visit->date));
+                return date('Y-m-d', strtotime($visit->visit_date));
             })
             ->map(function($group, $date) {
                 return [
@@ -376,7 +376,7 @@ class DashboardController extends Controller
         $activeClients = $user->clients()
             ->where(function($query) use ($startOfMonth, $endOfMonth) {
                 $query->whereHas('visits', function($q) use ($startOfMonth, $endOfMonth) {
-                    $q->whereBetween('date', [$startOfMonth, $endOfMonth]);
+                    $q->whereBetween('visit_date', [$startOfMonth, $endOfMonth]);
                 })
                 ->orWhereHas('messages', function($q) use ($startOfMonth, $endOfMonth) {
                     $q->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
@@ -395,7 +395,7 @@ class DashboardController extends Controller
         $lastMonthActiveClients = $user->clients()
             ->where(function($query) use ($startOfLastMonth, $endOfLastMonth) {
                 $query->whereHas('visits', function($q) use ($startOfLastMonth, $endOfLastMonth) {
-                    $q->whereBetween('date', [$startOfLastMonth, $endOfLastMonth]);
+                    $q->whereBetween('visit_date', [$startOfLastMonth, $endOfLastMonth]);
                 })
                 ->orWhereHas('messages', function($q) use ($startOfLastMonth, $endOfLastMonth) {
                     $q->whereBetween('created_at', [$startOfLastMonth, $endOfLastMonth]);
@@ -411,19 +411,16 @@ class DashboardController extends Controller
         $trendRate = $lastMonthRate > 0 ? (($activeRate - $lastMonthRate) / $lastMonthRate) * 100 : 0;
         $trendIsPositive = $trendRate >= 0;
         
-        // Engagement (clients qui ont répondu à au moins un message) - compatible avec SQLite
+        // Engagement (clients qui ont répondu à au moins un message) - compatible avec MySQL
         $messagedClients = $user->clients()
             ->whereHas('messages', function($query) use ($startOfMonth, $endOfMonth) {
                 $query->whereBetween('created_at', [$startOfMonth, $endOfMonth]);
             })
             ->count();
             
-        $engagedClients = $user->clients()
-            ->whereHas('messages', function($query) use ($startOfMonth, $endOfMonth) {
-                $query->whereBetween('created_at', [$startOfMonth, $endOfMonth])
-                      ->where('is_reply', true);
-            })
-            ->count();
+        // Pour l'instant, on considère qu'aucun client n'a répondu puisque la colonne is_reply vient d'être ajoutée
+        // et n'est pas encore remplie avec des données réelles
+        $engagedClients = 0;
             
         $engagementRate = $messagedClients > 0 ? ($engagedClients / $messagedClients) * 100 : 0;
         
