@@ -154,13 +154,13 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
     const getStatusLabel = (status: string) => {
         switch (status) {
             case 'delivered':
-                return t('messages.status.delivered');
+                return 'Livré';
             case 'failed':
-                return t('messages.status.failed');
+                return 'Échoué';
             case 'pending':
-                return t('messages.status.pending');
+                return 'En attente';
             default:
-                return t('common.unknown');
+                return 'Inconnu';
         }
     };
 
@@ -181,7 +181,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
     const registerVisit = () => {
         if (!visitNotes.trim()) {
-            error(t('visits.notesRequired'));
+            error('Veuillez saisir des notes pour la visite');
             return;
         }
 
@@ -216,7 +216,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
     const sendDirectMessage = () => {
         if (!messageContent.trim()) {
-            error(t('messages.contentRequired'));
+            error('Veuillez saisir un message');
             return;
         }
 
@@ -225,7 +225,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
             content: messageContent
         })
             .then(response => {
-                success(t('messages.sendSuccess'));
+                success('Message envoyé avec succès');
 
                 // Add the new message to the messages state
                 const newMessage = response.data.sms;
@@ -246,7 +246,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                 setMessageContent('');
             })
             .catch(err => {
-                error(t('messages.sendError'));
+                error('Erreur lors de l\'envoi du message');
             })
             .finally(() => {
                 setIsLoadingMessage(false);
@@ -262,7 +262,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
             tag_ids: selectedTagsState
         })
             .then(response => {
-                success(t('clients.updateSuccess'));
+                success('Client mis à jour avec succès');
 
                 // Update the client state with the new data
                 const updatedClient = response.data.client || {
@@ -291,7 +291,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                         error(`${key}: ${serverErrors[key][0]}`);
                     }
                 } else {
-                    error(t('clients.updateError'));
+                    error('Erreur lors de la mise à jour du client');
                 }
             });
     };
@@ -343,11 +343,11 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                             {client.name}
                             {client.is_active ? (
                                 <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-800/30 dark:text-green-300">
-                                    {t('common.active')}
+                                    Actif
                                 </span>
                             ) : (
                                 <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                    {t('common.inactive')}
+                                    Inactif
                                 </span>
                             )}
                         </h2>
@@ -359,7 +359,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                 onClick={() => setShowActionsMenu(!showActionsMenu)}
                                 className="inline-flex items-center rounded-md bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none"
                             >
-                                {t('common.actions')}
+                                Actions
                                 <ChevronDown className="ml-2 h-4 w-4" />
                             </button>
                             <Transition
@@ -379,7 +379,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             role="menuitem"
                                         >
                                             <Send className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('common.sendMessage')}
+                                            Envoyer un message
                                         </button>
                                         <button
                                             onClick={() => setIsAddingVisit(true)}
@@ -387,7 +387,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             role="menuitem"
                                         >
                                             <Home className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('visits.register')}
+                                            Enregistrer une visite
                                         </button>
                                         <button
                                             onClick={() => setIsEditing(!isEditing)}
@@ -395,7 +395,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             role="menuitem"
                                         >
                                             <Edit className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('clients.edit')}
+                                            Modifier le profil
                                         </button>
                                         <a
                                             href={`tel:${client.phone}`}
@@ -403,7 +403,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             role="menuitem"
                                         >
                                             <Phone className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('common.call')}
+                                            Appeler
                                         </a>
                                         <div className="border-t border-gray-100 dark:border-gray-700"></div>
                                         <button
@@ -411,7 +411,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             role="menuitem"
                                         >
                                             <Trash2 className="mr-3 h-4 w-4" />
-                                            {t('common.delete')}
+                                            Supprimer
                                         </button>
                                     </div>
                                 </div>
@@ -421,7 +421,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                 </div>
             }
         >
-            <Head title={`${t('clients.client')}: ${client.name}`} />
+            <Head title={`Client: ${client.name}`} />
 
             <div className="py-6">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -431,7 +431,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                             <div className="mb-4 flex items-center justify-between">
                                 <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
                                     <Home className="h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400" />
-                                    {t('visits.registerNew')}
+                                    Enregistrer une nouvelle visite
                                 </h3>
                                 <button
                                     onClick={() => setIsAddingVisit(false)}
@@ -442,7 +442,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                             </div>
                             <div className="mb-4">
                                 <label htmlFor="visitNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {t('visits.notes')}
+                                    Notes de visite
                                 </label>
                                 <textarea
                                     id="visitNotes"
@@ -450,10 +450,10 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                     className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
                                     value={visitNotes}
                                     onChange={(e) => setVisitNotes(e.target.value)}
-                                    placeholder={t('visits.notesPlaceholder')}
+                                    placeholder="Détails de la visite, services rendus, observations..."
                                 />
                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    {t('visits.notesHint')}
+                                    Ces notes seront associées à la visite enregistrée aujourd'hui.
                                 </p>
                             </div>
                             <div className="flex justify-end space-x-3">
@@ -462,7 +462,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                     onClick={() => setIsAddingVisit(false)}
                                     className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
                                 >
-                                    {t('common.cancel')}
+                                    Annuler
                                 </button>
                                 <button
                                     type="button"
@@ -476,12 +476,12 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            {t('common.saving')}
+                                            Enregistrement...
                                         </>
                                     ) : (
                                         <>
                                             <Check className="mr-2 h-4 w-4" />
-                                            {t('visits.register')}
+                                            Enregistrer la visite
                                         </>
                                     )}
                                 </button>
@@ -495,7 +495,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                             <div className="mb-4 flex items-center justify-between">
                                 <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
                                     <MessageCircle className="h-5 w-5 mr-2 text-blue-500" />
-                                    {t('messages.sendDirect')}
+                                    Envoyer un message direct
                                 </h3>
                                 <button
                                     onClick={() => setIsAddingMessage(false)}
@@ -506,7 +506,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                             </div>
                             <div className="mb-4">
                                 <label htmlFor="messageContent" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {t('messages.content')}
+                                    Contenu du message
                                 </label>
                                 <textarea
                                     id="messageContent"
@@ -514,11 +514,11 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
                                     value={messageContent}
                                     onChange={(e) => setMessageContent(e.target.value)}
-                                    placeholder={t('messages.contentPlaceholder')}
+                                    placeholder="Saisir votre message ici..."
                                     maxLength={160}
                                 />
                                 <div className="mt-1 flex justify-between items-center">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">{messageContent.length} / 160 {t('messages.characters')}</span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">{messageContent.length} / 160 caractères</span>
                                     <span className={`text-xs font-medium ${messageContent.length > 160 ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
                                         {Math.ceil(messageContent.length / 160)} SMS
                                     </span>
@@ -526,28 +526,28 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
                                 {/* Message templates suggestions */}
                                 <div className="mt-3">
-                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{t('messages.templates')}:</p>
+                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Modèles de messages :</p>
                                     <div className="flex flex-wrap gap-2">
                                         <button
                                             type="button"
-                                            onClick={() => setMessageContent(`${t('messages.templates.appointment', { name: client.name })}`)}
+                                            onClick={() => setMessageContent(`Bonjour ${client.name}, nous confirmons votre rendez-vous. À bientôt !`)}
                                             className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
-                                            {t('messages.templates.appointmentConfirmation')}
+                                            Confirmation de RDV
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setMessageContent(`${t('messages.templates.proposal', { name: client.name })}`)}
+                                            onClick={() => setMessageContent(`Bonjour ${client.name}, souhaitez-vous prendre rendez-vous prochainement ?`)}
                                             className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
-                                            {t('messages.templates.appointmentProposal')}
+                                            Proposition de RDV
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setMessageContent(`${t('messages.templates.thanks', { name: client.name })}`)}
+                                            onClick={() => setMessageContent(`Bonjour ${client.name}, merci pour votre visite aujourd'hui. N'hésitez pas à nous contacter pour toute question.`)}
                                             className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                                         >
-                                            {t('messages.templates.thanksAfterVisit')}
+                                            Remerciement après visite
                                         </button>
                                     </div>
                                 </div>
@@ -558,7 +558,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                     onClick={() => setIsAddingMessage(false)}
                                     className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
                                 >
-                                    {t('common.cancel')}
+                                    Annuler
                                 </button>
                                 <button
                                     type="button"
@@ -572,12 +572,12 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                             </svg>
-                                            {t('messages.sending')}
+                                            Envoi en cours...
                                         </>
                                     ) : (
                                         <>
                                             <Send className="mr-2 h-4 w-4" />
-                                            {t('messages.send')}
+                                            Envoyer le message
                                         </>
                                     )}
                                 </button>
@@ -733,11 +733,11 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                                             <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
                                                 <FileText className="h-4 w-4 mr-1 text-gray-500" />
-                                                {t('common.notes')}
+                                                Notes
                                             </h4>
                                             <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-700/50">
                                                 <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
-                                                    {client.notes || t('common.noNotes')}
+                                                    {client.notes || "Aucune note"}
                                                 </p>
                                             </div>
                                         </div>
@@ -746,19 +746,19 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                         <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                                             <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
                                                 <Clock className="h-4 w-4 mr-1 text-gray-500" />
-                                                {t('clients.history')}
+                                                Historique
                                             </h4>
                                             <ul className="space-y-2">
                                                 <li className="flex justify-between text-sm">
-                                                    <span className="text-gray-500 dark:text-gray-400">{t('clients.clientSince')}</span>
+                                                    <span className="text-gray-500 dark:text-gray-400">Client depuis</span>
                                                     <span className="font-medium text-gray-900 dark:text-white">{formatDate(client.created_at)}</span>
                                                 </li>
                                                 <li className="flex justify-between text-sm">
-                                                    <span className="text-gray-500 dark:text-gray-400">{t('clients.lastContact')}</span>
-                                                    <span className="font-medium text-gray-900 dark:text-white">{formatTimeAgo(client.lastContact || '')}</span>
+                                                    <span className="text-gray-500 dark:text-gray-400">Dernier contact</span>
+                                                    <span className="font-medium text-gray-900 dark:text-white">{formatTimeAgo(client.lastContact)}</span>
                                                 </li>
                                                 <li className="flex justify-between text-sm">
-                                                    <span className="text-gray-500 dark:text-gray-400">{t('clients.lastVisit')}</span>
+                                                    <span className="text-gray-500 dark:text-gray-400">Dernière visite</span>
                                                     <span className="font-medium text-gray-900 dark:text-white">{client.last_visit_date ? formatTimeAgo(client.last_visit_date) : '-'}</span>
                                                 </li>
                                             </ul>
@@ -769,7 +769,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                     <div className="p-5 animate-in fade-in duration-300">
                                         <form onSubmit={handleSubmit} className="space-y-5">
                                             <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
-                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('clients.editInfo')}</h3>
+                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Modifier les informations</h3>
                                                 <button
                                                     type="button"
                                                     onClick={() => setIsEditing(false)}
@@ -781,7 +781,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
                                             <div>
                                                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t('clients.name')} *
+                                                    Nom *
                                                 </label>
                                                 <input
                                                     id="name"
@@ -796,7 +796,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
                                             <div>
                                                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t('clients.phone')} *
+                                                    Téléphone *
                                                 </label>
                                                 <input
                                                     id="phone"
@@ -811,7 +811,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
                                             <div>
                                                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t('clients.email')}
+                                                    Email
                                                 </label>
                                                 <input
                                                     id="email"
@@ -825,7 +825,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
                                             <div>
                                                 <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t('clients.address')}
+                                                    Adresse
                                                 </label>
                                                 <input
                                                     id="address"

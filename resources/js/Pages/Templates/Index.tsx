@@ -11,7 +11,7 @@ interface Template {
     is_global: boolean;
 }
 
-interface TemplatesIndexProps extends Record<string, unknown> {
+interface TemplatesIndexProps {
     templates: Template[];
 }
 
@@ -24,22 +24,14 @@ export default function TemplatesIndex({
     const [editingId, setEditingId] = useState<number | null>(null);
 
     // Form pour créer un nouveau modèle
-    const { data: createData, setData: setCreateData, post, processing: createProcessing, errors: createErrors, reset: resetCreate } = useForm<{
-        name: string;
-        content: string;
-        is_global: boolean;
-    }>({
+    const { data: createData, setData: setCreateData, post, processing: createProcessing, errors: createErrors, reset: resetCreate } = useForm({
         name: '',
         content: '',
         is_global: false,
     });
 
     // Form pour éditer un modèle existant
-    const { data: editData, setData: setEditData, patch, processing: editProcessing, errors: editErrors, reset: resetEdit } = useForm<{
-        name: string;
-        content: string;
-        is_global: boolean;
-    }>({
+    const { data: editData, setData: setEditData, patch, processing: editProcessing, errors: editErrors, reset: resetEdit } = useForm({
         name: '',
         content: '',
         is_global: false,
@@ -170,13 +162,6 @@ export default function TemplatesIndex({
                                     </div>
 
                                     <div className="flex justify-end">
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsCreating(false)}
-                                            className="mr-3 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                        >
-                                            {t('common.cancel')}
-                                        </button>
                                         <button
                                             type="submit"
                                             disabled={createProcessing}

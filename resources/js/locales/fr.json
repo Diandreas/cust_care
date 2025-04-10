@@ -76,18 +76,7 @@
         "remove": "Supprimer",
         "occurrences": "occurrences",
         "errorMessage": "Message d'erreur",
-        "recipient": "Destinataire",
-        "gender": "Genre",
-        "error": "Une erreur est survenue",
-        "saving": "Enregistrement...",
-        "call": "Appeler",
-        "backToClient": "Retour au client",
-        "chooseFile": "Choisir un fichier",
-        "importGuide": "Guide d'importation",
-        "exportGuide": "Guide d'exportation",
-        "close": "Fermer",
-        "date": "Date",
-        "selectTags": "Sélectionner des tags"
+        "recipient": "Destinataire"
     },
     "auth": {
         "login": "Connexion",
@@ -161,46 +150,6 @@
             "recipients": "destinataires",
             "noCampaigns": "Aucune campagne à venir",
             "viewAll": "Voir toutes les campagnes"
-        },
-        "timeRange": {
-            "last7Days": "7 derniers jours",
-            "last30Days": "30 derniers jours",
-            "last12Months": "12 derniers mois",
-            "refreshing": "Actualisation...",
-            "refresh": "Actualiser"
-        },
-        "actions": {
-            "exportData": "Exporter les données",
-            "filterData": "Filtrer les données",
-            "dashboardSettings": "Paramètres du tableau de bord"
-        },
-        "charts": {
-            "clientDistribution": "Distribution des clients",
-            "segmentationByTags": "Segmentation par tags",
-            "messageStatus": "État des messages",
-            "campaignStatus": "État des campagnes",
-            "campaignTrends": "Tendances des campagnes",
-            "clients": "clients",
-            "messages": "messages",
-            "campaigns": "campagnes",
-            "deliveryRate": "taux de livraison",
-            "successRate": "taux de réussite",
-            "sent": "envoyés",
-            "failed": "échoués",
-            "pending": "en attente",
-            "draft": "brouillon",
-            "scheduled": "programmés",
-            "filter": "Filtrer"
-        },
-        "alerts": {
-            "smsQuotaLow": "Quota SMS faible",
-            "smsQuotaDepleted": "Quota SMS épuisé",
-            "purchaseAdditional": "Acheter des SMS supplémentaires →",
-            "purchaseNow": "Acheter des SMS maintenant →"
-        },
-        "activity": {
-            "recentActivity": "Activité récente",
-            "viewAll": "Voir tout"
         }
     },
     "clients": {
@@ -221,32 +170,7 @@
         "all": "Tous les clients",
         "filterByTags": "Filtrer par tags",
         "filterByCategories": "Filtrer par catégories",
-        "selected": "clients sélectionnés",
-        "invalidPhoneFormat": "Format de téléphone invalide",
-        "selectGender": "Sélectionner un genre",
-        "client": "Client",
-        "updateError": "Erreur lors de la mise à jour du client",
-        "history": "Historique",
-        "clientSince": "Client depuis",
-        "lastContact": "Dernier contact",
-        "lastVisit": "Dernière visite",
-        "editInfo": "Modifier les informations",
-        "name": "Nom",
-        "phone": "Téléphone",
-        "email": "Email",
-        "address": "Adresse",
-        "quickAdd": "Ajout rapide",
-        "fullForm": "Formulaire complet",
-        "simpleImport": "Import simple",
-        "advancedImport": "Import avancé",
-        "importSuccess": "Clients importés avec succès",
-        "importError": "Erreur lors de l'importation des clients",
-        "quickAddDescription": "Ajouter un nouveau client avec des informations minimales",
-        "tagsDescription": "Optionnel : Sélectionnez des tags pour catégoriser ce client",
-        "deleteConfirmation": "Confirmer la suppression",
-        "bulkDeleteConfirmation": "Confirmer la suppression multiple",
-        "deleteWarning": "Cette action ne peut pas être annulée. Toutes les données du client seront définitivement supprimées.",
-        "bulkDeleteWarning": "Cette action ne peut pas être annulée. Les données de {count} clients seront définitivement supprimées."
+        "selected": "clients sélectionnés"
     },
     "import": {
         "title": "Importer des Clients",
@@ -271,10 +195,7 @@
         "includeFields": "Champs à inclure",
         "export": "Exporter",
         "success": "Clients exportés avec succès!",
-        "error": "Une erreur est survenue pendant l'exportation: {details}",
-        "format": "Format d'exportation",
-        "csvDescription": "Format simple avec valeurs séparées par des virgules",
-        "excelDescription": "Format tableur Microsoft Excel"
+        "error": "Une erreur est survenue pendant l'exportation: {details}"
     },
     "bulk": {
         "sendSms": "Envoyer SMS à plusieurs clients",
@@ -352,8 +273,7 @@
             "sending": "En cours d'envoi",
             "failed": "Échoué",
             "cancelled": "Annulé",
-            "partiallySent": "Partiellement envoyé",
-            "free": "Gratuit"
+            "partiallySent": "Partiellement envoyé"
         },
         "scheduledDate": "Date programmée",
         "delivery": "Livraison",
@@ -394,12 +314,12 @@
         "diagnostics": "Diagnostics",
         "diagnosticsFor": "Diagnostics pour",
         "failedMessages": "Messages échoués",
-        "commonErrors": "Erreurs fréquentes",
+        "commonErrors": "Erreurs communes",
         "unknownError": "Erreur inconnue",
-        "noCommonErrorsFound": "Aucune erreur fréquente trouvée",
+        "noCommonErrorsFound": "Aucune erreur commune trouvée",
         "correctiveActions": "Actions correctives",
         "retryFailedOnly": "Réessayer uniquement les messages échoués",
-        "retryFailedDescription": "Renvoyer uniquement les messages qui ont échoué lors de la tentative précédente",
+        "retryFailedDescription": "Réessayer d'envoyer uniquement les messages qui ont échoué lors de la tentative précédente",
         "retryFailedMessages": "Réessayer les messages échoués",
         "retryEntireCampaign": "Réessayer toute la campagne",
         "retryEntireDescription": "Envoyer à nouveau la campagne à tous les destinataires",
@@ -445,23 +365,7 @@
         "status": "Statut",
         "campaign": "Campagne",
         "actions": "Actions",
-        "delivered": "Livré",
-        "contentRequired": "Veuillez saisir un message",
-        "sendSuccess": "Message envoyé avec succès",
-        "sendError": "Erreur lors de l'envoi du message",
-        "sendDirect": "Envoyer un message direct",
-        "contentPlaceholder": "Saisir votre message ici...",
-        "characters": "caractères",
-        "templates": "Modèles de messages",
-        "sending": "Envoi en cours...",
-        "templates": {
-            "appointment": "Bonjour {{name}}, nous confirmons votre rendez-vous. À bientôt !",
-            "proposal": "Bonjour {{name}}, souhaitez-vous prendre rendez-vous prochainement ?",
-            "thanks": "Bonjour {{name}}, merci pour votre visite aujourd'hui. N'hésitez pas à nous contacter pour toute question.",
-            "appointmentConfirmation": "Confirmation de RDV",
-            "appointmentProposal": "Proposition de RDV",
-            "thanksAfterVisit": "Remerciement après visite"
-        }
+        "delivered": "Livré"
     },
     "categories": {
         "create": "Créer une catégorie",
@@ -483,12 +387,7 @@
         "promotion": "Promotion",
         "reminder": "Rappel de rendez-vous",
         "birthday": "Vœux d'anniversaire",
-        "holiday": "Vœux pour les fêtes",
-        "edit": "Modifier le modèle",
-        "view": "Voir le modèle",
-        "delete": "Supprimer le modèle",
-        "confirmationTitle": "Confirmer la suppression du modèle",
-        "confirmationText": "Êtes-vous sûr de vouloir supprimer ce modèle ? Cette action ne peut pas être annulée."
+        "holiday": "Vœux pour les fêtes"
     },
     "automatic-events": {
         "title": "Événements automatiques",
@@ -666,12 +565,7 @@
             "name": "Nom de la clé",
             "key": "Clé API",
             "lastUsed": "Dernière utilisation"
-        },
-        "updateProfileInfo": "Mettez à jour les informations de profil et l'adresse e-mail de votre compte.",
-        "unverifiedEmail": "Votre adresse e-mail n'est pas vérifiée.",
-        "resendVerification": "Cliquez ici pour renvoyer l'e-mail de vérification.",
-        "verificationLinkSent": "Un nouveau lien de vérification a été envoyé à votre adresse e-mail.",
-        "saved": "Enregistré."
+        }
     },
     "welcome": {
         "hero": {
@@ -695,33 +589,6 @@
                 "title": "Événements automatiques",
                 "description": "Automatisez les messages pour les anniversaires, fêtes et autres événements importants."
             }
-        },
-        "howItWorks": {
-            "title": "Comment ça fonctionne",
-            "subtitle": "Démarrez en trois étapes simples",
-            "step1": {
-                "title": "Créez votre compte",
-                "description": "Inscrivez-vous et choisissez le forfait qui correspond le mieux à vos besoins"
-            },
-            "step2": {
-                "title": "Importez vos contacts",
-                "description": "Ajoutez vos clients et organisez-les en segments pertinents"
-            },
-            "step3": {
-                "title": "Lancez vos campagnes",
-                "description": "Créez, planifiez et suivez vos campagnes SMS en toute simplicité"
-            }
-        },
-        "testimonials": {
-            "title": "Ils utilisent déjà EliteSMS",
-            "subtitle": "Découvrez comment des entreprises comme la vôtre transforment leur communication client",
-            "quote1": "Grâce à EliteSMS, nous avons augmenté notre taux de fidélisation de 30% en seulement 3 mois. Un outil indispensable pour notre boutique.",
-            "quote2": "L'automatisation des messages d'anniversaire a créé un lien fort avec nos clients. Ils apprécient cette attention personnalisée.",
-            "quote3": "Le rapport qualité-prix est imbattable. Nous gérons efficacement notre communication avec plus de 1500 clients grâce à cette plateforme."
-        },
-        "gallery": {
-            "title": "EliteSMS en action",
-            "subtitle": "Découvrez notre plateforme à travers ces captures d'écran"
         },
         "pricing": {
             "title": "Plans tarifaires",
@@ -767,55 +634,5 @@
             "rights": "Tous droits réservés."
         }
     },
-    "gender": {
-        "male": "Homme",
-        "female": "Femme",
-        "other": "Autre"
-    },
-    "tags": {
-        "nameRequired": "Le nom du tag est requis",
-        "createSuccess": "Tag créé avec succès",
-        "createError": "Erreur lors de la création du tag",
-        "createNew": "Créer un nouveau tag",
-        "newTagPlaceholder": "Entrez le nom du tag...",
-        "noTagsAvailable": "Aucun tag disponible",
-        "manageTagsLink": "Gérer tous les tags"
-    },
-    "phone": {
-        "formatError": "Format invalide. Utilisez le format international (+XXX) ou local.",
-        "lengthError": "Nombre de chiffres incorrect. Vérifiez le format selon votre pays.",
-        "charactersError": "Caractères non autorisés. Utilisez uniquement des chiffres, +, espaces.",
-        "acceptedFormats": "Formats acceptés: international (+XXX) ou local (selon le pays)"
-    },
-    "visits": {
-        "register": "Enregistrer la visite",
-        "registerNew": "Enregistrer une nouvelle visite",
-        "notes": "Notes de visite",
-        "notesPlaceholder": "Détails de la visite, services rendus, observations...",
-        "notesHint": "Ces notes seront associées à la visite enregistrée aujourd'hui.",
-        "notesRequired": "Veuillez saisir des notes pour la visite",
-        "registeredSuccess": "Visite enregistrée avec succès",
-        "registrationError": "Erreur lors de l'enregistrement de la visite",
-        "historyTitle": "Historique des visites pour {{client}}",
-        "backToClient": "Retour au client",
-        "recordNewVisit": "Enregistrer une nouvelle visite",
-        "clientInfo": "Informations client",
-        "history": "Historique des visites",
-        "date": "Date",
-        "recordedBy": "Enregistré par",
-        "noHistory": "Aucun historique de visite trouvé pour ce client."
-    },
-    "sms": {
-        "sendToSelected": "Envoyer un SMS à {count} clients",
-        "bulkDescription": "Composez et envoyez un message à tous les clients sélectionnés",
-        "content": "Contenu du message",
-        "preview": "Aperçu du message",
-        "send": "Envoyer le message",
-        "characters": "caractères",
-        "segments": "segments",
-        "characterCount": "Nombre de caractères",
-        "segmentCount": "Nombre de segments",
-        "recipientCount": "Nombre de destinataires",
-        "totalMessages": "Total des messages"
-    }
+    "error": "Une erreur est survenue"
 }

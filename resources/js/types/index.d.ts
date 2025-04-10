@@ -15,29 +15,6 @@ export interface User {
     preferred_language?: string;
 }
 
-export interface Tag {
-    id: number;
-    name: string;
-}
-
-export interface Client {
-    id: number;
-    name: string;
-    phone: string;
-    email: string | null;
-    birthday: string | null;
-    address: string | null;
-    notes: string | null;
-    gender: string | null;
-    is_active: boolean;
-    created_at: string;
-    last_visit_date: string | null;
-    lastContact?: string | null;
-    lastSmsDate?: string | null;
-    totalSmsCount?: number;
-    tags?: Tag[];
-}
-
 export type PageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {

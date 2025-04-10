@@ -43,10 +43,7 @@ export default function PlanDetails({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('payment.subscription', plan.id), {
-            payment_method: data.payment_method,
-            duration: 'monthly'
-        });
+        post(route('subscription.plans.subscribe', plan.id));
     };
 
     return (
