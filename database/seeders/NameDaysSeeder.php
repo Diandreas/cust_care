@@ -18,8 +18,7 @@ class NameDaysSeeder extends Seeder
 
         foreach ($nameDays as $nameDay) {
             $code = 'name_day_' . strtolower($nameDay['name']);
-            $name_fr = 'Fête des ' . $nameDay['name'];
-            $name_en = $nameDay['name'] . '\'s Day';
+            $name = 'Fête des ' . $nameDay['name'];
 
             $templateFr = $nameDay['template_fr'] ?? 'Bonne fête [Prénom] ! Pour célébrer, voici une offre spéciale rien que pour vous.';
             $templateEn = $nameDay['template_en'] ?? 'Happy name day [FirstName]! To celebrate, here\'s a special offer just for you.';
@@ -27,10 +26,8 @@ class NameDaysSeeder extends Seeder
             CalendarEvent::firstOrCreate(
                 ['code' => $code],
                 [
-                    'name' => $name_fr,
-                    'name_en' => $name_en,
+                    'name' => $name,
                     'description' => 'Souhaiter une bonne fête aux clients portant ce prénom',
-                    'description_en' => 'Wish a happy name day to clients with this name',
                     'category' => 'personal',
                     'is_global' => false,
                     'month' => $nameDay['month'],

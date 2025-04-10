@@ -232,14 +232,14 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
 
         post(route('clients.store', formData), {
             onSuccess: () => {
-                success('clients.createSuccess');
+                success(t('clients.createSuccess'));
                 reset();
             },
             onError: (errors) => {
                 if (errors.limit) {
-                    error('subscription.limit.upgradeRequired');
+                    error(t('subscription.limit.upgradeRequired'));
                 } else {
-                    error('common.error');
+                    error(t('common.error'));
                 }
             }
         });
@@ -315,18 +315,18 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
                                                 ) : (
                                                     <p className="text-xs text-red-600 dark:text-red-400">
                                                         {phoneValidation.errorType === 'format' &&
-                                                            "Format invalide. Utilisez le format international (+XXX) ou local."}
+                                                            t('phone.formatError', "Format invalide. Utilisez le format international (+XXX) ou local.")}
                                                         {phoneValidation.errorType === 'length' &&
-                                                            "Nombre de chiffres incorrect. Vérifiez le format selon votre pays."}
+                                                            t('phone.lengthError', "Nombre de chiffres incorrect. Vérifiez le format selon votre pays.")}
                                                         {phoneValidation.errorType === 'characters' &&
-                                                            "Caractères non autorisés. Utilisez uniquement des chiffres, +, espaces."}
+                                                            t('phone.charactersError', "Caractères non autorisés. Utilisez uniquement des chiffres, +, espaces.")}
                                                     </p>
                                                 )}
                                             </div>
                                         )}
 
                                         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                            Formats acceptés: international (+XXX) ou local (selon le pays)
+                                            {t('phone.acceptedFormats', "Formats acceptés: international (+XXX) ou local (selon le pays)")}
                                         </p>
 
                                         {errors.phone && (

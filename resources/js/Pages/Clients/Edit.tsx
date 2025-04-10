@@ -1,16 +1,14 @@
 // resources/js/Pages/Clients/Edit.tsx
 import React, { useState, useEffect } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
-import { PageProps } from '@/types';
+import { PageProps, Client, Tag } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@/Utils/toast';
-import { Client, Tag } from "@/types";
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import PrimaryButton from '@/Components/PrimaryButton';
-import SelectInput from '@/Components/SelectInput';
 import axios from 'axios';
 
 interface EditClientProps extends Record<string, unknown> {
@@ -83,10 +81,10 @@ export default function EditClient({
 
         patch(route('clients.update', client.id), {
             onSuccess: () => {
-                success('clients.updateSuccess');
+                success(t('clients.updateSuccess'));
             },
             onError: () => {
-                error('common.error');
+                error(t('common.error'));
             }
         });
     };
@@ -203,9 +201,9 @@ export default function EditClient({
                                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
                                         >
                                             <option value="">{t('clients.selectGender')}</option>
-                                            <option value="male">{t('clients.male')}</option>
-                                            <option value="female">{t('clients.female')}</option>
-                                            <option value="other">{t('clients.other')}</option>
+                                            <option value="male">{t('gender.male')}</option>
+                                            <option value="female">{t('gender.female')}</option>
+                                            <option value="other">{t('gender.other')}</option>
                                         </select>
                                         {errors.gender && (
                                             <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.gender}</p>

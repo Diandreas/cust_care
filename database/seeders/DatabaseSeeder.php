@@ -3,12 +3,19 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Client;
+use App\Models\Tag;
+use App\Models\Campaign;
+use App\Models\Template;
+use App\Models\Message;
+use App\Models\Visit;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Database\Seeders\EventTypesSeeder;
+use Illuminate\Support\Facades\Hash;
 use Database\Seeders\CalendarEventsSeeder;
 use Database\Seeders\SubscriptionPlanSeeder;
-
+use Database\Seeders\TestUsersSeeder;
+use Database\Seeders\NameDaysSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -25,9 +32,10 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
-        //    SubscriptionPlanSeeder::class,
-           CalendarEventsSeeder::class,
-            // EventTypesSeeder::class
+            SubscriptionPlanSeeder::class,
+            CalendarEventsSeeder::class,
+            NameDaysSeeder::class,
+            TestUsersSeeder::class,
         ]);
     }
 }

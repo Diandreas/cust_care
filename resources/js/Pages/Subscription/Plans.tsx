@@ -191,7 +191,11 @@ export default function Plans({
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        post(route('subscription.plans.subscribe', plan.id));
+                                                        // Utiliser la route payment.subscription au lieu de subscription.plans.subscribe
+                                                        post(route('payment.subscription', plan.id), {
+                                                            payment_method: data.payment_method,
+                                                            duration: duration
+                                                        });
                                                     }}
                                                     disabled={currentPlanId === plan.id || processing}
                                                     className={`mt-8 block w-full rounded-lg px-4 py-3 text-center text-sm font-semibold  
