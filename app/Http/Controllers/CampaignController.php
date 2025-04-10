@@ -124,18 +124,22 @@ class CampaignController extends Controller
             $campaign->user_id = Auth::id();
             $campaign->name = $validated['name'];
             $campaign->message_content = $validated['message_content'];
-            $campaign->scheduled_at = $validated['scheduled_at'] ?? null;
-            $campaign->status = $validated['scheduled_at'] ? 'scheduled' : 'draft';
+            
+            // S'assurer que scheduled_at a toujours une valeur (date actuelle si non spécifiée)
+            $campaign->scheduled_at = $validated['scheduled_at'] ?? now();
+            
+            // Déterminer le statut en fonction de l'envoi immédiat ou non
+            $sendNow = $request->input('send_now', false);
+            $campaign->status = $sendNow ? 'sending' : 'scheduled';
+            
             $campaign->recipients_count = $clientsCount;
             $campaign->save();
 
             $campaign->recipients()->attach($clientIds);
             
             // Si la campagne doit être envoyée immédiatement
-            if (empty($validated['scheduled_at']) && $request->input('send_now', false)) {
+            if ($sendNow) {
                 ProcessCampaignJob::dispatch($campaign);
-                $campaign->status = 'sending';
-                $campaign->save();
             }
             
             DB::commit();
@@ -251,8 +255,18 @@ class CampaignController extends Controller
             try {
                 $campaign->name = $validated['name'];
                 $campaign->message_content = $validated['message_content'];
-                $campaign->scheduled_at = $validated['scheduled_at'] ?? null;
-                $campaign->status = $validated['scheduled_at'] ? 'scheduled' : 'draft';
+                
+                // S'assurer que scheduled_at a toujours une valeur (date actuelle si non spécifiée)
+                $campaign->scheduled_at = $validated['scheduled_at'] ?? now();
+                
+                // Déterminer le statut en fonction de l'envoi immédiat ou non
+                $sendNow = $request->input('send_now', false);
+                if ($sendNow && $campaign->status !== 'sent' && $campaign->status !== 'sending') {
+                    $campaign->status = 'sending';
+                } elseif ($campaign->status !== 'sent' && $campaign->status !== 'sending') {
+                    $campaign->status = 'scheduled';
+                }
+                
                 $campaign->recipients_count = $clientsCount;
                 $campaign->save();
 
@@ -260,10 +274,8 @@ class CampaignController extends Controller
                 $campaign->recipients()->sync($clientIds);
 
                 // Si la campagne doit être envoyée immédiatement
-                if (empty($validated['scheduled_at']) && $request->input('send_now', false)) {
+                if ($sendNow && $campaign->status === 'sending') {
                     ProcessCampaignJob::dispatch($campaign);
-                    $campaign->status = 'sending';
-                    $campaign->save();
                 }
 
                 DB::commit();
