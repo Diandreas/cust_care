@@ -403,31 +403,31 @@ class ClientController extends Controller
         }
         
         if ($request->has('birthday_month') && $request->birthday_month) {
-            // Utiliser strftime au lieu de MONTH pour compatibilité SQLite
-            $query->whereRaw("strftime('%m', birthday) = ?", [sprintf('%02d', $request->birthday_month)]);
+            // Utiliser MONTH() pour MySQL
+            $query->whereRaw("MONTH(birthday) = ?", [sprintf('%d', $request->birthday_month)]);
         }
         
         if ($request->has('date_range') && $request->date_range) {
             switch($request->date_range) {
                 case 'today':
-                    // Utiliser strftime au lieu de whereDate pour compatibilité SQLite
+                    // Utiliser DATE() pour MySQL
                     $today = Carbon::today()->format('Y-m-d');
-                    $query->whereRaw("date(created_at) = ?", [$today]);
+                    $query->whereRaw("DATE(created_at) = ?", [$today]);
                     break;
                 case 'this_week':
                     $query->whereBetween('created_at', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
                     break;
                 case 'this_month':
-                    // Utiliser strftime au lieu de whereMonth/whereYear pour compatibilité SQLite
-                    $query->whereRaw("strftime('%m', created_at) = ?", [sprintf('%02d', Carbon::now()->month)])
-                          ->whereRaw("strftime('%Y', created_at) = ?", [Carbon::now()->year]);
+                    // Utiliser MONTH() et YEAR() pour MySQL
+                    $query->whereRaw("MONTH(created_at) = ?", [Carbon::now()->month])
+                          ->whereRaw("YEAR(created_at) = ?", [Carbon::now()->year]);
                     break;
                 case 'last_30_days':
                     $query->where('created_at', '>=', Carbon::now()->subDays(30));
                     break;
                 case 'this_year':
-                    // Utiliser strftime au lieu de whereYear pour compatibilité SQLite
-                    $query->whereRaw("strftime('%Y', created_at) = ?", [Carbon::now()->year]);
+                    // Utiliser YEAR() pour MySQL
+                    $query->whereRaw("YEAR(created_at) = ?", [Carbon::now()->year]);
                     break;
             }
         }
@@ -463,8 +463,8 @@ class ClientController extends Controller
         $stats = [
             'totalClients' => $user->clients()->count(),
             'newClientsThisMonth' => $user->clients()
-                ->whereRaw("strftime('%m', created_at) = ?", [sprintf('%02d', Carbon::now()->month)])
-                ->whereRaw("strftime('%Y', created_at) = ?", [Carbon::now()->year])
+                ->whereRaw("MONTH(created_at) = ?", [Carbon::now()->month])
+                ->whereRaw("YEAR(created_at) = ?", [Carbon::now()->year])
                 ->count(),
             'activeClientsLast30Days' => $user->clients()
                 ->whereHas('messages', function($q) {
@@ -504,7 +504,7 @@ class ClientController extends Controller
                 'plan' => 'Plan Gratuit',
                 'clientsLimit' => 50,
                 'clientsCount' => $clientCount,
-                'smsBalance' => 10 - $user->messages()->whereRaw("strftime('%m', created_at) = ?", [sprintf('%02d', Carbon::now()->month)])->count(),
+                'smsBalance' => 10 - $user->messages()->whereRaw("MONTH(created_at) = ?", [Carbon::now()->month])->count(),
                 'isFreePlan' => true
             ];
         }
@@ -515,7 +515,7 @@ class ClientController extends Controller
                 'plan' => 'Pack Starter',
                 'clientsLimit' => 100,
                 'clientsCount' => $clientCount,
-                'smsBalance' => 200 - $user->messages()->whereRaw("strftime('%m', created_at) = ?", [sprintf('%02d', Carbon::now()->month)])->count(),
+                'smsBalance' => 200 - $user->messages()->whereRaw("MONTH(created_at) = ?", [Carbon::now()->month])->count(),
                 'isFreePlan' => false
             ];
         } else if ($clientCount <= 500) {
@@ -523,7 +523,7 @@ class ClientController extends Controller
                 'plan' => 'Pack Business',
                 'clientsLimit' => 500,
                 'clientsCount' => $clientCount,
-                'smsBalance' => 1000 - $user->messages()->whereRaw("strftime('%m', created_at) = ?", [sprintf('%02d', Carbon::now()->month)])->count(),
+                'smsBalance' => 1000 - $user->messages()->whereRaw("MONTH(created_at) = ?", [Carbon::now()->month])->count(),
                 'isFreePlan' => false
             ];
         } else {
@@ -531,7 +531,7 @@ class ClientController extends Controller
                 'plan' => 'Pack Enterprise',
                 'clientsLimit' => 2000,
                 'clientsCount' => $clientCount,
-                'smsBalance' => 4000 - $user->messages()->whereRaw("strftime('%m', created_at) = ?", [sprintf('%02d', Carbon::now()->month)])->count(),
+                'smsBalance' => 4000 - $user->messages()->whereRaw("MONTH(created_at) = ?", [Carbon::now()->month])->count(),
                 'isFreePlan' => false
             ];
         }
