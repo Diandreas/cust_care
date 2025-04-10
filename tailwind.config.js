@@ -26,85 +26,85 @@ export default {
 				sm: 'calc(var(--radius) - 4px)'
 			},
 			colors: {
-				// Brand colors from HelloBoost visual style guide
+				// Brand colors from HelloBoost visual style guide - utilisant les variables CSS
 				blue: {
-					50: '#E6F0FF',
-					100: '#CCE0FF',
-					200: '#99C1FF',
-					300: '#66A3FF',
-					400: '#3385FF',
-					500: '#1A75FF', // HelloBoost Blue (Primary)
-					600: '#0066FF',
-					700: '#0052CC',
-					800: '#003D99',
-					900: '#002966',
-					950: '#001A40',
+					50: 'var(--blue-50)',
+					100: 'var(--blue-100)',
+					200: 'var(--blue-200)',
+					300: 'var(--blue-300)',
+					400: 'var(--blue-400)',
+					500: 'var(--blue-500)', // HelloBoost Blue (Primary)
+					600: 'var(--blue-600)',
+					700: 'var(--blue-700)',
+					800: 'var(--blue-800)',
+					900: 'var(--blue-900)',
+					950: 'var(--blue-950)',
 				},
 				orange: {
-					50: '#FFF0E6',
-					100: '#FFE1CC',
-					200: '#FFC399',
-					300: '#FFA566',
-					400: '#FF8733',
-					500: '#FF7D26', // HelloBoost Orange
-					600: '#FF6600',
-					700: '#CC5200',
-					800: '#993D00',
-					900: '#662900',
-					950: '#401A00',
+					50: 'var(--orange-50)',
+					100: 'var(--orange-100)',
+					200: 'var(--orange-200)',
+					300: 'var(--orange-300)',
+					400: 'var(--orange-400)',
+					500: 'var(--orange-500)', // HelloBoost Orange
+					600: 'var(--orange-600)',
+					700: 'var(--orange-700)',
+					800: 'var(--orange-800)',
+					900: 'var(--orange-900)',
+					950: 'var(--orange-950)',
 				},
 				green: {
-					50: '#E6F7F2',
-					100: '#CCEFE4',
-					200: '#99DFC9',
-					300: '#66D0AF',
-					400: '#33C094',
-					500: '#26B887', // HelloBoost Green
-					600: '#1FA679',
-					700: '#19856F',
-					800: '#136452',
-					900: '#0C4236',
-					950: '#08281F',
+					50: 'var(--green-50)',
+					100: 'var(--green-100)',
+					200: 'var(--green-200)',
+					300: 'var(--green-300)',
+					400: 'var(--green-400)',
+					500: 'var(--green-500)', // HelloBoost Green
+					600: 'var(--green-600)',
+					700: 'var(--green-700)',
+					800: 'var(--green-800)',
+					900: 'var(--green-900)',
+					950: 'var(--green-950)',
 				},
 				purple: {
-					50: '#EFEAFF',
-					100: '#DED5FF',
-					200: '#BDABFF',
-					300: '#9C82FF',
-					400: '#7B58FF',
-					500: '#6B48FF', // HelloBoost Purple
-					600: '#5A37FF',
-					700: '#482CCC',
-					800: '#362199',
-					900: '#241666',
-					950: '#170E40',
+					50: 'var(--purple-50)',
+					100: 'var(--purple-100)',
+					200: 'var(--purple-200)',
+					300: 'var(--purple-300)',
+					400: 'var(--purple-400)',
+					500: 'var(--purple-500)', // HelloBoost Purple
+					600: 'var(--purple-600)',
+					700: 'var(--purple-700)',
+					800: 'var(--purple-800)',
+					900: 'var(--purple-900)',
+					950: 'var(--purple-950)',
 				},
 				gold: {
-					50: '#FFFAEB',
-					100: '#FFF5D6',
-					200: '#FFEBAD',
-					300: '#FFE085',
-					400: '#FFD85C',
-					500: '#FFD54D', // HelloBoost Gold
-					600: '#FFCA1A',
-					700: '#E6B400',
-					800: '#B38C00',
-					900: '#806400',
-					950: '#4D3C00',
+					50: 'var(--gold-50)',
+					100: 'var(--gold-100)',
+					200: 'var(--gold-200)',
+					300: 'var(--gold-300)',
+					400: 'var(--gold-400)',
+					500: 'var(--gold-500)', // HelloBoost Gold
+					600: 'var(--gold-600)',
+					700: 'var(--gold-700)',
+					800: 'var(--gold-800)',
+					900: 'var(--gold-900)',
+					950: 'var(--gold-950)',
 				},
 				// Cultural accent colors
 				kente: {
-					gold: '#FFBA00',
-					red: '#E03616',
-					blue: '#334C8F',
+					gold: 'var(--kente-gold)',
+					red: 'var(--kente-red)',
+					blue: 'var(--kente-blue)',
 				},
 				// Neutral colors
 				charcoal: {
-					DEFAULT: '#222222', // Deep Charcoal
-					light: '#555555', // Graphite
-					lightest: '#ACACAC', // Silver
+					DEFAULT: 'var(--charcoal)', // Deep Charcoal
+					light: 'var(--charcoal-light)', // Graphite
+					lightest: 'var(--charcoal-lightest)', // Silver
 				},
-				whisper: '#F5F5F5',
+				whisper: 'var(--whisper)',
 
 				// System colors (following the shadcn structure)
 				background: 'hsl(var(--background))',
