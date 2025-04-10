@@ -150,10 +150,10 @@ export default function Welcome({
                     <div className="container mx-auto px-6">
                         <div className="mb-16 text-center">
                             <h2 className="mb-4 font-serif text-4xl font-bold text-white">
-                                {t('welcome.testimonials.title', 'Ils utilisent déjà EliteSMS')}
+                                {t('welcome.testimonials.title')}
                             </h2>
                             <p className="mx-auto text-xl text-indigo-200 md:w-2/3">
-                                {t('welcome.testimonials.subtitle', 'Découvrez comment des entreprises comme la vôtre transforment leur communication client')}
+                                {t('welcome.testimonials.subtitle')}
                             </p>
                         </div>
 
@@ -325,26 +325,22 @@ export default function Welcome({
                     </div>
                 </div>
 
-                {/* How it works section with visual steps */}
-                <div className="bg-gray-50 py-20">
+                {/* How it works / workflow section with steps */}
+                <div className="bg-white py-20">
                     <div className="container mx-auto px-6">
                         <div className="mb-16 text-center">
-                            <h2 className="mb-4 font-serif text-4xl font-bold text-gray-800">
-                                {t('welcome.howItWorks.title', 'Comment ça marche')}
-                            </h2>
-                            <p className="mx-auto text-xl text-gray-600 md:w-2/3">
-                                {t('welcome.howItWorks.subtitle', 'En trois étapes simples, vous pouvez commencer à communiquer efficacement avec vos clients')}
-                            </p>
+                            <h2 className="mb-4 font-serif text-4xl font-bold text-gray-800">{t('welcome.howItWorks.title')}</h2>
+                            <p className="mx-auto text-xl text-gray-600 md:w-2/3">{t('welcome.howItWorks.subtitle')}</p>
                         </div>
 
-                        <div className="flex flex-col md:flex-row items-center justify-center space-y-12 md:space-y-0 md:space-x-8">
+                        <div className="flex flex-col items-center space-y-12 md:flex-row md:items-start md:space-x-8 md:space-y-0 justify-center">
                             {/* Step 1 */}
                             <div className="flex flex-col items-center max-w-xs text-center">
                                 <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center mb-6 shadow-md">
                                     <span className="text-3xl font-bold text-indigo-600">1</span>
                                 </div>
-                                <h3 className="text-xl font-bold mb-3 text-gray-800">{t('welcome.howItWorks.step1.title', 'Créez votre compte')}</h3>
-                                <p className="text-gray-600">{t('welcome.howItWorks.step1.description', 'Inscrivez-vous en quelques minutes et configurez votre espace personnel')}</p>
+                                <h3 className="text-xl font-bold mb-3 text-gray-800">{t('welcome.howItWorks.step1.title')}</h3>
+                                <p className="text-gray-600">{t('welcome.howItWorks.step1.description')}</p>
                             </div>
 
                             {/* Arrow */}
@@ -359,8 +355,8 @@ export default function Welcome({
                                 <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center mb-6 shadow-md">
                                     <span className="text-3xl font-bold text-indigo-600">2</span>
                                 </div>
-                                <h3 className="text-xl font-bold mb-3 text-gray-800">{t('welcome.howItWorks.step2.title', 'Importez vos contacts')}</h3>
-                                <p className="text-gray-600">{t('welcome.howItWorks.step2.description', 'Ajoutez vos clients et organisez-les en segments pertinents')}</p>
+                                <h3 className="text-xl font-bold mb-3 text-gray-800">{t('welcome.howItWorks.step2.title')}</h3>
+                                <p className="text-gray-600">{t('welcome.howItWorks.step2.description')}</p>
                             </div>
 
                             {/* Arrow */}
@@ -375,8 +371,8 @@ export default function Welcome({
                                 <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center mb-6 shadow-md">
                                     <span className="text-3xl font-bold text-indigo-600">3</span>
                                 </div>
-                                <h3 className="text-xl font-bold mb-3 text-gray-800">{t('welcome.howItWorks.step3.title', 'Lancez vos campagnes')}</h3>
-                                <p className="text-gray-600">{t('welcome.howItWorks.step3.description', 'Créez, planifiez et suivez vos campagnes SMS en toute simplicité')}</p>
+                                <h3 className="text-xl font-bold mb-3 text-gray-800">{t('welcome.howItWorks.step3.title')}</h3>
+                                <p className="text-gray-600">{t('welcome.howItWorks.step3.description')}</p>
                             </div>
                         </div>
                     </div>
@@ -540,10 +536,10 @@ export default function Welcome({
                     <div className="container mx-auto px-6">
                         <div className="mb-16 text-center">
                             <h2 className="mb-4 font-serif text-4xl font-bold text-gray-800">
-                                {t('welcome.gallery.title', 'EliteSMS en action')}
+                                {t('welcome.gallery.title')}
                             </h2>
                             <p className="mx-auto text-xl text-gray-600 md:w-2/3">
-                                {t('welcome.gallery.subtitle', 'Découvrez notre plateforme à travers ces captures d\'écran')}
+                                {t('welcome.gallery.subtitle')}
                             </p>
                         </div>
 
