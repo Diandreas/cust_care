@@ -1,6 +1,5 @@
-// resources/js/Pages/Campaigns/Index.tsx
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
@@ -9,9 +8,28 @@ import { Calendar, momentLocalizer, Views, SlotInfo } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/fr';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import debounce from 'lodash/debounce';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import axios from 'axios';
 
-// Importation des icônes Lucide
+// Import shadcn components
+import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/Components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/Components/ui/dropdown-menu';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Checkbox } from '@/Components/ui/checkbox';
+import { Label } from '@/Components/ui/label';
+import { Textarea } from '@/Components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/Components/ui/select";
+import { Badge } from '@/Components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/tooltip';
+import { Separator } from '@/Components/ui/separator';
+import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import { ScrollArea } from '@/Components/ui/scroll-area';
+
+// Lucide icons
 import {
     Calendar as CalendarIcon,
     ChevronLeft,
@@ -37,11 +55,13 @@ import {
     PlayCircle,
     PauseCircle,
     Calendar as CalendarAdd,
-    MessageCircle,
-    ListFilter,
     Grid,
-    List,
-    CalendarDays
+    ChevronDown,
+    PanelLeft,
+    PanelRightClose,
+    Tag as TagIcon,
+    ArrowRight,
+    Info
 } from 'lucide-react';
 
 interface CampaignsIndexProps {
@@ -50,77 +70,123 @@ interface CampaignsIndexProps {
         links: any[];
         total: number;
     };
+    tags: {
+        id: number;
+        name: string;
+        clients_count: number;
+    }[];
     [key: string]: unknown;
 }
 
-// Configurer le localisateur pour react-big-calendar
+// Configure localization for react-big-calendar
 moment.locale('fr');
 const localizer = momentLocalizer(moment);
 
 export default function CampaignsIndex({
     auth,
     campaigns,
+    tags = [], // Provide a default empty array if tags is undefined
 }: PageProps<CampaignsIndexProps>) {
     const { t } = useTranslation();
 
-    // États principaux
-    const [viewMode, setViewMode] = useState<'calendar' | 'list' | 'grid'>('calendar');
-    const [statusFilter, setStatusFilter] = useState<string>('all');
+    // Detect dark mode from HTML class
+    const isDarkMode = document.documentElement.classList.contains('dark');
+
+    // Principal states with useForm for better form management
+    const { data: filterData, setData: setFilterData, get, processing } = useForm({
+        search: '',
+        statusFilter: 'all',
+        sort_by: 'name',
+        sort_direction: 'asc',
+    });
+
+    // UI State
+    const [viewMode, setViewMode] = useState<'calendar' | 'grid'>('calendar');
     const [calendarView, setCalendarView] = useState(Views.MONTH);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [showEventDetails, setShowEventDetails] = useState<number | null>(null);
     const [eventDetailsPosition, setEventDetailsPosition] = useState({ top: 0, left: 0 });
     const [selectedEvent, setSelectedEvent] = useState<any>(null);
+    const [currentMonth, setCurrentMonth] = useState(moment().format('MMMM YYYY'));
+
+    // Modal management - utilisation d'états booléens séparés comme dans ClientsIndex
+    const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showEventDetailsModal, setShowEventDetailsModal] = useState(false);
+    const [showExportModal, setShowExportModal] = useState(false);
+
+    // Selections & search
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedCampaignIds, setSelectedCampaignIds] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [searchResults, setSearchResults] = useState<Campaign[]>([]);
     const [showSearchResults, setShowSearchResults] = useState(false);
 
-    // Modals
-    const [showCreateModal, setShowCreateModal] = useState(false);
-
-    // États avancés
-    const [currentMonth, setCurrentMonth] = useState(moment().format('MMMM YYYY'));
+    // Loading & notifications
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+
+    // Forms data - utilisation de useState comme dans ClientsIndex
     const [newCampaignData, setNewCampaignData] = useState({
         name: '',
         subject: '',
         scheduled_at: moment().add(1, 'day').format('YYYY-MM-DDTHH:mm')
     });
 
-    // États pour la sélection en masse
-    const [selectionMode, setSelectionMode] = useState(false);
-    const [selectedCampaignIds, setSelectedCampaignIds] = useState<number[]>([]);
-    const [showBulkActionMenu, setShowBulkActionMenu] = useState(false);
-    const [bulkActionMenuPosition, setBulkActionMenuPosition] = useState({ top: 0, left: 0 });
-    const [showQuickAddModal, setShowQuickAddModal] = useState(false);
-
-    // État pour le quick add
-    const [quickAddData, setQuickAddData] = useState({
+    const [quickAddForm, setQuickAddForm] = useState({
         name: '',
         subject: '',
         message_content: '',
         scheduled_at: moment().add(1, 'day').format('YYYY-MM-DDTHH:mm'),
-        client_ids: [] as number[],
+        tag_id: '',
         send_now: false
     });
 
-    // Refs
+    // Refs for debounce and element references
+    const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
     const searchRef = useRef<HTMLDivElement>(null);
-    const searchInputRef = useRef<HTMLInputElement>(null);
-    const bulkActionMenuRef = useRef<HTMLDivElement>(null);
 
-    // Debounced search function to prevent excessive re-renders
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    const debouncedSearch = useRef(
-        debounce((term: string) => {
-            if (term.length >= 2) {
+    // Filtered campaigns with useMemo for performance
+    const filteredCampaigns = useMemo(() => {
+        return campaigns.data.filter(campaign => {
+            // Status filter
+            const statusMatches = filterData.statusFilter === 'all' || campaign.status === filterData.statusFilter;
+
+            // Search filter
+            const searchMatches = filterData.search === "" ||
+                campaign.name.toLowerCase().includes(filterData.search.toLowerCase()) ||
+                (campaign.subject && campaign.subject.toLowerCase().includes(filterData.search.toLowerCase()));
+
+            return statusMatches && searchMatches;
+        });
+    }, [campaigns.data, filterData.statusFilter, filterData.search]);
+
+    // Handle search form submission
+    const handleSearch = (e: React.FormEvent) => {
+        e.preventDefault();
+        get(route('campaigns.index'), {
+            preserveState: true,
+            replace: true,
+        });
+    };
+
+    // Handle search change (implémentation simplifiée comme dans ClientsIndex)
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setSearchTerm(value);
+        setFilterData('search', value);
+
+        // Clear existing timeout
+        if (searchDebounceRef.current) {
+            clearTimeout(searchDebounceRef.current);
+        }
+
+        // Set new timeout for search results
+        searchDebounceRef.current = setTimeout(() => {
+            if (value.length >= 2) {
                 const results = campaigns.data.filter(campaign =>
-                    campaign.name.toLowerCase().includes(term.toLowerCase()) ||
-                    (campaign.subject && campaign.subject.toLowerCase().includes(term.toLowerCase()))
+                    campaign.name.toLowerCase().includes(value.toLowerCase()) ||
+                    (campaign.subject && campaign.subject.toLowerCase().includes(value.toLowerCase()))
                 );
                 setSearchResults(results);
                 setShowSearchResults(true);
@@ -128,40 +194,24 @@ export default function CampaignsIndex({
                 setSearchResults([]);
                 setShowSearchResults(false);
             }
-        }, 300)
-    ).current;
+        }, 300); // 300ms delay for better performance
+    };
 
-    // Effets
+    // Effects
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
-                setShowEventDetails(null);
+                setShowEventDetailsModal(false);
             }
             if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
                 setShowSearchResults(false);
-            }
-            if (bulkActionMenuRef.current && !bulkActionMenuRef.current.contains(event.target as Node)) {
-                setShowBulkActionMenu(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [popoverRef, searchRef, bulkActionMenuRef]);
-
-    // Recherche avancée
-    useEffect(() => {
-        debouncedSearch(searchTerm);
-        return () => {
-            debouncedSearch.cancel();
-        };
-    }, [searchTerm, debouncedSearch]);
-
-    // Handle search input
-    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchTerm(e.target.value);
-    };
+    }, [popoverRef, searchRef]);
 
     // Toggle selection mode
     const toggleSelectionMode = () => {
@@ -178,14 +228,66 @@ export default function CampaignsIndex({
             event.stopPropagation();
         }
 
-        if (selectedCampaignIds.includes(campaignId)) {
-            setSelectedCampaignIds(selectedCampaignIds.filter(id => id !== campaignId));
-        } else {
-            setSelectedCampaignIds([...selectedCampaignIds, campaignId]);
-        }
+        setSelectedCampaignIds(prevIds => {
+            if (prevIds.includes(campaignId)) {
+                return prevIds.filter(id => id !== campaignId);
+            } else {
+                return [...prevIds, campaignId];
+            }
+        });
     };
 
-    // Select all visible campaigns
+    // Gestion du formulaire Quick Add (implémentation simplifiée comme dans ClientsIndex)
+    const handleQuickAdd = () => {
+        if (!quickAddForm.name || !quickAddForm.message_content) {
+            toast.error(t('campaigns.quickAddRequiredFields'));
+            return;
+        }
+
+        if (!quickAddForm.tag_id) {
+            toast.error(t('campaigns.tagRequired'));
+            return;
+        }
+
+        setIsLoading(true);
+
+        axios.post(route('campaigns.quick-add'), {
+            name: quickAddForm.name,
+            subject: quickAddForm.subject,
+            message_content: quickAddForm.message_content,
+            scheduled_at: quickAddForm.scheduled_at,
+            tag_id: quickAddForm.tag_id,
+            send_now: quickAddForm.send_now
+        })
+            .then(() => {
+                toast.success(t('campaigns.quickAddSuccessfully', { name: quickAddForm.name }));
+                setIsLoading(false);
+                setShowQuickAddModal(false);
+
+                // Reset form
+                setQuickAddForm({
+                    name: '',
+                    subject: '',
+                    message_content: '',
+                    scheduled_at: moment().add(1, 'day').format('YYYY-MM-DDTHH:mm'),
+                    tag_id: '',
+                    send_now: false
+                });
+
+                // Refresh the campaigns list
+                get(route('campaigns.index'), {
+                    preserveState: true,
+                    only: ['campaigns']
+                });
+            })
+            .catch(err => {
+                const errorMessage = err.response?.data?.message || t('campaigns.errorQuickAdd');
+                toast.error(errorMessage);
+                setIsLoading(false);
+            });
+    };
+
+    // Optimiser les fonctions liées à la sélection après la déclaration de filteredCampaigns
     const selectAllCampaigns = () => {
         const allVisibleIds = filteredCampaigns.map(campaign => campaign.id);
         setSelectedCampaignIds(allVisibleIds);
@@ -196,14 +298,7 @@ export default function CampaignsIndex({
         setSelectedCampaignIds([]);
     };
 
-    // Show bulk action menu
-    const showBulkActions = (event: React.MouseEvent) => {
-        event.preventDefault();
-        setBulkActionMenuPosition({ top: event.clientY, left: event.clientX });
-        setShowBulkActionMenu(true);
-    };
-
-    // Navigation du calendrier
+    // Calendar navigation
     const navigateCalendar = (action: 'PREV' | 'NEXT' | 'TODAY') => {
         const current = moment(selectedDate);
         let newDate;
@@ -236,9 +331,9 @@ export default function CampaignsIndex({
         setCurrentMonth(moment(date).format('MMMM YYYY'));
     };
 
-    // Changement de vue du calendrier
+    // Calendar view change
     const handleViewChange = (view: string) => {
-        setCalendarView(view);
+        setCalendarView(view as any);
     };
 
     // Formatting
@@ -247,7 +342,19 @@ export default function CampaignsIndex({
         return moment(dateString).format('DD/MM/YYYY HH:mm');
     };
 
-    // Gestion des statuts
+    // Get tag name by id
+    const getTagName = (tagId: string) => {
+        const tag = tags.find(t => t.id.toString() === tagId);
+        return tag ? tag.name : '';
+    };
+
+    // Get client count by tag id
+    const getClientCount = (tagId: string) => {
+        const tag = tags.find(t => t.id.toString() === tagId);
+        return tag ? tag.clients_count : 0;
+    };
+
+    // Status management
     const getStatusBadgeClass = (status: string) => {
         switch (status) {
             case 'draft':
@@ -282,6 +389,20 @@ export default function CampaignsIndex({
             case 'failed': return '#EF4444'; // red-500
             case 'cancelled': return '#6B7280'; // gray-500
             default: return '#D1D5DB'; // gray-300
+        }
+    };
+
+    const getStatusVariant = (status: string) => {
+        switch (status) {
+            case 'draft': return 'secondary';
+            case 'scheduled': return 'default';
+            case 'sending': return 'default';
+            case 'sent': return 'success';
+            case 'partially_sent': return 'warning';
+            case 'paused': return 'warning';
+            case 'failed': return 'destructive';
+            case 'cancelled': return 'secondary';
+            default: return 'secondary';
         }
     };
 
@@ -331,22 +452,7 @@ export default function CampaignsIndex({
         }
     };
 
-    // Filtrage des campagnes
-    const filteredCampaigns = useMemo(() => {
-        return campaigns.data.filter(campaign => {
-            // Filtre par statut
-            const statusMatches = statusFilter === 'all' || campaign.status === statusFilter;
-
-            // Filtre par recherche
-            const searchMatches = searchTerm === "" ||
-                campaign.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (campaign.subject && campaign.subject.toLowerCase().includes(searchTerm.toLowerCase()));
-
-            return statusMatches && searchMatches;
-        });
-    }, [campaigns.data, statusFilter, searchTerm]);
-
-    // Groupement de campagnes par statut pour la barre latérale
+    // Campaigns by status for sidebar
     const campaignsByStatus = useMemo(() => {
         const result: { [key: string]: Campaign[] } = {
             draft: [],
@@ -366,7 +472,7 @@ export default function CampaignsIndex({
         return result;
     }, [campaigns.data]);
 
-    // Campagnes aujourd'hui
+    // Today's campaigns
     const todayCampaigns = useMemo(() => {
         const today = moment().startOf('day');
         return campaigns.data.filter(campaign => {
@@ -376,7 +482,7 @@ export default function CampaignsIndex({
         });
     }, [campaigns.data]);
 
-    // Campagnes à venir cette semaine
+    // Upcoming campaigns this week
     const upcomingCampaigns = useMemo(() => {
         const today = moment().startOf('day');
         const endOfWeek = moment().endOf('week');
@@ -387,10 +493,10 @@ export default function CampaignsIndex({
         });
     }, [campaigns.data]);
 
-    // Transform campaigns for react-big-calendar
+    // Calendar events transformation
     const calendarEvents = useMemo(() => {
         return filteredCampaigns.map(campaign => {
-            // Utilisez scheduled_at s'il existe, sinon utilisez created_at comme fallback
+            // Use scheduled_at if it exists, otherwise use created_at as fallback
             const startDate = campaign.scheduled_at ? new Date(campaign.scheduled_at) : new Date(campaign.created_at);
 
             // End date is start date + 1 hour for visualization
@@ -409,48 +515,36 @@ export default function CampaignsIndex({
         });
     }, [filteredCampaigns]);
 
-    // Fonction pour supprimer une campagne
+    // Delete a campaign with improved error handling
     const handleDeleteCampaign = (campaign: Campaign) => {
-        // Vérifier si la campagne est déjà envoyée ou passée
+        // Check if campaign is already sent or past
         if (campaign.status === 'sent' ||
             campaign.status === 'sending' ||
             campaign.status === 'partially_sent') {
-            setError(t('campaigns.cannotDeleteSentCampaign'));
-            setTimeout(() => setError(null), 3000);
+            toast.error(t('campaigns.cannotDeleteSentCampaign'));
             return;
         }
 
-        // Vérifier si la date de la campagne est passée
+        // Check if campaign date is in the past
         const campaignDate = campaign.scheduled_at ? new Date(campaign.scheduled_at) : null;
         if (campaignDate && campaignDate < new Date() && campaign.status !== 'draft') {
-            setError(t('campaigns.cannotDeletePastCampaign'));
-            setTimeout(() => setError(null), 3000);
+            toast.error(t('campaigns.cannotDeletePastCampaign'));
             return;
         }
 
         if (window.confirm(t('campaigns.confirmDelete'))) {
             setIsLoading(true);
 
-            // Appel à l'API pour supprimer
+            // API call to delete
             router.delete(route('campaigns.destroy', campaign.id), {
                 onSuccess: () => {
-                    setSuccess(t('campaigns.deletedSuccessfully', { name: campaign.name }));
+                    toast.success(t('campaigns.deletedSuccessfully', { name: campaign.name }));
                     setIsLoading(false);
-                    setShowEventDetails(null);
-
-                    // Fermer la notification de succès après 3 secondes
-                    setTimeout(() => {
-                        setSuccess(null);
-                    }, 3000);
+                    setShowEventDetailsModal(false);
                 },
                 onError: () => {
-                    setError(t('campaigns.errorDeleting'));
+                    toast.error(t('campaigns.errorDeleting'));
                     setIsLoading(false);
-
-                    // Fermer la notification d'erreur après 3 secondes
-                    setTimeout(() => {
-                        setError(null);
-                    }, 3000);
                 }
             });
         }
@@ -459,8 +553,7 @@ export default function CampaignsIndex({
     // Bulk disable upcoming campaigns
     const bulkDisableCampaigns = () => {
         if (selectedCampaignIds.length === 0) {
-            setError(t('campaigns.noCampaignsSelected'));
-            setTimeout(() => setError(null), 3000);
+            toast.error(t('campaigns.noCampaignsSelected'));
             return;
         }
 
@@ -469,25 +562,14 @@ export default function CampaignsIndex({
 
             router.post(route('campaigns.bulk-disable'), { campaign_ids: selectedCampaignIds }, {
                 onSuccess: () => {
-                    setSuccess(t('campaigns.bulkDisabledSuccessfully', { count: selectedCampaignIds.length }));
+                    toast.success(t('campaigns.bulkDisabledSuccessfully', { count: selectedCampaignIds.length }));
                     setIsLoading(false);
-                    setShowBulkActionMenu(false);
                     setSelectionMode(false);
                     setSelectedCampaignIds([]);
-
-                    // Reset success message after 3 seconds
-                    setTimeout(() => {
-                        setSuccess(null);
-                    }, 3000);
                 },
                 onError: () => {
-                    setError(t('campaigns.errorBulkDisabling'));
+                    toast.error(t('campaigns.errorBulkDisabling'));
                     setIsLoading(false);
-
-                    // Reset error message after 3 seconds
-                    setTimeout(() => {
-                        setError(null);
-                    }, 3000);
                 }
             });
         }
@@ -496,8 +578,7 @@ export default function CampaignsIndex({
     // Bulk enable campaigns
     const bulkEnableCampaigns = () => {
         if (selectedCampaignIds.length === 0) {
-            setError(t('campaigns.noCampaignsSelected'));
-            setTimeout(() => setError(null), 3000);
+            toast.error(t('campaigns.noCampaignsSelected'));
             return;
         }
 
@@ -506,25 +587,14 @@ export default function CampaignsIndex({
 
             router.post(route('campaigns.bulk-enable'), { campaign_ids: selectedCampaignIds }, {
                 onSuccess: () => {
-                    setSuccess(t('campaigns.bulkEnabledSuccessfully', { count: selectedCampaignIds.length }));
+                    toast.success(t('campaigns.bulkEnabledSuccessfully', { count: selectedCampaignIds.length }));
                     setIsLoading(false);
-                    setShowBulkActionMenu(false);
                     setSelectionMode(false);
                     setSelectedCampaignIds([]);
-
-                    // Reset success message after 3 seconds
-                    setTimeout(() => {
-                        setSuccess(null);
-                    }, 3000);
                 },
                 onError: () => {
-                    setError(t('campaigns.errorBulkEnabling'));
+                    toast.error(t('campaigns.errorBulkEnabling'));
                     setIsLoading(false);
-
-                    // Reset error message after 3 seconds
-                    setTimeout(() => {
-                        setError(null);
-                    }, 3000);
                 }
             });
         }
@@ -533,8 +603,7 @@ export default function CampaignsIndex({
     // Bulk delete campaigns
     const bulkDeleteCampaigns = () => {
         if (selectedCampaignIds.length === 0) {
-            setError(t('campaigns.noCampaignsSelected'));
-            setTimeout(() => setError(null), 3000);
+            toast.error(t('campaigns.noCampaignsSelected'));
             return;
         }
 
@@ -543,79 +612,24 @@ export default function CampaignsIndex({
 
             router.post(route('campaigns.bulk-delete'), { campaign_ids: selectedCampaignIds }, {
                 onSuccess: () => {
-                    setSuccess(t('campaigns.bulkDeletedSuccessfully', { count: selectedCampaignIds.length }));
+                    toast.success(t('campaigns.bulkDeletedSuccessfully', { count: selectedCampaignIds.length }));
                     setIsLoading(false);
-                    setShowBulkActionMenu(false);
                     setSelectionMode(false);
                     setSelectedCampaignIds([]);
-
-                    // Reset success message after 3 seconds
-                    setTimeout(() => {
-                        setSuccess(null);
-                    }, 3000);
                 },
                 onError: () => {
-                    setError(t('campaigns.errorBulkDeleting'));
+                    toast.error(t('campaigns.errorBulkDeleting'));
                     setIsLoading(false);
-
-                    // Reset error message after 3 seconds
-                    setTimeout(() => {
-                        setError(null);
-                    }, 3000);
                 }
             });
         }
     };
 
-    // Handle quick add campaign
-    const handleQuickAddCampaign = () => {
-        if (!quickAddData.name || !quickAddData.message_content) {
-            setError(t('campaigns.quickAddRequiredFields'));
-            setTimeout(() => setError(null), 3000);
-            return;
-        }
-
-        setIsLoading(true);
-
-        router.post(route('campaigns.quick-add'), quickAddData, {
-            onSuccess: () => {
-                setSuccess(t('campaigns.quickAddSuccessfully', { name: quickAddData.name }));
-                setIsLoading(false);
-                setShowQuickAddModal(false);
-
-                // Reset form
-                setQuickAddData({
-                    name: '',
-                    subject: '',
-                    message_content: '',
-                    scheduled_at: moment().add(1, 'day').format('YYYY-MM-DDTHH:mm'),
-                    client_ids: [],
-                    send_now: false
-                });
-
-                // Reset success message after 3 seconds
-                setTimeout(() => {
-                    setSuccess(null);
-                }, 3000);
-            },
-            onError: () => {
-                setError(t('campaigns.errorQuickAdd'));
-                setIsLoading(false);
-
-                // Reset error message after 3 seconds
-                setTimeout(() => {
-                    setError(null);
-                }, 3000);
-            }
-        });
-    };
-
-    // Fonctions pour drag and drop
+    // Handle drag and drop for calendar events
     const handleEventDrop = (event: any) => {
-        // Vérifier si la campagne est déjà envoyée
+        // Check if campaign is already sent
         if (['sent', 'sending', 'partially_sent'].includes(event.campaign.status)) {
-            setError(t('campaigns.cannotRescheduleSentCampaign'));
-            setTimeout(() => setError(null), 3000);
+            toast.error(t('campaigns.cannotRescheduleSentCampaign'));
             return;
         }
 
@@ -623,36 +637,86 @@ export default function CampaignsIndex({
 
         const { campaign, start } = event;
 
-        // Appel API pour mettre à jour la date planifiée
+        // API call to update scheduled date
         router.put(route('campaigns.reschedule', campaign.id), {
             scheduled_at: moment(start).format('YYYY-MM-DD HH:mm:ss')
         }, {
             onSuccess: () => {
-                setSuccess(t('campaigns.rescheduledSuccessfully', {
+                toast.success(t('campaigns.rescheduledSuccessfully', {
                     name: campaign.name,
                     date: moment(start).format('DD/MM/YYYY HH:mm')
                 }));
                 setIsLoading(false);
-
-                // Fermer la notification de succès après 3 secondes
-                setTimeout(() => {
-                    setSuccess(null);
-                }, 3000);
             },
             onError: () => {
-                setError(t('campaigns.errorRescheduling'));
+                toast.error(t('campaigns.errorRescheduling'));
                 setIsLoading(false);
-
-                // Fermer la notification d'erreur après 3 secondes
-                setTimeout(() => {
-                    setError(null);
-                }, 3000);
             }
         });
     };
 
+    // Handle event selection
+    const handleSelectEvent = (event: any) => {
+        if (selectionMode) {
+            handleCampaignSelection(event.campaign.id);
+        } else {
+            setSelectedEvent(event);
+            setShowEventDetailsModal(true);
+        }
+    };
+
+    // Handle selecting a date or slot
+    const handleSelectSlot = (slotInfo: SlotInfo) => {
+        // Don't open creation modal in selection mode
+        if (selectionMode) {
+            return;
+        }
+
+        // Set date for quick-add modal
+        setQuickAddForm({
+            ...quickAddForm,
+            scheduled_at: moment(slotInfo.start).format('YYYY-MM-DDTHH:mm')
+        });
+        setShowQuickAddModal(true);
+    };
+
+    // Create a new campaign
+    const handleCreateCampaign = () => {
+        if (!newCampaignData.name) {
+            toast.error(t('campaigns.nameRequired'));
+            return;
+        }
+
+        setIsLoading(true);
+
+        axios.post(route('campaigns.store'), newCampaignData)
+            .then(() => {
+                toast.success(t('campaigns.createdSuccessfully', { name: newCampaignData.name }));
+                setIsLoading(false);
+                setShowCreateModal(false);
+
+                // Reset form
+                setNewCampaignData({
+                    name: '',
+                    subject: '',
+                    scheduled_at: moment().add(1, 'day').format('YYYY-MM-DDTHH:mm')
+                });
+
+                // Refresh the campaigns list
+                get(route('campaigns.index'), {
+                    preserveState: true,
+                    only: ['campaigns']
+                });
+            })
+            .catch(err => {
+                const errorMessage = err.response?.data?.message || t('campaigns.errorCreating');
+                toast.error(errorMessage);
+                setIsLoading(false);
+            });
+    };
+
     // Custom event component for the calendar
-    const EventComponent = ({ event, ...rest }: any) => {
+    const EventComponent = ({ event, ...props }: any) => {
         const campaign = event.campaign;
         const handleClick = (e: React.MouseEvent) => {
             if (selectionMode) {
@@ -660,7 +724,7 @@ export default function CampaignsIndex({
             } else {
                 e.stopPropagation();
                 setSelectedEvent(event);
-                setShowEventDetails(campaign.id);
+                setShowEventDetailsModal(true);
                 setEventDetailsPosition({
                     top: e.clientY,
                     left: e.clientX
@@ -668,29 +732,40 @@ export default function CampaignsIndex({
             }
         };
 
-        // Configuration drag-and-drop pour les événements déplaçables
+        // Extraire les propriétés non-standard pour éviter les avertissements React
+        const domProps = { ...props };
+        delete domProps.slotEnd;
+        delete domProps.slotStart;
+        delete domProps.isAllDay;
+        delete domProps.continuesPrior;
+        delete domProps.continuesAfter;
+
+        // Configure drag-and-drop for movable events
         const isDraggable = campaign.status === 'draft' || campaign.status === 'scheduled' || campaign.status === 'paused';
         const isSelected = selectedCampaignIds.includes(campaign.id);
+
+        // Classes Tailwind pour les couleurs d'état
+        const getStatusBgClass = () => {
+            switch (campaign.status) {
+                case 'draft': return 'bg-gray-400';
+                case 'scheduled': return 'bg-blue-500';
+                case 'sending': return 'bg-purple-500';
+                case 'sent': return 'bg-green-500';
+                case 'partially_sent': return 'bg-yellow-500';
+                case 'paused': return 'bg-yellow-400';
+                case 'failed': return 'bg-red-500';
+                case 'cancelled': return 'bg-gray-500';
+                default: return 'bg-gray-300';
+            }
+        };
 
         return (
             <div
                 onClick={handleClick}
-                style={{
-                    backgroundColor: getStatusColor(campaign.status),
-                    borderRadius: '4px',
-                    color: 'white',
-                    padding: '2px 4px',
-                    fontSize: '12px',
-                    overflow: 'hidden',
-                    whiteSpace: 'nowrap',
-                    textOverflow: 'ellipsis',
-                    cursor: 'pointer',
-                    border: isSelected ? '2px solid white' : '1px solid rgba(0,0,0,0.1)',
-                    opacity: isDraggable ? 1 : 0.8,
-                    position: 'relative'
-                }}
+                className={`${getStatusBgClass()} rounded text-white px-1 py-0.5 text-xs truncate cursor-pointer ${isSelected ? 'border-2 border-white' : 'border border-opacity-10 border-black'
+                    } ${isDraggable ? 'opacity-100' : 'opacity-80'} relative`}
                 title={isDraggable ? t('campaigns.dragToReschedule') : ''}
-                {...rest}
+                {...domProps}
             >
                 {/* Selection checkbox for bulk mode */}
                 {selectionMode && (
@@ -709,7 +784,7 @@ export default function CampaignsIndex({
                     </div>
                 )}
 
-                {/* Indicateur visuel pour les campagnes qui peuvent être déplacées */}
+                {/* Visual indicator for movable campaigns */}
                 {isDraggable && (
                     <div className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-white border border-gray-300"></div>
                 )}
@@ -719,7 +794,7 @@ export default function CampaignsIndex({
                     <span className="ml-1 font-medium">{campaign.name}</span>
                 </div>
                 {calendarView !== Views.MONTH && (
-                    <div style={{ fontSize: '10px' }}>
+                    <div className="text-[10px]">
                         {campaign.recipients_count} {t('campaigns.recipients')}
                     </div>
                 )}
@@ -727,1052 +802,17 @@ export default function CampaignsIndex({
         );
     };
 
-    // Handle event selection
-    const handleSelectEvent = (event: any) => {
-        if (selectionMode) {
-            handleCampaignSelection(event.campaign.id);
-        } else {
-            setSelectedEvent(event);
-            setShowEventDetails(event.campaign.id);
-        }
-    };
-
-    // Handle selecting a date or slot
-    const handleSelectSlot = (slotInfo: SlotInfo) => {
-        // Si on est en mode sélection, ne pas ouvrir la modale de création
-        if (selectionMode) {
-            return;
-        }
-
-        // Ouvrir modale quick-add à la place
-        setQuickAddData({
-            ...quickAddData,
-            scheduled_at: moment(slotInfo.start).format('YYYY-MM-DDTHH:mm')
+    // Event Wrapper component to filter props
+    const EventWrapper = ({ event, children }: any) => {
+        // Filtrer les props qui pourraient causer des avertissements
+        return React.cloneElement(React.Children.only(children), {
+            // Supprimer les props que React ne reconnaît pas
+            continuesPrior: undefined,
+            continuesAfter: undefined,
+            slotEnd: undefined,
+            slotStart: undefined,
+            isAllDay: undefined
         });
-        setShowQuickAddModal(true);
-    };
-
-    // Fonction pour créer une nouvelle campagne
-    const handleCreateCampaign = () => {
-        setIsLoading(true);
-
-        const formData = {
-            name: newCampaignData.name,
-            subject: newCampaignData.subject,
-            scheduled_at: newCampaignData.scheduled_at
-        };
-
-        router.post(route('campaigns.store'), formData, {
-            onSuccess: () => {
-                setSuccess(t('campaigns.createdSuccessfully', { name: formData.name }));
-                setIsLoading(false);
-                setShowCreateModal(false);
-
-                // Réinitialiser le formulaire
-                setNewCampaignData({
-                    name: '',
-                    subject: '',
-                    scheduled_at: moment().add(1, 'day').format('YYYY-MM-DDTHH:mm')
-                });
-
-                // Fermer la notification de succès après 3 secondes
-                setTimeout(() => {
-                    setSuccess(null);
-                }, 3000);
-            },
-            onError: () => {
-                setError(t('campaigns.errorCreating'));
-                setIsLoading(false);
-
-                // Fermer la notification d'erreur après 3 secondes
-                setTimeout(() => {
-                    setError(null);
-                }, 3000);
-            }
-        });
-    };
-
-    // Composant pour l'en-tête du calendrier (style moderne)
-    const Header = () => {
-        return (
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <div className="px-4 sm:px-6 lg:px-8">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4">
-                        <div className="flex items-center mb-4 sm:mb-0">
-                            <button
-                                onClick={() => setSidebarOpen(!sidebarOpen)}
-                                className="mr-4 sm:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                            >
-                                <Menu className="h-5 w-5 text-gray-500 dark:text-gray-300" />
-                            </button>
-
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('common.campaigns')}</h1>
-
-                            <div className="ml-4 flex items-center space-x-2">
-                                <button
-                                    onClick={() => setViewMode('calendar')}
-                                    className={`p-1.5 rounded-md ${viewMode === 'calendar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                                >
-                                    <CalendarDays className="h-5 w-5" />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('list')}
-                                    className={`p-1.5 rounded-md ${viewMode === 'list' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                                >
-                                    <List className="h-5 w-5" />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('grid')}
-                                    className={`p-1.5 rounded-md ${viewMode === 'grid' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                                >
-                                    <Grid className="h-5 w-5" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center space-x-3 w-full sm:w-auto">
-                            <div className="relative flex-1 sm:flex-none max-w-md w-full" ref={searchRef}>
-                                <input
-                                    ref={searchInputRef}
-                                    type="text"
-                                    placeholder={t('common.searchCampaigns')}
-                                    value={searchTerm}
-                                    onChange={handleSearchChange}
-                                    className="pl-10 pr-4 py-2 w-full rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Search className="h-5 w-5 text-gray-400" />
-                                </div>
-
-                                {/* Résultats de recherche */}
-                                {showSearchResults && searchResults.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-64 overflow-y-auto">
-                                        {searchResults.map(campaign => (
-                                            <Link
-                                                key={campaign.id}
-                                                href={route('campaigns.show', campaign.id)}
-                                                className="flex items-center px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
-                                            >
-                                                <div
-                                                    className="h-3 w-3 rounded-full mr-3 flex-shrink-0"
-                                                    style={{ backgroundColor: getStatusColor(campaign.status) }}
-                                                ></div>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{campaign.name}</div>
-                                                    {campaign.subject && (
-                                                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{campaign.subject}</div>
-                                                    )}
-                                                </div>
-                                                <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
-                                                    {campaign.scheduled_at ? formatDate(campaign.scheduled_at) : '-'}
-                                                </div>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {showSearchResults && searchResults.length === 0 && searchTerm.length >= 2 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 p-4 text-center text-gray-500 dark:text-gray-400">
-                                        {t('campaigns.noSearchResults')}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex">
-                                {!selectionMode ? (
-                                    <button
-                                        onClick={toggleSelectionMode}
-                                        className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none"
-                                    >
-                                        <CheckSquare className="mr-1 h-4 w-4" />
-                                        <span className="hidden sm:inline">{t('campaigns.selectMode')}</span>
-                                    </button>
-                                ) : (
-                                    <div className="flex items-center space-x-2">
-                                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">
-                                            {selectedCampaignIds.length} {t('campaigns.selected')}
-                                        </span>
-                                        <button
-                                            onClick={showBulkActions}
-                                            disabled={selectedCampaignIds.length === 0}
-                                            className={`inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium ${selectedCampaignIds.length === 0 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                                        >
-                                            <MoreHorizontal className="h-4 w-4 sm:mr-1" />
-                                            <span className="hidden sm:inline">{t('campaigns.actions')}</span>
-                                        </button>
-                                        <button
-                                            onClick={toggleSelectionMode}
-                                            className="inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-                                        >
-                                            <X className="h-4 w-4 sm:mr-1" />
-                                            <span className="hidden sm:inline">{t('campaigns.cancel')}</span>
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-
-                            <button
-                                onClick={() => setShowQuickAddModal(true)}
-                                className="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 focus:outline-none"
-                            >
-                                <Plus className="h-4 w-4 sm:mr-1" />
-                                <span className="hidden sm:inline">{t('campaigns.quickAdd')}</span>
-                            </button>
-
-                            <Link
-                                href={route('campaigns.create')}
-                                className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
-                            >
-                                <CalendarAdd className="h-4 w-4 sm:mr-1" />
-                                <span className="hidden sm:inline">{t('campaigns.create')}</span>
-                            </Link>
-                        </div>
-                    </div>
-
-                    {/* Sous-en-tête spécifique au calendrier */}
-                    {viewMode === 'calendar' && (
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-3 border-t border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center space-x-2 mb-3 sm:mb-0">
-                                <button
-                                    onClick={() => navigateCalendar('TODAY')}
-                                    className="px-3 py-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-                                >
-                                    {t('campaigns.today')}
-                                </button>
-
-                                <div className="flex items-center space-x-1">
-                                    <button
-                                        onClick={() => navigateCalendar('PREV')}
-                                        className="p-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-                                    >
-                                        <ChevronLeft className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-                                    </button>
-
-                                    <button
-                                        onClick={() => navigateCalendar('NEXT')}
-                                        className="p-1.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
-                                    >
-                                        <ChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-300" />
-                                    </button>
-                                </div>
-
-                                <div className="text-base font-medium text-gray-700 dark:text-gray-300">
-                                    {currentMonth}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center self-start sm:self-auto">
-                                <div className="flex border border-gray-300 dark:border-gray-600 rounded-md overflow-hidden">
-                                    <button
-                                        onClick={() => setCalendarView(Views.MONTH)}
-                                        className={`px-3 py-1.5 text-sm ${calendarView === Views.MONTH
-                                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                                    >
-                                        {t('campaigns.month')}
-                                    </button>
-
-                                    <button
-                                        onClick={() => setCalendarView(Views.WEEK)}
-                                        className={`px-3 py-1.5 text-sm border-l border-r border-gray-300 dark:border-gray-600 ${calendarView === Views.WEEK
-                                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                                    >
-                                        {t('campaigns.week')}
-                                    </button>
-
-                                    <button
-                                        onClick={() => setCalendarView(Views.DAY)}
-                                        className={`px-3 py-1.5 text-sm ${calendarView === Views.DAY
-                                            ? 'bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200'
-                                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-                                    >
-                                        {t('campaigns.day')}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    // Mini Calendar Component pour la barre latérale
-    const MiniCalendar = () => {
-        const [currentDate, setCurrentDate] = useState(new Date());
-        const weekdays = moment.weekdaysMin();
-        const firstDay = moment(currentDate).startOf('month').startOf('week');
-        const days = [];
-
-        for (let i = 0; i < 42; i++) {
-            const day = moment(firstDay).add(i, 'days');
-            days.push(day);
-        }
-
-        const isCurrentMonth = (day: moment.Moment) => day.month() === moment(currentDate).month();
-        const isToday = (day: moment.Moment) => day.isSame(moment(), 'day');
-        const isSelected = (day: moment.Moment) => day.isSame(moment(selectedDate), 'day');
-
-        const hasEvents = (day: moment.Moment) => {
-            return calendarEvents.some(event =>
-                moment(event.start).isSame(day, 'day')
-            );
-        };
-
-        const prevMonth = () => {
-            setCurrentDate(moment(currentDate).subtract(1, 'month').toDate());
-        };
-
-        const nextMonth = () => {
-            setCurrentDate(moment(currentDate).add(1, 'month').toDate());
-        };
-
-        const selectDay = (day: moment.Moment) => {
-            setSelectedDate(day.toDate());
-            if (calendarView !== Views.DAY) {
-                setCalendarView(Views.DAY);
-            }
-        };
-
-        return (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3 mb-4">
-                <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium text-gray-700 dark:text-gray-300">
-                        {moment(currentDate).format('MMMM YYYY')}
-                    </div>
-                    <div className="flex">
-                        <button
-                            onClick={prevMonth}
-                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                        >
-                            <ChevronLeft className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                        </button>
-                        <button
-                            onClick={nextMonth}
-                            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                        >
-                            <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-7 gap-1 mb-1">
-                    {weekdays.map((day, i) => (
-                        <div key={i} className="text-center text-xs font-medium text-gray-500 dark:text-gray-400">
-                            {day}
-                        </div>
-                    ))}
-                </div>
-
-                <div className="grid grid-cols-7 gap-1">
-                    {days.map((day, i) => (
-                        <button
-                            key={i}
-                            onClick={() => selectDay(day)}
-                            className={`flex items-center justify-center h-8 w-8 rounded-full text-xs ${isToday(day)
-                                ? 'bg-blue-500 text-white'
-                                : isSelected(day)
-                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                    : isCurrentMonth(day)
-                                        ? 'text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                        : 'text-gray-400 dark:text-gray-600'
-                                }`}
-                        >
-                            <div className="relative">
-                                {day.format('D')}
-                                {hasEvents(day) && (
-                                    <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full"></div>
-                                )}
-                            </div>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
-    // Popover pour les détails d'une campagne
-    const EventDetailsPopover = () => {
-        if (!selectedEvent || !showEventDetails) return null;
-
-        const campaign = selectedEvent.campaign;
-        const canDelete = !['sent', 'sending', 'partially_sent'].includes(campaign.status);
-        const campaignDate = campaign.scheduled_at ? new Date(campaign.scheduled_at) : null;
-        const isPastCampaign = campaignDate && campaignDate < new Date() && campaign.status !== 'draft';
-
-        return (
-            <div
-                ref={popoverRef}
-                className="absolute z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
-                style={{
-                    top: eventDetailsPosition.top,
-                    left: eventDetailsPosition.left,
-                    maxWidth: '350px'
-                }}
-            >
-                <div className="p-4">
-                    <div className="flex justify-between items-start mb-3">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                            {campaign.name}
-                        </h3>
-                        <button
-                            onClick={() => setShowEventDetails(null)}
-                            className="text-gray-400 hover:text-gray-500"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-
-                    <div className="mb-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(campaign.status)}`}>
-                            {getStatusIcon(campaign.status)}
-                            <span className="ml-1">{getStatusName(campaign.status)}</span>
-                        </span>
-                    </div>
-
-                    <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                        {campaign.scheduled_at && (
-                            <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                                {formatDate(campaign.scheduled_at)}
-                            </div>
-                        )}
-
-                        <div className="flex items-center">
-                            <Users className="h-4 w-4 mr-2 text-gray-400" />
-                            {campaign.recipients_count} {t('campaigns.recipients')}
-                        </div>
-
-                        {campaign.status === 'sent' && (
-                            <div className="mt-2">
-                                <div className="mb-1 flex items-center justify-between">
-                                    <span className="text-xs text-gray-600 dark:text-gray-300">Progrès</span>
-                                    <span className="text-xs font-medium">
-                                        {Math.round((campaign.delivered_count / campaign.recipients_count) * 100)}%
-                                    </span>
-                                </div>
-                                <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-                                    <div
-                                        className="h-2 rounded-full bg-green-500"
-                                        style={{
-                                            width: `${Math.min((campaign.delivered_count / campaign.recipients_count) * 100, 100)}%`
-                                        }}
-                                    ></div>
-                                </div>
-                                <div className="mt-1 text-xs">
-                                    {campaign.delivered_count} {t('campaigns.delivered')}, {campaign.failed_count} {t('campaigns.failed')}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                        <Link
-                            href={route('campaigns.show', campaign.id)}
-                            className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                        >
-                            <Eye className="h-4 w-4 mr-2" />
-                            {t('common.details')}
-                        </Link>
-
-                        {campaign.status !== 'sent' && (
-                            <Link
-                                href={route('campaigns.edit', campaign.id)}
-                                className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                            >
-                                <Settings className="h-4 w-4 mr-2" />
-                                {t('common.edit')}
-                            </Link>
-                        )}
-
-                        {canDelete && !isPastCampaign && (
-                            <button
-                                onClick={() => {
-                                    handleDeleteCampaign(campaign);
-                                }}
-                                className="inline-flex items-center justify-center px-3 py-2 border border-red-300 dark:border-red-700 rounded-md shadow-sm text-sm font-medium text-red-700 dark:text-red-400 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900 dark:hover:bg-opacity-20 col-span-2"
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                {t('common.delete')}
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // Modal de création de campagne
-    const CreateCampaignModal = () => {
-        if (!showCreateModal) return null;
-
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
-                    <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                            {t('campaigns.create')}
-                        </h3>
-                        <button
-                            onClick={() => setShowCreateModal(false)}
-                            className="text-gray-400 hover:text-gray-500"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-
-                    <div className="p-6">
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('campaigns.name')}
-                            </label>
-                            <input
-                                type="text"
-                                value={newCampaignData.name}
-                                onChange={(e) => setNewCampaignData({ ...newCampaignData, name: e.target.value })}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                placeholder={t('campaigns.namePlaceholder')}
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('campaigns.subject')}
-                            </label>
-                            <input
-                                type="text"
-                                value={newCampaignData.subject}
-                                onChange={(e) => setNewCampaignData({ ...newCampaignData, subject: e.target.value })}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                placeholder={t('campaigns.subjectPlaceholder')}
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('campaigns.scheduledAt')}
-                            </label>
-                            <input
-                                type="datetime-local"
-                                value={newCampaignData.scheduled_at}
-                                onChange={(e) => setNewCampaignData({ ...newCampaignData, scheduled_at: e.target.value })}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            />
-                        </div>
-
-                        <div className="flex justify-end space-x-2 mt-6">
-                            <button
-                                onClick={() => setShowCreateModal(false)}
-                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                            >
-                                {t('common.cancel')}
-                            </button>
-
-                            <button
-                                onClick={handleCreateCampaign}
-                                disabled={isLoading || !newCampaignData.name || !newCampaignData.subject}
-                                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${(isLoading || !newCampaignData.name || !newCampaignData.subject) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                {isLoading ? (
-                                    <Loader className="h-5 w-5 animate-spin" />
-                                ) : t('campaigns.create')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // Bulk Action Menu Component
-    const BulkActionMenu = () => {
-        if (!showBulkActionMenu) return null;
-
-        return (
-            <div
-                ref={bulkActionMenuRef}
-                className="absolute z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
-                style={{
-                    top: bulkActionMenuPosition.top,
-                    left: bulkActionMenuPosition.left,
-                    minWidth: '200px'
-                }}
-            >
-                <div className="p-1">
-                    <button
-                        onClick={bulkDisableCampaigns}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                    >
-                        <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
-                        {t('campaigns.pauseSelected')}
-                    </button>
-                    <button
-                        onClick={bulkEnableCampaigns}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                    >
-                        <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
-                        {t('campaigns.enableSelected')}
-                    </button>
-                    <button
-                        onClick={bulkDeleteCampaigns}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 dark:hover:bg-opacity-20 flex items-center"
-                    >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {t('campaigns.deleteSelected')}
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
-    // Quick Add Modal Component
-    const QuickAddModal = () => {
-        if (!showQuickAddModal) return null;
-
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
-                    <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                            {t('campaigns.quickAdd')}
-                        </h3>
-                        <button
-                            onClick={() => setShowQuickAddModal(false)}
-                            className="text-gray-400 hover:text-gray-500"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-
-                    <div className="p-6">
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('campaigns.name')} *
-                            </label>
-                            <input
-                                type="text"
-                                value={quickAddData.name}
-                                onChange={(e) => setQuickAddData({ ...quickAddData, name: e.target.value })}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                placeholder={t('campaigns.namePlaceholder')}
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('campaigns.subject')}
-                            </label>
-                            <input
-                                type="text"
-                                value={quickAddData.subject}
-                                onChange={(e) => setQuickAddData({ ...quickAddData, subject: e.target.value })}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                placeholder={t('campaigns.subjectPlaceholder')}
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('campaigns.messageContent')} *
-                            </label>
-                            <textarea
-                                rows={3}
-                                value={quickAddData.message_content}
-                                onChange={(e) => setQuickAddData({ ...quickAddData, message_content: e.target.value })}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                placeholder={t('campaigns.messagePlaceholder')}
-                            ></textarea>
-                        </div>
-
-                        <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                {t('campaigns.scheduledAt')}
-                            </label>
-                            <input
-                                type="datetime-local"
-                                value={quickAddData.scheduled_at}
-                                onChange={(e) => setQuickAddData({ ...quickAddData, scheduled_at: e.target.value })}
-                                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <div className="flex justify-between items-center">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {t('campaigns.quickSelectRecipients')}
-                                </label>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                    {quickAddData.client_ids.length} {t('common.selected')}
-                                </span>
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        // In a real app, this would open a recipient selector
-                                        // For this demo, we'll simulate selecting all clients
-                                        const allClientIds = [1, 2, 3]; // Example IDs
-                                        setQuickAddData({ ...quickAddData, client_ids: allClientIds });
-                                    }}
-                                    className="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 shadow-sm text-xs font-medium rounded text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                                >
-                                    <Users className="mr-1 h-4 w-4" />
-                                    {t('campaigns.selectRecipients')}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <div className="flex items-center">
-                                <input
-                                    id="send_now"
-                                    type="checkbox"
-                                    checked={quickAddData.send_now}
-                                    onChange={(e) => setQuickAddData({ ...quickAddData, send_now: e.target.checked })}
-                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
-                                />
-                                <label htmlFor="send_now" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                                    {t('campaigns.sendImmediately')}
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end space-x-2 mt-6">
-                            <button
-                                onClick={() => setShowQuickAddModal(false)}
-                                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                            >
-                                {t('common.cancel')}
-                            </button>
-
-                            <button
-                                onClick={handleQuickAddCampaign}
-                                disabled={isLoading || !quickAddData.name || !quickAddData.message_content || quickAddData.client_ids.length === 0}
-                                className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${(isLoading || !quickAddData.name || !quickAddData.message_content || quickAddData.client_ids.length === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                {isLoading ? (
-                                    <Loader className="h-5 w-5 animate-spin" />
-                                ) : t('campaigns.createQuickly')}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // Campaign List View
-    const CampaignListView = () => {
-        return (
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between bg-gray-50 dark:bg-gray-850">
-                    <h3 className="text-sm font-medium text-gray-900 dark:text-white">{t('campaigns.allCampaigns')}</h3>
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={() => setStatusFilter('all')}
-                            className={`px-2 py-1 text-xs rounded-md ${statusFilter === 'all' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}
-                        >
-                            {t('campaigns.all')}
-                        </button>
-                        {['scheduled', 'sent', 'draft', 'paused'].map(status => (
-                            <button
-                                key={status}
-                                onClick={() => setStatusFilter(status)}
-                                className={`px-2 py-1 text-xs rounded-md ${statusFilter === status ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' : 'text-gray-700 dark:text-gray-300'}`}
-                            >
-                                {getStatusName(status)}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {filteredCampaigns.length > 0 ? (
-                        filteredCampaigns.map(campaign => (
-                            <div key={campaign.id} className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-750 ${selectionMode ? 'cursor-pointer' : ''}`} onClick={() => selectionMode && handleCampaignSelection(campaign.id)}>
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-start space-x-3">
-                                        {selectionMode && (
-                                            <div
-                                                className="pt-0.5"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleCampaignSelection(campaign.id);
-                                                }}
-                                            >
-                                                {selectedCampaignIds.includes(campaign.id) ? (
-                                                    <CheckSquare className="h-5 w-5 text-blue-600" />
-                                                ) : (
-                                                    <Square className="h-5 w-5 text-gray-400" />
-                                                )}
-                                            </div>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center">
-                                                <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">{campaign.name}</h4>
-                                                <span className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(campaign.status)}`}>
-                                                    {getStatusName(campaign.status)}
-                                                </span>
-                                            </div>
-                                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                {campaign.subject || t('campaigns.noSubject')}
-                                            </p>
-                                            <div className="mt-1 flex items-center text-xs text-gray-500 dark:text-gray-400">
-                                                <Clock className="h-3 w-3 mr-1" />
-                                                {formatDate(campaign.scheduled_at)}
-                                                <span className="mx-2">•</span>
-                                                <Users className="h-3 w-3 mr-1" />
-                                                {campaign.recipients_count} {t('campaigns.recipients')}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {!selectionMode && (
-                                        <div className="flex space-x-2">
-                                            <Link
-                                                href={route('campaigns.show', campaign.id)}
-                                                className="inline-flex items-center p-1 border border-transparent rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                            </Link>
-                                            {campaign.status !== 'sent' && (
-                                                <Link
-                                                    href={route('campaigns.edit', campaign.id)}
-                                                    className="inline-flex items-center p-1 border border-transparent rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                                >
-                                                    <Settings className="h-4 w-4" />
-                                                </Link>
-                                            )}
-                                            {!['sent', 'sending', 'partially_sent'].includes(campaign.status) && (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteCampaign(campaign);
-                                                    }}
-                                                    className="inline-flex items-center p-1 border border-transparent rounded-full text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 dark:hover:bg-opacity-20"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="p-8 text-center">
-                            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 mb-4">
-                                <CalendarIcon className="h-6 w-6" />
-                            </div>
-                            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">{t('campaigns.noCampaignsFound')}</h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('campaigns.startByCreatingCampaign')}</p>
-                            <button
-                                onClick={() => setShowQuickAddModal(true)}
-                                className="inline-flex items-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                            >
-                                <Plus className="h-4 w-4 mr-1" />
-                                {t('campaigns.createCampaign')}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    // Campaign Grid View
-    const CampaignGridView = () => {
-        return (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {filteredCampaigns.length > 0 ? (
-                    filteredCampaigns.map(campaign => (
-                        <div
-                            key={campaign.id}
-                            className={`bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-md transition duration-150 overflow-hidden border border-gray-200 dark:border-gray-700 ${selectionMode ? 'cursor-pointer' : ''}`}
-                            onClick={() => selectionMode && handleCampaignSelection(campaign.id)}
-                        >
-                            <div className="p-4">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex-1 min-w-0">
-                                        {selectionMode && (
-                                            <div className="absolute right-2 top-2" onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleCampaignSelection(campaign.id);
-                                            }}>
-                                                {selectedCampaignIds.includes(campaign.id) ? (
-                                                    <CheckSquare className="h-5 w-5 text-blue-600" />
-                                                ) : (
-                                                    <Square className="h-5 w-5 text-gray-400" />
-                                                )}
-                                            </div>
-                                        )}
-                                        <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">{campaign.name}</h4>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center space-x-2 mb-2">
-                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeClass(campaign.status)}`}>
-                                        {getStatusIcon(campaign.status)}
-                                        <span className="ml-1">{getStatusName(campaign.status)}</span>
-                                    </span>
-                                    <div className="flex-1"></div>
-                                </div>
-
-                                {campaign.subject && (
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
-                                        {campaign.subject}
-                                    </p>
-                                )}
-
-                                <div className="flex flex-col space-y-1 text-xs text-gray-500 dark:text-gray-400">
-                                    <div className="flex items-center">
-                                        <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
-                                        <span className="truncate">{formatDate(campaign.scheduled_at)}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <Users className="h-3 w-3 mr-1 flex-shrink-0" />
-                                        <span>{campaign.recipients_count} {t('campaigns.recipients')}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {!selectionMode && (
-                                <div className="border-t border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-750 flex justify-between">
-                                    <Link
-                                        href={route('campaigns.show', campaign.id)}
-                                        className="inline-flex items-center px-2 py-1 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                                    >
-                                        <Eye className="h-3 w-3 mr-1" />
-                                        {t('common.view')}
-                                    </Link>
-
-                                    {campaign.status !== 'sent' && (
-                                        <Link
-                                            href={route('campaigns.edit', campaign.id)}
-                                            className="inline-flex items-center px-2 py-1 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                                        >
-                                            <Settings className="h-3 w-3 mr-1" />
-                                            {t('common.edit')}
-                                        </Link>
-                                    )}
-
-                                    {!['sent', 'sending', 'partially_sent'].includes(campaign.status) && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteCampaign(campaign);
-                                            }}
-                                            className="inline-flex items-center px-2 py-1 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 dark:hover:bg-opacity-20 rounded"
-                                        >
-                                            <Trash2 className="h-3 w-3 mr-1" />
-                                            {t('common.delete')}
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    ))
-                ) : (
-                    <div className="col-span-full p-8 bg-white dark:bg-gray-800 rounded-lg shadow text-center">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 mb-4">
-                            <CalendarIcon className="h-6 w-6" />
-                        </div>
-                        <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">{t('campaigns.noCampaignsFound')}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{t('campaigns.startByCreatingCampaign')}</p>
-                        <button
-                            onClick={() => setShowQuickAddModal(true)}
-                            className="inline-flex items-center px-3 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                        >
-                            <Plus className="h-4 w-4 mr-1" />
-                            {t('campaigns.createCampaign')}
-                        </button>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    // Feedback/Notification system
-    const Notifications = () => {
-        if (!error && !success) return null;
-
-        return (
-            <div className="fixed bottom-4 right-4 z-50 max-w-sm">
-                {error && (
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-md mb-2 flex justify-between items-start">
-                        <div className="flex">
-                            <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
-                            <div>{error}</div>
-                        </div>
-                        <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700 ml-4">
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-                )}
-
-                {success && (
-                    <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-md flex justify-between items-start">
-                        <div className="flex">
-                            <Check className="h-5 w-5 mr-2 flex-shrink-0" />
-                            <div>{success}</div>
-                        </div>
-                        <button onClick={() => setSuccess(null)} className="text-green-500 hover:text-green-700 ml-4">
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    // Overlay de chargement global
-    const LoadingOverlay = () => {
-        if (!isLoading) return null;
-
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-20 z-50 flex items-center justify-center">
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-4">
-                    <Loader className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
-            </div>
-        );
-    };
-
-    // Définir les styles pour react-big-calendar
-    const calendarStyles = {
-        height: 'calc(100vh - 190px)',
-        // Ajout de styles personnalisés pour ressembler à Google Calendar
-        '.rbc-header': {
-            padding: '10px 0',
-            fontWeight: 'normal',
-            fontSize: '0.875rem'
-        },
-        '.rbc-month-view': {
-            border: 'none',
-            borderRadius: '8px',
-            overflow: 'hidden'
-        },
-        '.rbc-day-bg': {
-            transition: 'background-color 0.3s',
-        },
-        '.rbc-today': {
-            backgroundColor: 'rgba(66, 133, 244, 0.05)',
-        },
-        '.rbc-event': {
-            borderRadius: '4px',
-            border: 'none',
-            padding: '2px 5px',
-            fontSize: '12px',
-        },
-        '.rbc-event-label': {
-            display: 'none'
-        },
-        '.rbc-show-more': {
-            color: '#1976d2',
-            backgroundColor: 'transparent',
-            fontSize: '12px',
-        }
     };
 
     return (
@@ -1782,217 +822,896 @@ export default function CampaignsIndex({
         >
             <Head title={t('common.campaigns')} />
 
-            <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-                {/* Header principal */}
-                <Header />
-
-                <div className="flex flex-1 overflow-hidden">
-                    {/* Sidebar */}
-                    {sidebarOpen && (
-                        <div className="w-64 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 overflow-y-auto">
-                            {/* Mini Calendar */}
-                            <MiniCalendar />
-
-                            {/* Filtres par statut */}
-                            <div className="space-y-1 mb-4">
-                                <div className="px-3 py-2">
-                                    <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                        {t('campaigns.filterByStatus')}
-                                    </h3>
-                                </div>
-
-                                <button
-                                    onClick={() => setStatusFilter('all')}
-                                    className={`flex items-center w-full px-3 py-2 text-sm rounded-lg ${statusFilter === 'all'
-                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-                                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+            <div className="flex h-screen overflow-hidden bg-background">
+                {/* Main Content */}
+                <div className="flex flex-col w-full">
+                    {/* Header */}
+                    <div className="p-4 border-b bg-card">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div className="flex items-center">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                                    className="mr-2"
                                 >
-                                    <Filter className="h-4 w-4 mr-3 text-gray-500" />
-                                    <span>{t('campaigns.status.all')}</span>
-                                    <span className="ml-auto bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5 text-xs">
-                                        {campaigns.data.length}
-                                    </span>
-                                </button>
+                                    {sidebarOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
+                                </Button>
 
-                                {Object.entries({
-                                    'draft': t('campaigns.status.draft'),
-                                    'scheduled': t('campaigns.status.scheduled'),
-                                    'sending': t('campaigns.status.sending'),
-                                    'sent': t('campaigns.status.sent'),
-                                    'paused': t('campaigns.status.paused'),
-                                    'failed': t('campaigns.status.failed')
-                                }).map(([status, label]) => (
-                                    <button
-                                        key={status}
-                                        onClick={() => setStatusFilter(status)}
-                                        className={`flex items-center w-full px-3 py-2 text-sm rounded-lg ${statusFilter === status
-                                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-                                            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                <h1 className="text-xl font-semibold">{t('common.campaigns')}</h1>
+
+                                <div className="ml-4 flex items-center">
+                                    <Tabs
+                                        value={viewMode}
+                                        onValueChange={(value) => setViewMode(value as 'calendar' | 'grid')}
+                                        className="w-auto"
                                     >
-                                        <div
-                                            className="h-3 w-3 rounded-full mr-3"
-                                            style={{ backgroundColor: getStatusColor(status) }}
-                                        ></div>
-                                        <span>{label}</span>
-                                        <span className="ml-auto bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5 text-xs">
-                                            {campaignsByStatus[status]?.length || 0}
-                                        </span>
-                                    </button>
-                                ))}
+                                        <TabsList className="grid w-auto grid-cols-2">
+                                            <TabsTrigger value="calendar" className="px-3">
+                                                <CalendarIcon className="h-4 w-4 mr-2" />
+                                                <span className="hidden sm:inline">{t('campaigns.calendar')}</span>
+                                            </TabsTrigger>
+                                            <TabsTrigger value="grid" className="px-3">
+                                                <Grid className="h-4 w-4 mr-2" />
+                                                <span className="hidden sm:inline">{t('campaigns.grid')}</span>
+                                            </TabsTrigger>
+                                        </TabsList>
+                                    </Tabs>
+                                </div>
                             </div>
 
-                            {/* Campagnes d'aujourd'hui */}
-                            <div className="mt-6">
-                                <div className="px-3 py-2">
-                                    <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                        {t('campaigns.today')}
-                                    </h3>
+                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                                <div className="relative w-full sm:w-auto" ref={searchRef}>
+                                    <form onSubmit={handleSearch}>
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder={t('common.searchCampaigns')}
+                                            value={searchTerm}
+                                            onChange={handleSearchChange}
+                                            className="pl-9 w-full sm:w-[200px] md:w-[300px]"
+                                        />
+                                    </form>
+
+                                    {/* Search results dropdown */}
+                                    {showSearchResults && searchResults.length > 0 && (
+                                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover rounded-md border shadow-md z-10 max-h-64 overflow-y-auto">
+                                            {searchResults.map(campaign => (
+                                                <Link
+                                                    key={campaign.id}
+                                                    href={route('campaigns.show', campaign.id)}
+                                                    className="flex items-center p-3 hover:bg-muted border-b last:border-b-0"
+                                                >
+                                                    <div
+                                                        className="h-3 w-3 rounded-full mr-3 flex-shrink-0"
+                                                        style={{ backgroundColor: getStatusColor(campaign.status) }}
+                                                    ></div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="font-medium truncate">{campaign.name}</div>
+                                                        {campaign.subject && (
+                                                            <div className="text-xs text-muted-foreground truncate">{campaign.subject}</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {campaign.scheduled_at ? formatDate(campaign.scheduled_at) : '-'}
+                                                    </div>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {showSearchResults && searchResults.length === 0 && searchTerm.length >= 2 && (
+                                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover rounded-md border shadow-md z-10 p-4 text-center text-muted-foreground">
+                                            {t('campaigns.noSearchResults')}
+                                        </div>
+                                    )}
                                 </div>
 
-                                {todayCampaigns.length > 0 ? (
-                                    <div className="space-y-1">
-                                        {todayCampaigns.map(campaign => (
-                                            <Link
-                                                key={campaign.id}
-                                                href={route('campaigns.show', campaign.id)}
-                                                className="flex items-center px-3 py-1.5 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                            >
-                                                <div
-                                                    className="h-3 w-3 rounded-full mr-3"
-                                                    style={{ backgroundColor: getStatusColor(campaign.status) }}
-                                                ></div>
-                                                <span className="truncate">{campaign.name}</span>
-                                            </Link>
-                                        ))}
+                                {/* Actions */}
+                                {!selectionMode ? (
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={toggleSelectionMode}
+                                        >
+                                            <CheckSquare className="h-4 w-4 mr-2" />
+                                            <span>{t('campaigns.selectMode')}</span>
+                                        </Button>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setShowQuickAddModal(true)}
+                                            className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800"
+                                        >
+                                            <Plus className="h-4 w-4 mr-2" />
+                                            <span>{t('campaigns.quickAdd')}</span>
+                                        </Button>
+
+                                        <Link href={route('campaigns.create')}>
+                                            <Button>
+                                                <CalendarAdd className="h-4 w-4 mr-2" />
+                                                <span>{t('campaigns.create')}</span>
+                                            </Button>
+                                        </Link>
                                     </div>
                                 ) : (
-                                    <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                                        {t('campaigns.noCampaignsToday')}
-                                    </div>
-                                )}
-                            </div>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="outline">
+                                            {selectedCampaignIds.length} {t('campaigns.selected')}
+                                        </Badge>
 
-                            {/* Campagnes à venir */}
-                            <div className="mt-4">
-                                <div className="px-3 py-2">
-                                    <h3 className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                                        {t('campaigns.upcoming')}
-                                    </h3>
-                                </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={selectedCampaignIds.length === 0}
+                                                >
+                                                    <MoreHorizontal className="h-4 w-4 mr-2" />
+                                                    <span>{t('campaigns.actions')}</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem onClick={selectAllCampaigns}>
+                                                    <CheckSquare className="mr-2 h-4 w-4" />
+                                                    <span>{t('campaigns.selectAll')}</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={deselectAllCampaigns}>
+                                                    <Square className="mr-2 h-4 w-4" />
+                                                    <span>{t('campaigns.deselectAll')}</span>
+                                                </DropdownMenuItem>
+                                                <Separator />
+                                                <DropdownMenuItem onClick={bulkDisableCampaigns}>
+                                                    <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
+                                                    <span>{t('campaigns.pauseSelected')}</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={bulkEnableCampaigns}>
+                                                    <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
+                                                    <span>{t('campaigns.enableSelected')}</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem
+                                                    onClick={bulkDeleteCampaigns}
+                                                    className="text-destructive focus:text-destructive"
+                                                >
+                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                    <span>{t('campaigns.deleteSelected')}</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
 
-                                {upcomingCampaigns.length > 0 ? (
-                                    <div className="space-y-1">
-                                        {upcomingCampaigns.map(campaign => (
-                                            <Link
-                                                key={campaign.id}
-                                                href={route('campaigns.show', campaign.id)}
-                                                className="flex items-center px-3 py-1.5 text-sm rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                            >
-                                                <div
-                                                    className="h-3 w-3 rounded-full mr-3"
-                                                    style={{ backgroundColor: getStatusColor(campaign.status) }}
-                                                ></div>
-                                                <span className="truncate">{campaign.name}</span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                                        {t('campaigns.noUpcomingCampaigns')}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={toggleSelectionMode}
+                                        >
+                                            <X className="h-4 w-4 mr-2" />
+                                            <span>{t('campaigns.cancel')}</span>
+                                        </Button>
                                     </div>
                                 )}
                             </div>
                         </div>
-                    )}
 
-                    {/* Main Content Area */}
-                    <div className="flex-1 overflow-auto p-4">
-                        {/* Content based on view mode */}
+                        {/* Calendar control header */}
                         {viewMode === 'calendar' && (
-                            <div className="h-full bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-                                <Calendar
-                                    localizer={localizer}
-                                    events={calendarEvents}
-                                    startAccessor="start"
-                                    endAccessor="end"
-                                    views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
-                                    view={calendarView}
-                                    date={selectedDate}
-                                    onView={handleViewChange}
-                                    onNavigate={(date) => {
-                                        setSelectedDate(date);
-                                        updateCurrentMonth(date);
-                                    }}
-                                    style={calendarStyles}
-                                    components={{
-                                        event: EventComponent,
-                                        toolbar: () => null // Suppression de la barre d'outils par défaut
-                                    }}
-                                    onSelectEvent={handleSelectEvent}
-                                    onSelectSlot={handleSelectSlot}
-                                    selectable={true}
-                                    eventPropGetter={(event) => ({
-                                        style: {
-                                            backgroundColor: getStatusColor(event.resource),
-                                            borderRadius: '4px'
-                                        }
-                                    })}
-                                    messages={{
-                                        today: t('campaigns.today'),
-                                        previous: t('campaigns.previous'),
-                                        next: t('campaigns.next'),
-                                        month: t('campaigns.month'),
-                                        week: t('campaigns.week'),
-                                        day: t('campaigns.day'),
-                                        agenda: t('campaigns.agenda'),
-                                        date: t('campaigns.date'),
-                                        time: t('campaigns.time'),
-                                        event: t('campaigns.event'),
-                                        noEventsInRange: t('campaigns.noCampaignsInRange'),
-                                        showMore: (total: number) => `+ ${total} ${t('campaigns.more')}`
-                                    }}
-                                    onEventDrop={handleEventDrop}
-                                    resizable={false}
-                                />
+                            <div className="flex flex-wrap justify-between items-center mt-4 gap-2">
+                                <div className="flex items-center space-x-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => navigateCalendar('TODAY')}
+                                    >
+                                        {t('campaigns.today')}
+                                    </Button>
+
+                                    <div className="flex items-center">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => navigateCalendar('PREV')}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => navigateCalendar('NEXT')}
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+
+                                        <span className="ml-3 text-base font-medium">
+                                            {currentMonth}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center">
+                                    <Tabs
+                                        value={calendarView}
+                                        onValueChange={handleViewChange}
+                                        className="w-auto"
+                                    >
+                                        <TabsList className="grid grid-cols-3">
+                                            <TabsTrigger value={Views.MONTH}>{t('campaigns.month')}</TabsTrigger>
+                                            <TabsTrigger value={Views.WEEK}>{t('campaigns.week')}</TabsTrigger>
+                                            <TabsTrigger value={Views.DAY}>{t('campaigns.day')}</TabsTrigger>
+                                        </TabsList>
+                                    </Tabs>
+                                </div>
                             </div>
                         )}
+                    </div>
 
-                        {viewMode === 'list' && (
-                            <CampaignListView />
-                        )}
+                    <div className="flex flex-1 overflow-hidden pt-0">
+                        {/* Sidebar with animation */}
+                        <AnimatePresence mode="wait" initial={false}>
+                            {sidebarOpen && (
+                                <motion.div
+                                    initial={{ width: 0, opacity: 0 }}
+                                    animate={{ width: 256, opacity: 1 }}
+                                    exit={{ width: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="border-r border-border bg-card overflow-hidden"
+                                >
+                                    <ScrollArea className="h-full px-4 py-4">
+                                        {/* Mini Calendar */}
+                                        <Card className="mb-4">
+                                            <CardHeader className="pb-2">
+                                                <div className="flex items-center justify-between">
+                                                    <CardTitle className="text-sm font-medium">
+                                                        {moment().format('MMMM YYYY')}
+                                                    </CardTitle>
+                                                    <div className="flex">
+                                                        <Button variant="ghost" size="icon" onClick={() => { }} className="h-7 w-7">
+                                                            <ChevronLeft className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => { }} className="h-7 w-7">
+                                                            <ChevronRight className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="px-0 pb-2">
+                                                {/* Contenu du mini-calendrier */}
+                                            </CardContent>
+                                        </Card>
 
-                        {viewMode === 'grid' && (
-                            <CampaignGridView />
-                        )}
+                                        {/* Status filters */}
+                                        <div className="space-y-1 mb-4">
+                                            <h3 className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                                {t('campaigns.filterByStatus')}
+                                            </h3>
+
+                                            <button
+                                                onClick={() => setFilterData('statusFilter', 'all')}
+                                                className={`flex items-center w-full px-3 py-2 text-sm rounded-md ${filterData.statusFilter === 'all'
+                                                    ? 'bg-primary/10 text-primary font-medium'
+                                                    : 'text-foreground hover:bg-muted'}`}
+                                            >
+                                                <Filter className="h-4 w-4 mr-3 text-muted-foreground" />
+                                                <span>{t('campaigns.status.all')}</span>
+                                                <Badge variant="outline" className="ml-auto">
+                                                    {campaigns.data.length}
+                                                </Badge>
+                                            </button>
+
+                                            {Object.entries({
+                                                'draft': t('campaigns.status.draft'),
+                                                'scheduled': t('campaigns.status.scheduled'),
+                                                'sending': t('campaigns.status.sending'),
+                                                'sent': t('campaigns.status.sent'),
+                                                'paused': t('campaigns.status.paused'),
+                                                'failed': t('campaigns.status.failed')
+                                            }).map(([status, label]) => (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => {
+                                                        setFilterData('statusFilter', status);
+                                                        get(route('campaigns.index'), {
+                                                            preserveState: true,
+                                                            replace: true,
+                                                        });
+                                                    }}
+                                                    className={`flex items-center w-full px-3 py-2 text-sm rounded-md ${filterData.statusFilter === status
+                                                        ? 'bg-primary/10 text-primary font-medium'
+                                                        : 'text-foreground hover:bg-muted'}`}
+                                                >
+                                                    <div
+                                                        className="h-3 w-3 rounded-full mr-3"
+                                                        style={{ backgroundColor: getStatusColor(status) }}
+                                                    ></div>
+                                                    <span>{label}</span>
+                                                    <Badge variant="outline" className="ml-auto">
+                                                        {campaignsByStatus[status]?.length || 0}
+                                                    </Badge>
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Today's campaigns */}
+                                        <div className="mt-6">
+                                            <h3 className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                                {t('campaigns.today')}
+                                            </h3>
+
+                                            {todayCampaigns.length > 0 ? (
+                                                <div className="space-y-1">
+                                                    {todayCampaigns.map(campaign => (
+                                                        <Link
+                                                            key={campaign.id}
+                                                            href={route('campaigns.show', campaign.id)}
+                                                            className="flex items-center px-3 py-1.5 text-sm rounded-md text-foreground hover:bg-muted"
+                                                        >
+                                                            <div
+                                                                className="h-3 w-3 rounded-full mr-3"
+                                                                style={{ backgroundColor: getStatusColor(campaign.status) }}
+                                                            ></div>
+                                                            <span className="truncate">{campaign.name}</span>
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="px-3 py-2 text-sm text-muted-foreground">
+                                                    {t('campaigns.noCampaignsToday')}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Upcoming campaigns */}
+                                        <div className="mt-4">
+                                            <h3 className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                                {t('campaigns.upcoming')}
+                                            </h3>
+
+                                            {upcomingCampaigns.length > 0 ? (
+                                                <div className="space-y-1">
+                                                    {upcomingCampaigns.map(campaign => (
+                                                        <Link
+                                                            key={campaign.id}
+                                                            href={route('campaigns.show', campaign.id)}
+                                                            className="flex items-center px-3 py-1.5 text-sm rounded-md text-foreground hover:bg-muted"
+                                                        >
+                                                            <div
+                                                                className="h-3 w-3 rounded-full mr-3"
+                                                                style={{ backgroundColor: getStatusColor(campaign.status) }}
+                                                            ></div>
+                                                            <span className="truncate">{campaign.name}</span>
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="px-3 py-2 text-sm text-muted-foreground">
+                                                    {t('campaigns.noUpcomingCampaigns')}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Tags Section */}
+                                        <div className="mt-6">
+                                            <h3 className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                                {t('common.tags')}
+                                            </h3>
+
+                                            {tags.length > 0 ? (
+                                                <div className="space-y-1">
+                                                    {tags.map(tag => (
+                                                        <div
+                                                            key={tag.id}
+                                                            className="flex items-center px-3 py-1.5 text-sm rounded-md text-foreground hover:bg-muted group"
+                                                        >
+                                                            <TagIcon className="h-3 w-3 mr-3 text-muted-foreground" />
+                                                            <span className="truncate flex-1">{tag.name}</span>
+                                                            <Badge variant="outline" className="ml-2">
+                                                                {tag.clients_count}
+                                                            </Badge>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 p-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                onClick={() => {
+                                                                    setQuickAddForm({
+                                                                        ...quickAddForm,
+                                                                        tag_id: tag.id.toString()
+                                                                    });
+                                                                    setShowQuickAddModal(true);
+                                                                }}
+                                                                title={t('campaigns.createCampaignWithTag', { tag: tag.name })}
+                                                            >
+                                                                <Plus className="h-3 w-3" />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="px-3 py-2 text-sm text-muted-foreground">
+                                                    {t('campaigns.noTags')}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </ScrollArea>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Main Content Area with flex-grow */}
+                        <div className="flex-1 overflow-auto">
+                            {/* Content based on view mode */}
+                            {viewMode === 'calendar' ? (
+                                <div className="h-full p-4">
+                                    <div className="bg-card h-full rounded-lg shadow-sm overflow-hidden border">
+                                        <Calendar
+                                            localizer={localizer}
+                                            events={calendarEvents}
+                                            startAccessor="start"
+                                            endAccessor="end"
+                                            views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+                                            view={calendarView}
+                                            date={selectedDate}
+                                            onView={handleViewChange}
+                                            onNavigate={(date) => {
+                                                setSelectedDate(date);
+                                                updateCurrentMonth(date);
+                                            }}
+                                            style={{ height: 'calc(100vh - 190px)' }}
+                                            className="custom-calendar h-[calc(100vh-190px)]"
+                                            components={{
+                                                event: EventComponent,
+                                                eventWrapper: EventWrapper,
+                                                toolbar: () => null // Remove default toolbar
+                                            }}
+                                            onSelectEvent={handleSelectEvent}
+                                            onSelectSlot={handleSelectSlot}
+                                            selectable={true}
+                                            eventPropGetter={(event) => ({
+                                                className: 'rounded overflow-hidden'
+                                            })}
+                                            messages={{
+                                                today: t('campaigns.today'),
+                                                previous: t('campaigns.previous'),
+                                                next: t('campaigns.next'),
+                                                month: t('campaigns.month'),
+                                                week: t('campaigns.week'),
+                                                day: t('campaigns.day'),
+                                                agenda: t('campaigns.agenda'),
+                                                date: t('campaigns.date'),
+                                                time: t('campaigns.time'),
+                                                event: t('campaigns.event'),
+                                                noEventsInRange: t('campaigns.noCampaignsInRange'),
+                                                showMore: (total: number) => `+ ${total} ${t('campaigns.more')}`
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
+                                    <AnimatePresence>
+                                        {filteredCampaigns.length > 0 ? (
+                                            filteredCampaigns.map(campaign => (
+                                                <motion.div
+                                                    key={campaign.id}
+                                                    initial={{ opacity: 0, y: 20 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className={selectionMode ? 'cursor-pointer' : ''}
+                                                    onClick={() => selectionMode && handleCampaignSelection(campaign.id)}
+                                                >
+                                                    <Card className="h-full">
+                                                        <CardHeader className="pb-2 relative">
+                                                            {selectionMode && (
+                                                                <div
+                                                                    className="absolute right-4 top-4"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleCampaignSelection(campaign.id);
+                                                                    }}
+                                                                >
+                                                                    {selectedCampaignIds.includes(campaign.id) ? (
+                                                                        <CheckSquare className="h-5 w-5 text-primary" />
+                                                                    ) : (
+                                                                        <Square className="h-5 w-5 text-muted-foreground" />
+                                                                    )}
+                                                                </div>
+                                                            )}
+
+                                                            <CardTitle className="text-base truncate pr-8">
+                                                                {campaign.name}
+                                                            </CardTitle>
+
+                                                            <Badge
+                                                                variant={getStatusVariant(campaign.status) as any}
+                                                                className="mt-1 flex w-fit items-center gap-1"
+                                                            >
+                                                                {getStatusIcon(campaign.status)}
+                                                                <span>{getStatusName(campaign.status)}</span>
+                                                            </Badge>
+                                                        </CardHeader>
+
+                                                        <CardContent className="pb-2">
+                                                            {campaign.subject && (
+                                                                <p className="text-sm text-muted-foreground mb-2 truncate">
+                                                                    {campaign.subject}
+                                                                </p>
+                                                            )}
+
+                                                            <div className="space-y-1 text-sm">
+                                                                <div className="flex items-center text-muted-foreground">
+                                                                    <Clock className="h-3.5 w-3.5 mr-1.5" />
+                                                                    <span className="truncate">{formatDate(campaign.scheduled_at)}</span>
+                                                                </div>
+                                                                <div className="flex items-center text-muted-foreground">
+                                                                    <Users className="h-3.5 w-3.5 mr-1.5" />
+                                                                    <span>{campaign.recipients_count} {t('campaigns.recipients')}</span>
+                                                                </div>
+                                                            </div>
+                                                        </CardContent>
+
+                                                        {!selectionMode && (
+                                                            <CardFooter className="pt-1 pb-3 flex justify-between gap-2">
+                                                                <TooltipProvider>
+                                                                    <Tooltip>
+                                                                        <TooltipTrigger asChild>
+                                                                            <Link href={route('campaigns.show', campaign.id)}>
+                                                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                                    <Eye className="h-4 w-4" />
+                                                                                    <span className="sr-only">{t('common.view')}</span>
+                                                                                </Button>
+                                                                            </Link>
+                                                                        </TooltipTrigger>
+                                                                        <TooltipContent>
+                                                                            <p>{t('common.view')}</p>
+                                                                        </TooltipContent>
+                                                                    </Tooltip>
+                                                                </TooltipProvider>
+
+                                                                {campaign.status !== 'sent' && (
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Link href={route('campaigns.edit', campaign.id)}>
+                                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                                        <Settings className="h-4 w-4" />
+                                                                                        <span className="sr-only">{t('common.edit')}</span>
+                                                                                    </Button>
+                                                                                </Link>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>{t('common.edit')}</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                )}
+
+                                                                {!['sent', 'sending', 'partially_sent'].includes(campaign.status) && (
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button
+                                                                                    variant="ghost"
+                                                                                    size="sm"
+                                                                                    className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleDeleteCampaign(campaign);
+                                                                                    }}
+                                                                                >
+                                                                                    <Trash2 className="h-4 w-4" />
+                                                                                    <span className="sr-only">{t('common.delete')}</span>
+                                                                                </Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>
+                                                                                <p>{t('common.delete')}</p>
+                                                                            </TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                )}
+                                                            </CardFooter>
+                                                        )}
+                                                    </Card>
+                                                </motion.div>
+                                            ))
+                                        ) : (
+                                            <motion.div
+                                                className="col-span-full"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                transition={{ duration: 0.3 }}
+                                            >
+                                                <Card className="p-6 text-center">
+                                                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
+                                                        <CalendarIcon className="h-6 w-6 text-muted-foreground" />
+                                                    </div>
+                                                    <CardTitle className="text-lg mb-2">{t('campaigns.noCampaignsFound')}</CardTitle>
+                                                    <p className="text-muted-foreground mb-6">{t('campaigns.startByCreatingCampaign')}</p>
+                                                    <div className="flex justify-center">
+                                                        <Button onClick={() => setShowQuickAddModal(true)}>
+                                                            <Plus className="h-4 w-4 mr-2" />
+                                                            {t('campaigns.createCampaign')}
+                                                        </Button>
+                                                    </div>
+                                                </Card>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Event Details Popover */}
-                <EventDetailsPopover />
+                {/* Modals - maintenant directement intégrés comme dans ClientsIndex */}
+                {/* Event Details Dialog */}
+                <Dialog open={showEventDetailsModal} onOpenChange={setShowEventDetailsModal}>
+                    <DialogContent className="sm:max-w-md">
+                        {selectedEvent && (
+                            <>
+                                <DialogHeader>
+                                    <div className="flex items-center gap-2">
+                                        <div
+                                            className="h-4 w-4 rounded-full flex-shrink-0"
+                                            style={{ backgroundColor: getStatusColor(selectedEvent.campaign.status) }}
+                                        ></div>
+                                        <DialogTitle className="text-lg font-semibold">{selectedEvent.campaign.name}</DialogTitle>
+                                    </div>
+                                    <DialogDescription className="mt-1.5">
+                                        {selectedEvent.campaign.subject && <p className="text-sm mb-2">{selectedEvent.campaign.subject}</p>}
+                                        <Badge
+                                            variant={getStatusVariant(selectedEvent.campaign.status) as any}
+                                            className="flex w-fit items-center gap-1"
+                                        >
+                                            {getStatusIcon(selectedEvent.campaign.status)}
+                                            <span>{getStatusName(selectedEvent.campaign.status)}</span>
+                                        </Badge>
+                                    </DialogDescription>
+                                </DialogHeader>
 
-                {/* Create Campaign Modal */}
-                <CreateCampaignModal />
+                                <div className="space-y-4 mt-2">
+                                    <div className="bg-muted/30 rounded-lg p-4 space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {selectedEvent.campaign.scheduled_at && (
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground">{t('campaigns.scheduledAt')}</p>
+                                                    <div className="flex items-center mt-1">
+                                                        <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                                                        <span className="font-medium">{formatDate(selectedEvent.campaign.scheduled_at)}</span>
+                                                    </div>
+                                                </div>
+                                            )}
 
-                {/* Quick Add Modal */}
-                <QuickAddModal />
+                                            <div>
+                                                <p className="text-xs text-muted-foreground">{t('campaigns.recipients')}</p>
+                                                <div className="flex items-center mt-1">
+                                                    <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                                                    <span className="font-medium">{selectedEvent.campaign.recipients_count} {t('common.clients')}</span>
+                                                </div>
+                                            </div>
+                                        </div>
 
-                {/* Bulk Action Menu */}
-                <BulkActionMenu />
+                                        {selectedEvent.campaign.status === 'sent' && (
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">{t('campaigns.progress')}</p>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {t('campaigns.delivered')}
+                                                    </span>
+                                                    <span className="text-xs font-medium">
+                                                        {Math.round((selectedEvent.campaign.delivered_count / selectedEvent.campaign.recipients_count) * 100)}%
+                                                    </span>
+                                                </div>
+                                                <div className="h-2 w-full rounded-full bg-muted">
+                                                    <div
+                                                        className="h-2 rounded-full bg-green-500"
+                                                        style={{
+                                                            width: `${Math.min((selectedEvent.campaign.delivered_count / selectedEvent.campaign.recipients_count) * 100, 100)}%`
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                                <div className="mt-1 text-xs text-muted-foreground">
+                                                    {selectedEvent.campaign.delivered_count} {t('campaigns.delivered')}, {selectedEvent.campaign.failed_count} {t('campaigns.failed')}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
 
-                {/* Toast Notifications */}
-                <Notifications />
+                                <DialogFooter className="flex-col sm:flex-row gap-2 mt-2">
+                                    <Link href={route('campaigns.show', selectedEvent.campaign.id)} className="w-full sm:w-auto">
+                                        <Button variant="outline" className="w-full">
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            {t('common.details')}
+                                        </Button>
+                                    </Link>
+
+                                    {selectedEvent.campaign.status !== 'sent' && (
+                                        <Link href={route('campaigns.edit', selectedEvent.campaign.id)} className="w-full sm:w-auto">
+                                            <Button className="w-full">
+                                                <Settings className="h-4 w-4 mr-2" />
+                                                {t('common.edit')}
+                                            </Button>
+                                        </Link>
+                                    )}
+
+                                    {!['sent', 'sending', 'partially_sent'].includes(selectedEvent.campaign.status) && (
+                                        !(selectedEvent.campaign.scheduled_at && new Date(selectedEvent.campaign.scheduled_at) < new Date() && selectedEvent.campaign.status !== 'draft') && (
+                                            <Button
+                                                variant="destructive"
+                                                onClick={() => handleDeleteCampaign(selectedEvent.campaign)}
+                                                className="w-full sm:w-auto"
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                {t('common.delete')}
+                                            </Button>
+                                        )
+                                    )}
+                                </DialogFooter>
+                            </>
+                        )}
+                    </DialogContent>
+                </Dialog>
+
+                {/* Quick Add Form Dialog */}
+                <Dialog open={showQuickAddModal} onOpenChange={setShowQuickAddModal}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>{t('campaigns.quickAdd')}</DialogTitle>
+                            <DialogDescription>
+                                {t('campaigns.quickAddDescription')}
+                            </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="space-y-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <Label htmlFor="name" className="font-medium">{t('campaigns.name')} *</Label>
+                                    <Input
+                                        id="name"
+                                        value={quickAddForm.name}
+                                        onChange={(e) => setQuickAddForm({ ...quickAddForm, name: e.target.value })}
+                                        placeholder={t('campaigns.namePlaceholder')}
+                                        className="mt-1.5"
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="subject" className="font-medium">{t('campaigns.subject')}</Label>
+                                    <Input
+                                        id="subject"
+                                        value={quickAddForm.subject}
+                                        onChange={(e) => setQuickAddForm({ ...quickAddForm, subject: e.target.value })}
+                                        placeholder={t('campaigns.subjectPlaceholder')}
+                                        className="mt-1.5"
+                                    />
+                                </div>
+                            </div>
+
+                            <Separator />
+
+                            <div>
+                                <Label htmlFor="message_content" className="font-medium">{t('campaigns.messageContent')} *</Label>
+                                <Textarea
+                                    id="message_content"
+                                    value={quickAddForm.message_content}
+                                    onChange={(e) => setQuickAddForm({ ...quickAddForm, message_content: e.target.value })}
+                                    placeholder={t('campaigns.messagePlaceholder')}
+                                    className="mt-1.5"
+                                    rows={5}
+                                />
+                            </div>
+
+                            <Separator />
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor="tag_id" className="font-medium">{t('campaigns.selectTag')} *</Label>
+                                    <Select
+                                        value={quickAddForm.tag_id}
+                                        onValueChange={(value) => setQuickAddForm({ ...quickAddForm, tag_id: value })}
+                                    >
+                                        <SelectTrigger className="mt-1.5">
+                                            <SelectValue placeholder={t('campaigns.selectTagPlaceholder')} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {tags.map((tag) => (
+                                                <SelectItem key={tag.id} value={tag.id.toString()}>
+                                                    <div className="flex items-center">
+                                                        <span>{tag.name}</span>
+                                                        <Badge variant="outline" className="ml-2">
+                                                            {tag.clients_count} {t('common.clients')}
+                                                        </Badge>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    {quickAddForm.tag_id && (
+                                        <div className="flex items-center mt-2 text-sm text-muted-foreground">
+                                            <Info className="h-4 w-4 mr-1" />
+                                            <span>
+                                                {t('campaigns.willSendTo', {
+                                                    count: getClientCount(quickAddForm.tag_id),
+                                                    tag: getTagName(quickAddForm.tag_id)
+                                                })}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="scheduled_at" className="font-medium">{t('campaigns.scheduledAt')}</Label>
+                                    <Input
+                                        id="scheduled_at"
+                                        type="datetime-local"
+                                        value={quickAddForm.scheduled_at}
+                                        onChange={(e) => setQuickAddForm({ ...quickAddForm, scheduled_at: e.target.value })}
+                                        className="mt-1.5"
+                                    />
+
+                                    <div className="flex items-center space-x-2 mt-3">
+                                        <Checkbox
+                                            id="send_now"
+                                            checked={quickAddForm.send_now}
+                                            onCheckedChange={(checked) => setQuickAddForm({ ...quickAddForm, send_now: checked as boolean })}
+                                        />
+                                        <Label htmlFor="send_now" className="cursor-pointer text-sm">
+                                            {t('campaigns.sendImmediately')}
+                                        </Label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowQuickAddModal(false)}
+                            >
+                                {t('common.cancel')}
+                            </Button>
+                            <Button
+                                onClick={handleQuickAdd}
+                                disabled={isLoading || !quickAddForm.name || !quickAddForm.message_content || !quickAddForm.tag_id}
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <Loader className="h-4 w-4 mr-2 animate-spin" />
+                                        {t('common.processing')}
+                                    </>
+                                ) : (
+                                    <>
+                                        <ArrowRight className="h-4 w-4 mr-2" />
+                                        {t('campaigns.createQuickly')}
+                                    </>
+                                )}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
 
                 {/* Loading Overlay */}
-                <LoadingOverlay />
+                {isLoading && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center"
+                    >
+                        <div className="bg-card rounded-lg shadow-lg p-6 flex items-center space-x-4">
+                            <Loader className="h-6 w-6 animate-spin text-primary" />
+                            <span className="font-medium">{t('common.loading')}</span>
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* Floating Action Button for mobile */}
                 <div className="md:hidden fixed right-4 bottom-4">
-                    <button
-                        onClick={() => setShowQuickAddModal(true)}
-                        className="h-14 w-14 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center"
-                    >
+                    <Button size="icon" className="h-14 w-14 rounded-full shadow-lg" onClick={() => setShowQuickAddModal(true)}>
                         <Plus className="h-6 w-6" />
-                    </button>
+                    </Button>
                 </div>
             </div>
         </AuthenticatedLayout>

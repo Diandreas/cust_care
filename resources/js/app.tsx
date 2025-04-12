@@ -1,5 +1,6 @@
 // resources/js/app.tsx
 import '../css/app.css';
+import '../css/calendar.css'; // Import des styles du calendrier
 import './bootstrap';
 import './i18n'; // Import i18n configuration
 // Importer les styles de Sonner
