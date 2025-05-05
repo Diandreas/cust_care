@@ -4,14 +4,13 @@ import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 
-interface SubscriptionPlan {
+interface Plan {
     id: number;
     name: string;
     code: string;
     price: number;
-    annual_price: number;
-    has_annual_option: boolean;
-    annual_discount_percent: number;
+    annual_price?: number;
+    annual_discount_percent?: number;
     max_clients: number;
     max_campaigns_per_month: number;
     total_campaign_sms: number;
@@ -20,11 +19,12 @@ interface SubscriptionPlan {
     description: string;
     features: string[];
     is_active: boolean;
+    has_annual_option?: boolean;
 }
 
 interface PlansProps {
-    plans: SubscriptionPlan[];
-    currentPlanId?: number;
+    plans: Plan[];
+    currentPlanId: number | null;
 }
 
 export default function Plans({
@@ -65,15 +65,15 @@ export default function Plans({
         setData('duration', newDuration);
     };
 
-    const getPlanPrice = (plan: SubscriptionPlan) => {
+    const getPlanPrice = (plan: Plan) => {
         return duration === 'annual' && plan.has_annual_option
-            ? plan.annual_price / 12 // Prix annuel divisé par 12 pour obtenir le prix mensuel équivalent
+            ? plan.annual_price! / 12 // Prix annuel divisé par 12 pour obtenir le prix mensuel équivalent
             : plan.price;
     };
 
-    const getPlanTotalPrice = (plan: SubscriptionPlan) => {
+    const getPlanTotalPrice = (plan: Plan) => {
         return duration === 'annual' && plan.has_annual_option
-            ? plan.annual_price
+            ? plan.annual_price!
             : plan.price;
     };
 
@@ -149,7 +149,7 @@ export default function Plans({
                                             </p>
                                             {duration === 'annual' && plan.has_annual_option && (
                                                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                                    Facturé {formatPrice(plan.annual_price)} par an
+                                                    Facturé {formatPrice(plan.annual_price!)} par an
                                                     <span className="ml-2 text-green-600">(économie de {plan.annual_discount_percent}%)</span>
                                                 </p>
                                             )}
@@ -191,11 +191,35 @@ export default function Plans({
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        // Utiliser la route payment.subscription au lieu de subscription.plans.subscribe
-                                                        post(route('payment.subscription', plan.id), {
-                                                            payment_method: data.payment_method,
-                                                            duration: duration
-                                                        });
+                                                        // Create a form element to submit as POST
+                                                        const form = document.createElement('form');
+                                                        form.method = 'POST';
+                                                        form.action = route('payment.subscription', plan.id);
+                                                        
+                                                        // Add CSRF token
+                                                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                                                        const csrfInput = document.createElement('input');
+                                                        csrfInput.type = 'hidden';
+                                                        csrfInput.name = '_token';
+                                                        csrfInput.value = csrfToken;
+                                                        
+                                                        // Add payment_method and duration
+                                                        const paymentInput = document.createElement('input');
+                                                        paymentInput.type = 'hidden';
+                                                        paymentInput.name = 'payment_method';
+                                                        paymentInput.value = data.payment_method;
+                                                        
+                                                        const durationInput = document.createElement('input');
+                                                        durationInput.type = 'hidden';
+                                                        durationInput.name = 'duration';
+                                                        durationInput.value = duration;
+                                                        
+                                                        form.appendChild(csrfInput);
+                                                        form.appendChild(paymentInput);
+                                                        form.appendChild(durationInput);
+                                                        
+                                                        document.body.appendChild(form);
+                                                        form.submit();
                                                     }}
                                                     disabled={currentPlanId === plan.id || processing}
                                                     className={`mt-8 block w-full rounded-lg px-4 py-3 text-center text-sm font-semibold  
@@ -214,11 +238,41 @@ export default function Plans({
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            post(route('payment.subscription', [plan.id]), {
-                                                                payment_method: data.payment_method,
-                                                                duration: duration,
-                                                                simulation_mode: true
-                                                            });
+                                                            // Create a form element to submit as POST
+                                                            const form = document.createElement('form');
+                                                            form.method = 'POST';
+                                                            form.action = route('payment.subscription', plan.id);
+                                                            
+                                                            // Add CSRF token
+                                                            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                                                            const csrfInput = document.createElement('input');
+                                                            csrfInput.type = 'hidden';
+                                                            csrfInput.name = '_token';
+                                                            csrfInput.value = csrfToken;
+                                                            
+                                                            // Add payment_method, duration, and simulation_mode
+                                                            const paymentInput = document.createElement('input');
+                                                            paymentInput.type = 'hidden';
+                                                            paymentInput.name = 'payment_method';
+                                                            paymentInput.value = data.payment_method;
+                                                            
+                                                            const durationInput = document.createElement('input');
+                                                            durationInput.type = 'hidden';
+                                                            durationInput.name = 'duration';
+                                                            durationInput.value = duration;
+                                                            
+                                                            const simulationInput = document.createElement('input');
+                                                            simulationInput.type = 'hidden';
+                                                            simulationInput.name = 'simulation_mode';
+                                                            simulationInput.value = 'true';
+                                                            
+                                                            form.appendChild(csrfInput);
+                                                            form.appendChild(paymentInput);
+                                                            form.appendChild(durationInput);
+                                                            form.appendChild(simulationInput);
+                                                            
+                                                            document.body.appendChild(form);
+                                                            form.submit();
                                                         }}
                                                         disabled={processing}
                                                         className="mt-2 block w-full rounded-lg border border-indigo-600 bg-white px-4 py-2 text-center text-sm font-medium text-indigo-600 hover:bg-indigo-50 dark:border-indigo-400 dark:bg-transparent dark:text-indigo-400 dark:hover:bg-gray-800"

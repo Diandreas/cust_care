@@ -7,31 +7,31 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Création des tables pour la gestion des clients et des campagnes
+     * Création des tables pour la gestion des clients
      */
     public function up(): void
     {
-        // Table des tags
-        Schema::create('tags', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->timestamps();
-            // Assurer que les noms de tags sont uniques par utilisateur
-            $table->unique(['name', 'user_id']);
-        });
-
         // Table des clients
         Schema::create('clients', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->enum('gender', ['male', 'female', 'other'])->nullable();
-            $table->string('phone');
+            $table->string('phone')->index();
             $table->string('email')->nullable();
             $table->date('birthday')->nullable();
+            $table->enum('gender', ['male', 'female', 'other'])->nullable();
             $table->string('address')->nullable();
             $table->text('notes')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        // Table des tags
+        Schema::create('tags', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->string('color')->default('#6B7280');
             $table->timestamps();
         });
 
@@ -41,68 +41,56 @@ return new class extends Migration
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
             $table->foreignId('tag_id')->constrained()->onDelete('cascade');
             $table->timestamps();
-            // Éviter les doublons
-            $table->unique(['client_id', 'tag_id']);
         });
 
-        // Table des modèles de messages
-        Schema::create('templates', function (Blueprint $table) {
+        // Table des visites client
+        Schema::create('visits', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('name');
-            $table->text('content');
-            $table->boolean('is_global')->default(false);
-            $table->timestamps();
-        });
-
-        // Table des campagnes
-        Schema::create('campaigns', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('name');
-            $table->text('message_content');
-            $table->timestamp('scheduled_at')->nullable();
-            $table->enum('status', ['draft', 'scheduled', 'sending', 'sent', 'partially_sent', 'paused', 'failed', 'cancelled'])->default('draft');
-            $table->integer('recipients_count')->default(0);
-            $table->integer('delivered_count')->default(0);
-            $table->integer('failed_count')->default(0);
-            $table->timestamps();
-        });
-
-        // Table pivot campagne-client
-        Schema::create('campaign_client', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('campaign_id')->constrained()->onDelete('cascade');
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->date('visit_date');
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
 
-        // Table des messages
+        // Table des messages (SMS/WhatsApp)
         Schema::create('messages', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('client_id')->constrained()->onDelete('cascade');
-            $table->foreignId('campaign_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('campaign_id')->nullable()->constrained()->onDelete('set null');
             $table->text('content');
-            $table->enum('status', ['sent', 'delivered', 'failed'])->default('sent');
-            $table->enum('type', ['promotional', 'personal', 'automatic'])->default('personal');
+            $table->enum('status', ['pending', 'sent', 'delivered', 'failed'])->default('pending');
+            $table->boolean('is_reply')->default(false);
             $table->timestamp('sent_at')->nullable();
             $table->timestamp('delivered_at')->nullable();
+            $table->timestamps();
+        });
+
+        // Table des messages Twilio
+        Schema::create('twilio_messages', function (Blueprint $table) {
+            $table->id();
+            $table->string('twilio_sid')->unique();
+            $table->foreignId('message_id')->nullable()->constrained()->onDelete('set null');
+            $table->string('from_number');
+            $table->string('to_number');
+            $table->text('content');
+            $table->string('status');
+            $table->json('response_data')->nullable();
             $table->timestamps();
         });
     }
 
     /**
-     * Suppression des tables de gestion client
+     * Suppression des tables de gestion des clients
      */
     public function down(): void
     {
+        Schema::dropIfExists('twilio_messages');
         Schema::dropIfExists('messages');
-        Schema::dropIfExists('campaign_client');
-        Schema::dropIfExists('campaigns');
-        Schema::dropIfExists('templates');
+        Schema::dropIfExists('visits');
         Schema::dropIfExists('client_tag');
-        Schema::dropIfExists('clients');
         Schema::dropIfExists('tags');
+        Schema::dropIfExists('clients');
     }
 };

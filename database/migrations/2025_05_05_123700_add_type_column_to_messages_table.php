@@ -8,12 +8,15 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * Ajoute la colonne is_reply à la table messages pour identifier les réponses des clients
      */
     public function up(): void
     {
         Schema::table('messages', function (Blueprint $table) {
-            $table->boolean('is_reply')->default(false)->after('type');
+            if (!Schema::hasColumn('messages', 'type')) {
+                $table->enum('type', ['promotional', 'transactional', 'personal', 'other'])
+                    ->default('personal')
+                    ->after('status');
+            }
         });
     }
 
@@ -23,7 +26,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('messages', function (Blueprint $table) {
-            $table->dropColumn('is_reply');
+            if (Schema::hasColumn('messages', 'type')) {
+                $table->dropColumn('type');
+            }
         });
     }
 };

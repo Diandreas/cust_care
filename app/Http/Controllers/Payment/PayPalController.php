@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Payment;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\PaymentController;
-use App\Models\SubscriptionPlan;
+use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -18,12 +18,12 @@ class PayPalController extends Controller
     {
         $validated = $request->validate([
             'orderID' => 'required|string',
-            'plan_id' => 'required|integer|exists:subscription_plans,id',
+            'plan_id' => 'required|integer|exists:plans,id',
             'duration' => 'required|string|in:monthly,annual',
             'paypalDetails' => 'required|array'
         ]);
         
-        $plan = SubscriptionPlan::findOrFail($validated['plan_id']);
+        $plan = Plan::findOrFail($validated['plan_id']);
         $user = Auth::user();
         
         // Vérifier le paiement PayPal

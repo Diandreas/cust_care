@@ -12,10 +12,6 @@ use App\Models\Visit;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Database\Seeders\CalendarEventsSeeder;
-use Database\Seeders\SubscriptionPlanSeeder;
-use Database\Seeders\TestUsersSeeder;
-use Database\Seeders\NameDaysSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -32,10 +28,8 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
-            SubscriptionPlanSeeder::class,
-            CalendarEventsSeeder::class,
-            NameDaysSeeder::class,
-            TestUsersSeeder::class,
+             PlanSeeder::class,
+            TestUsersSeeder::class, // Commented out until dependencies are fixed
         ]);
     }
 }

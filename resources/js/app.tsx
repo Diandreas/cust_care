@@ -10,6 +10,19 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from './Components/Toaster';
+import axios from 'axios';
+
+// Configure Axios globally for CSRF protection
+axios.defaults.withCredentials = true;
+axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+
+// Get CSRF token from meta tag
+const token = document.head.querySelector('meta[name="csrf-token"]');
+if (token) {
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content');
+} else {
+    console.error('CSRF token not found');
+}
 
 // Script d'initialisation du thème qui s'exécute immédiatement
 (function initializeTheme() {

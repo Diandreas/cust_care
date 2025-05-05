@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\SubscriptionPlan;
+use App\Models\Plan;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -16,74 +16,71 @@ class SubscriptionPlanSeeder extends Seeder
         $plans = [
             [
                 'name' => 'Pack Starter',
-                'code' => 'starter',
+                'slug' => 'starter',
                 'price' => 5000,
-                'annual_price' => 48000, // 4000/mois pour engagement annuel (20% de réduction)
-                'has_annual_option' => true,
-                'annual_discount_percent' => 20,
+                'billing_period' => 'monthly',
                 'max_clients' => 100,
-                'max_campaigns_per_month' => 2,
-                'total_campaign_sms' => 200,
-                'monthly_sms_quota' => 50,
-                'unused_sms_rollover_percent' => 0.00,
-                'description' => 'Pack de démarrage pour petites entreprises',
-                'features' => [
+                'monthly_messages' => 250, // 200 campaign + 50 personal
+                'monthly_campaigns' => 2,
+                'advanced_analytics' => false,
+                'custom_templates' => false,
+                'features' => json_encode([
                     'Jusqu\'à 100 clients dans la base de données',
-                    '2 campagnes par mois (200 SMS au total)',
-                    '50 SMS de réserve mensuelle',
+                    '2 campagnes par mois',
+                    '250 SMS mensuels inclus',
                     'Les SMS non utilisés expirent à la fin du mois',
                     'Option annuelle disponible avec 20% de réduction'
-                ],
-                'is_active' => true
+                ]),
+                'is_active' => true,
+                'is_featured' => false
             ],
             [
                 'name' => 'Pack Business',
-                'code' => 'business',
+                'slug' => 'business',
                 'price' => 15000,
-                'annual_price' => 144000, // 12000/mois pour engagement annuel (20% de réduction)
-                'has_annual_option' => true,
-                'annual_discount_percent' => 20,
+                'billing_period' => 'monthly',
                 'max_clients' => 500,
-                'max_campaigns_per_month' => 4,
-                'total_campaign_sms' => 1000,
-                'monthly_sms_quota' => 200,
-                'unused_sms_rollover_percent' => 0.10,
-                'description' => 'Pack pour entreprises en croissance',
-                'features' => [
+                'monthly_messages' => 1200, // 1000 campaign + 200 personal
+                'monthly_campaigns' => 4,
+                'advanced_analytics' => true,
+                'custom_templates' => true,
+                'features' => json_encode([
                     'Jusqu\'à 500 clients dans la base de données',
-                    '4 campagnes par mois (1000 SMS au total)',
-                    '200 SMS de réserve mensuelle',
-                    '10% des SMS non utilisés sont reportés au mois suivant',
+                    '4 campagnes par mois',
+                    '1200 SMS mensuels inclus',
+                    'Analytique avancée des performances',
+                    'Modèles de messages personnalisés',
                     'Option annuelle disponible avec 20% de réduction'
-                ],
-                'is_active' => true
+                ]),
+                'is_active' => true,
+                'is_featured' => true
             ],
             [
                 'name' => 'Pack Enterprise',
-                'code' => 'enterprise',
+                'slug' => 'enterprise',
                 'price' => 30000,
-                'annual_price' => 288000, // 24000/mois pour engagement annuel (20% de réduction)
-                'has_annual_option' => true,
-                'annual_discount_percent' => 20,
+                'billing_period' => 'monthly',
                 'max_clients' => 2000,
-                'max_campaigns_per_month' => 8,
-                'total_campaign_sms' => 4000,
-                'monthly_sms_quota' => 500,
-                'unused_sms_rollover_percent' => 0.20,
-                'description' => 'Pack pour grandes entreprises',
-                'features' => [
+                'monthly_messages' => 4500, // 4000 campaign + 500 personal
+                'monthly_campaigns' => 8,
+                'advanced_analytics' => true,
+                'custom_templates' => true,
+                'features' => json_encode([
                     'Jusqu\'à 2000 clients dans la base de données',
-                    '8 campagnes par mois (4000 SMS au total)',
-                    '500 SMS de réserve mensuelle',
-                    '20% des SMS non utilisés sont reportés au mois suivant',
+                    '8 campagnes par mois',
+                    '4500 SMS mensuels inclus',
+                    'Analytique avancée des performances',
+                    'Modèles de messages personnalisés',
+                    'Support prioritaire',
                     'Option annuelle disponible avec 20% de réduction'
-                ],
-                'is_active' => true
+                ]),
+                'is_active' => true,
+                'is_featured' => false
             ]
         ];
 
         foreach ($plans as $plan) {
-            SubscriptionPlan::create($plan);
+            Plan::create($plan);
         }
     }
 }

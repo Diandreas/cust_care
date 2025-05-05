@@ -7,27 +7,25 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Création des tables pour la gestion des abonnements et transactions
+     * Création des tables pour les abonnements et transactions
      */
     public function up(): void
     {
         // Table des plans d'abonnement
-        Schema::create('subscription_plans', function (Blueprint $table) {
+        Schema::create('plans', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code')->unique();
+            $table->string('slug')->unique();
             $table->decimal('price', 10, 2);
-            $table->decimal('annual_price', 10, 2)->nullable();
-            $table->boolean('has_annual_option')->default(false);
-            $table->integer('annual_discount_percent')->default(0);
+            $table->enum('billing_period', ['monthly', 'yearly'])->default('monthly');
             $table->integer('max_clients');
-            $table->integer('max_campaigns_per_month');
-            $table->integer('total_campaign_sms');
-            $table->integer('monthly_sms_quota');
-            $table->decimal('unused_sms_rollover_percent', 5, 2)->default(0);
-            $table->text('description')->nullable();
-            $table->json('features')->nullable();
+            $table->integer('monthly_messages');
+            $table->integer('monthly_campaigns');
+            $table->boolean('advanced_analytics')->default(false);
+            $table->boolean('custom_templates')->default(false);
+            $table->text('features')->nullable(); // JSON des fonctionnalités formatées pour affichage
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_featured')->default(false);
             $table->timestamps();
         });
 
@@ -35,21 +33,12 @@ return new class extends Migration
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('plan_id')->nullable()->constrained('subscription_plans')->nullOnDelete();
-            $table->enum('plan', ['starter', 'business', 'enterprise']);
-            $table->timestamp('starts_at');
-            $table->timestamp('expires_at');
-            $table->integer('clients_limit');
-            $table->integer('campaigns_limit');
-            $table->integer('campaign_sms_limit')->default(0);
-            $table->integer('personal_sms_quota')->default(0);
-            $table->integer('sms_used')->default(0);
-            $table->integer('campaigns_used')->default(0);
-            $table->date('next_renewal_date')->nullable();
-            $table->enum('status', ['active', 'expired', 'cancelled'])->default('active');
-            $table->enum('duration', ['monthly', 'annual'])->default('monthly');
-            $table->boolean('is_auto_renew')->default(true);
-            $table->json('features')->nullable();
+            $table->foreignId('plan_id')->constrained()->onDelete('restrict');
+            $table->string('status');
+            $table->timestamp('started_at');
+            $table->timestamp('ends_at')->nullable();
+            $table->timestamp('trial_ends_at')->nullable();
+            $table->boolean('auto_renew')->default(true);
             $table->timestamps();
         });
 
@@ -57,12 +46,48 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('description');
+            $table->foreignId('subscription_id')->nullable()->constrained()->onDelete('set null');
+            $table->string('transaction_id')->unique()->nullable();
+            $table->string('payment_method')->nullable();
             $table->decimal('amount', 10, 2);
-            $table->enum('type', ['subscription', 'addon', 'refund'])->default('subscription');
-            $table->enum('status', ['completed', 'pending', 'failed'])->default('pending');
-            $table->string('reference')->nullable(); // External payment reference
-            $table->json('metadata')->nullable(); // Additional data about the transaction
+            $table->string('currency', 3)->default('EUR');
+            $table->enum('status', ['pending', 'completed', 'failed', 'refunded'])->default('pending');
+            $table->text('description')->nullable();
+            $table->json('metadata')->nullable();
+            $table->timestamps();
+        });
+
+        // Table des transactions en attente
+        Schema::create('pending_transactions', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('plan_id')->constrained()->onDelete('cascade');
+            $table->decimal('amount', 10, 2);
+            $table->string('currency', 3)->default('EUR');
+            $table->string('payment_intent_id')->nullable()->unique();
+            $table->enum('status', ['pending', 'processing', 'completed', 'failed', 'cancelled'])->default('pending');
+            $table->json('metadata')->nullable();
+            $table->timestamps();
+        });
+
+        // Table des soldes SMS par utilisateur
+        Schema::create('sms_balances', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->integer('balance')->default(0);
+            $table->integer('consumed')->default(0);
+            $table->timestamp('reset_date')->nullable();
+            $table->timestamps();
+        });
+
+        // Table des achats de crédits SMS supplémentaires
+        Schema::create('sms_purchases', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('transaction_id')->constrained()->onDelete('cascade');
+            $table->integer('quantity');
+            $table->decimal('unit_price', 8, 4);
+            $table->decimal('total_price', 10, 2);
             $table->timestamps();
         });
     }
@@ -72,8 +97,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('sms_purchases');
+        Schema::dropIfExists('sms_balances');
+        Schema::dropIfExists('pending_transactions');
         Schema::dropIfExists('transactions');
         Schema::dropIfExists('subscriptions');
-        Schema::dropIfExists('subscription_plans');
+        Schema::dropIfExists('plans');
     }
 };

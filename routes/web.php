@@ -8,7 +8,6 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\AutomaticEventsController;
 use App\Http\Controllers\SubscriptionController;
-use App\Http\Controllers\SubscriptionPlanController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\CampaignRetryController;
@@ -139,9 +138,9 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
         Route::get('/dashboard', [SubscriptionController::class, 'dashboard'])->name('subscription.dashboard');
         Route::get('/plans', [SubscriptionController::class, 'plans'])->name('subscription.plans');
         Route::post('/subscribe', [SubscriptionController::class, 'subscribe'])->name('subscription.subscribe');
-        Route::post('/plans/{plan}/subscribe', [SubscriptionPlanController::class, 'subscribe'])->name('subscription.plans.subscribe');
+        Route::post('/plans/{plan}/subscribe', [PaymentController::class, 'processSubscriptionPayment'])->name('subscription.plans.subscribe');
         Route::get('/addons', [SubscriptionController::class, 'addons'])->name('subscription.addons.index');
-        Route::post('/addons', [SubscriptionPlanController::class, 'purchaseAddons'])->name('subscription.addons');
+        Route::post('/addons', [PaymentController::class, 'processAddonPayment'])->name('subscription.addons');
         Route::get('/transactions', [SubscriptionController::class, 'transactions'])->name('subscription.transactions');
         Route::get('/top-up', [SubscriptionController::class, 'topUp'])->name('subscription.top-up');
         Route::get('/increase-limit', [SubscriptionController::class, 'increaseLimit'])->name('subscription.increase-limit');
@@ -153,8 +152,8 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
 
     // Paiement
     Route::get('payment/confirmation', [PaymentController::class, 'showPaymentConfirmation'])->name('payment.confirmation');
-    Route::post('payment/subscription/{plan}', [PaymentController::class, 'processSubscriptionPayment'])->name('payment.subscription');
-    Route::post('payment/addon', [PaymentController::class, 'processAddonPayment'])->name('payment.addon');
+    Route::match(['get', 'post'], 'payment/subscription/{plan}', [PaymentController::class, 'processSubscriptionPayment'])->name('payment.subscription');
+    Route::match(['get', 'post'], 'payment/addon', [PaymentController::class, 'processAddonPayment'])->name('payment.addon');
 
     // Routes pour les paiements d'abonnement
     Route::post('api/notchpay/subscribe', [App\Http\Controllers\Payment\NotchPayController::class, 'initializeSubscriptionPayment'])
@@ -199,11 +198,11 @@ Route::middleware(['auth', 'verified', 'web'])->group(function () {
     });
     
     // Pour le développement seulement - Activation directe d'abonnement
-    Route::get('payment/direct-activation/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
+    Route::match(['get', 'post'], 'payment/direct-activation/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
         ->name('payment.direct.activation');
         
     // Route d'activation directe pour les tests
-    Route::get('/direct-activate-plan/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
+    Route::match(['get', 'post'], '/direct-activate-plan/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
         ->name('direct.activate.plan');
         
     // Profil

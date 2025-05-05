@@ -364,39 +364,22 @@ export default function ClientsIndex({
             });
     };
 
-    // Handle simple text import (name + phone)
+    // Handle simple import with just names and phone numbers
     const handleSimpleImport = () => {
         if (!contactsText.trim()) {
-            toast.error(t('import.textRequired'));
+            toast.error(t('import.noContacts'));
             return;
         }
 
         setImportLoading(true);
 
+        // Parse contacts from text area
+        // Format: Name - Phone Number (one per line)
         const lines = contactsText.trim().split('\n');
         const contacts = lines.map(line => {
-            // Try different delimiters (space, comma, semicolon)
-            let parts: string[];
-            if (line.includes(',')) {
-                parts = line.split(',');
-            } else if (line.includes(';')) {
-                parts = line.split(';');
-            } else {
-                // Split by last space to take everything before as name
-                const lastSpaceIndex = line.lastIndexOf(' ');
-                if (lastSpaceIndex > 0) {
-                    parts = [
-                        line.substring(0, lastSpaceIndex),
-                        line.substring(lastSpaceIndex + 1)
-                    ];
-                } else {
-                    parts = line.split(' ');
-                }
-            }
-
-            const name = parts[0]?.trim() || '';
-            const phone = parts[1]?.trim().replace(/\s+/g, '') || '';
-
+            const parts = line.split('-').map(part => part.trim());
+            const name = parts[0];
+            const phone = parts.length > 1 ? parts[1] : '';
             return { name, phone };
         }).filter(c => c.name && c.phone); // Filter incomplete lines
 
@@ -406,9 +389,22 @@ export default function ClientsIndex({
             return;
         }
 
-        axios.post(route('clients.import.simple'), {
-            contacts: JSON.stringify(contacts)
-        })
+        // Ensure CSRF token is fresh
+        const token = document.head.querySelector('meta[name="csrf-token"]');
+        if (token) {
+            axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content');
+        }
+
+        // First refresh CSRF token, then submit
+        axios.get('/sanctum/csrf-cookie', { withCredentials: true })
+            .then(() => {
+                // Submit with fresh token
+                return axios.post(route('clients.import.simple'), {
+                    contacts: JSON.stringify(contacts)
+                }, {
+                    withCredentials: true
+                });
+            })
             .then(response => {
                 setImportLoading(false);
                 toast.success(t('import.success', { count: response.data.imported || 0 }));
@@ -424,7 +420,9 @@ export default function ClientsIndex({
             .catch(err => {
                 setImportLoading(false);
 
-                if (err.response && err.response.status === 403) {
+                if (err.response && err.response.status === 419) {
+                    toast.error("Session expirée. Veuillez recharger la page.");
+                } else if (err.response && err.response.status === 403) {
                     toast.error(t('subscription.limit.upgradeRequired'));
                 } else {
                     toast.error(t('common.importError', {
@@ -448,15 +446,28 @@ export default function ClientsIndex({
             return;
         }
 
+        // Ensure CSRF token is fresh
+        const token = document.head.querySelector('meta[name="csrf-token"]');
+        if (token) {
+            axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content');
+        }
+
         // Utiliser le numéro formaté
         const normalizedPhone = phoneCheck.formattedNumber;
 
-        axios.post(route('clients.store'), {
-            name: quickAddForm.name,
-            phone: normalizedPhone,
-            gender: quickAddForm.gender,
-            tag_ids: quickAddForm.tagIds
-        })
+        // First refresh CSRF token, then submit
+        axios.get('/sanctum/csrf-cookie', { withCredentials: true })
+            .then(() => {
+                // Submit with fresh token
+                return axios.post(route('clients.store'), {
+                    name: quickAddForm.name,
+                    phone: normalizedPhone,
+                    gender: quickAddForm.gender,
+                    tag_ids: quickAddForm.tagIds
+                }, {
+                    withCredentials: true
+                });
+            })
             .then(response => {
                 toast.success(t('clients.added'));
                 setShowQuickAddModal(false);
@@ -474,7 +485,9 @@ export default function ClientsIndex({
                 });
             })
             .catch(err => {
-                if (err.response && err.response.status === 403) {
+                if (err.response && err.response.status === 419) {
+                    toast.error("Session expirée. Veuillez recharger la page.");
+                } else if (err.response && err.response.status === 403) {
                     toast.error(t('subscription.limit.upgradeRequired'));
                 } else {
                     toast.error(t('common.error', {

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Subscription;
-use App\Models\SubscriptionPlan;
+use App\Models\Plan;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

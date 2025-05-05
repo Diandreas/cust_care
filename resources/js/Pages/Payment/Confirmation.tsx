@@ -4,17 +4,18 @@ import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 
-interface SubscriptionPlan {
+interface Plan {
     id: number;
     name: string;
+    code: string;
     price: number;
-    annual_price: number;
-    has_annual_option: boolean;
-    annual_discount_percent: number;
+    annual_price?: number;
+    annual_discount_percent?: number;
+    description: string;
 }
 
 interface ConfirmationProps {
-    plan: SubscriptionPlan | null;
+    plan: Plan | null;
     addonType: 'sms' | 'clients' | null;
     quantity: number | null;
     amount: number;
@@ -105,18 +106,83 @@ export default function Confirmation({
         } else {
             // Méthode traditionnelle avec simulation
             if (plan) {
-                router.post(route('payment.subscription', plan.id), {
-                    payment_method: paymentMethod,
-                    duration: duration,
-                    simulation_mode: true,
-                });
+                // Create and submit a POST form
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = route('payment.subscription', plan.id);
+                
+                // Add CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                
+                // Add payment method, duration, and simulation mode
+                const paymentInput = document.createElement('input');
+                paymentInput.type = 'hidden';
+                paymentInput.name = 'payment_method';
+                paymentInput.value = paymentMethod;
+                
+                const durationInput = document.createElement('input');
+                durationInput.type = 'hidden';
+                durationInput.name = 'duration';
+                durationInput.value = duration;
+                
+                const simulationInput = document.createElement('input');
+                simulationInput.type = 'hidden';
+                simulationInput.name = 'simulation_mode';
+                simulationInput.value = 'true';
+                
+                form.appendChild(csrfInput);
+                form.appendChild(paymentInput);
+                form.appendChild(durationInput);
+                form.appendChild(simulationInput);
+                
+                document.body.appendChild(form);
+                form.submit();
             } else if (addonType) {
-                router.post(route('payment.addon'), {
-                    addon_type: addonType,
-                    quantity: quantity,
-                    payment_method: paymentMethod,
-                    simulation_mode: true,
-                });
+                // Create and submit a POST form for addon
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = route('payment.addon');
+                
+                // Add CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                
+                // Add addon_type, quantity, payment_method, and simulation mode
+                const addonTypeInput = document.createElement('input');
+                addonTypeInput.type = 'hidden';
+                addonTypeInput.name = 'addon_type';
+                addonTypeInput.value = addonType;
+                
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'hidden';
+                quantityInput.name = 'quantity';
+                quantityInput.value = quantity?.toString() || '1';
+                
+                const paymentInput = document.createElement('input');
+                paymentInput.type = 'hidden';
+                paymentInput.name = 'payment_method';
+                paymentInput.value = paymentMethod;
+                
+                const simulationInput = document.createElement('input');
+                simulationInput.type = 'hidden';
+                simulationInput.name = 'simulation_mode';
+                simulationInput.value = 'true';
+                
+                form.appendChild(csrfInput);
+                form.appendChild(addonTypeInput);
+                form.appendChild(quantityInput);
+                form.appendChild(paymentInput);
+                form.appendChild(simulationInput);
+                
+                document.body.appendChild(form);
+                form.submit();
             }
         }
     };

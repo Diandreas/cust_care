@@ -11,6 +11,9 @@ import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
 import { Check, X } from 'lucide-react';
 
+// Make sure CSRF token is included in all requests
+axios.defaults.withCredentials = true;
+
 interface Tag {
     id: number;
     name: string;
@@ -54,6 +57,17 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
     useEffect(() => {
         setData('tags', selectedTags);
     }, [selectedTags]);
+
+    // Ensure CSRF token is properly set
+    useEffect(() => {
+        // Get CSRF token from meta tag
+        const token = document.head.querySelector('meta[name="csrf-token"]');
+        if (token) {
+            axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content');
+        } else {
+            console.error('CSRF token not found');
+        }
+    }, []);
 
     // Validation et formatage avancés du numéro de téléphone
     const validateAndFormatPhone = (phone: string): PhoneValidation => {
@@ -201,9 +215,20 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
             return;
         }
 
-        axios.post(route('tags.store'), {
-            name: newTagName,
-        })
+        // Make sure to get fresh CSRF token
+        const token = document.head.querySelector('meta[name="csrf-token"]');
+        if (token) {
+            axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content');
+        }
+
+        // First, try to get a new CSRF token
+        axios.get('/sanctum/csrf-cookie', { withCredentials: true })
+            .then(() => {
+                // Now make the actual request with the refreshed token
+                return axios.post(route('tags.store'), {
+                    name: newTagName,
+                });
+            })
             .then(response => {
                 success(t('tags.createSuccess'));
                 setNewTagName('');
@@ -214,6 +239,9 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
             })
             .catch(err => {
                 error(t('tags.createError'));
+                if (err.response && err.response.status === 419) {
+                    error("Session expirée. Veuillez recharger la page.");
+                }
             });
     };
 
@@ -227,22 +255,39 @@ export default function Create({ auth, tags }: PageProps<{ tags: Tag[] }>) {
             return;
         }
 
+        // Ensure CSRF token is fresh
+        const token = document.head.querySelector('meta[name="csrf-token"]');
+        if (token) {
+            axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content');
+        }
+
         // Utiliser le numéro formaté pour la soumission
         const formData = { ...data, phone: validation.formattedNumber };
 
-        post(route('clients.store', formData), {
-            onSuccess: () => {
-                success(t('clients.createSuccess'));
-                reset();
-            },
-            onError: (errors) => {
-                if (errors.limit) {
-                    error(t('subscription.limit.upgradeRequired'));
-                } else {
-                    error(t('common.error'));
-                }
-            }
-        });
+        // Refresh CSRF token first, then submit
+        axios.get('/sanctum/csrf-cookie', { withCredentials: true })
+            .then(() => {
+                // Now submit the form with the refreshed token
+                post(route('clients.store', formData), {
+                    onSuccess: () => {
+                        success(t('clients.createSuccess'));
+                        reset();
+                    },
+                    onError: (errors) => {
+                        if (errors.limit) {
+                            error(t('subscription.limit.upgradeRequired'));
+                        } else if (errors.csrf) {
+                            error("Erreur CSRF. Veuillez recharger la page.");
+                        } else {
+                            error(t('common.error'));
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                error("Erreur lors du rafraîchissement du token. Veuillez recharger la page.");
+                console.error("CSRF refresh error:", err);
+            });
     };
 
     return (

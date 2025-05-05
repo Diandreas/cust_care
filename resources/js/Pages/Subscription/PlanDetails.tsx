@@ -4,7 +4,7 @@ import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 
-interface SubscriptionPlan {
+interface Plan {
     id: number;
     name: string;
     code: string;
@@ -20,7 +20,7 @@ interface SubscriptionPlan {
 }
 
 interface PlanDetailsProps {
-    plan: SubscriptionPlan;
+    plan: Plan;
     userHasPlan: boolean;
 }
 
@@ -43,10 +43,36 @@ export default function PlanDetails({
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('payment.subscription', plan.id), {
-            payment_method: data.payment_method,
-            duration: 'monthly'
-        });
+        
+        // Create a form element to submit as POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = route('payment.subscription', plan.id);
+        
+        // Add CSRF token
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = csrfToken;
+        
+        // Add payment method and duration
+        const paymentInput = document.createElement('input');
+        paymentInput.type = 'hidden';
+        paymentInput.name = 'payment_method';
+        paymentInput.value = data.payment_method;
+        
+        const durationInput = document.createElement('input');
+        durationInput.type = 'hidden';
+        durationInput.name = 'duration';
+        durationInput.value = 'monthly';
+        
+        form.appendChild(csrfInput);
+        form.appendChild(paymentInput);
+        form.appendChild(durationInput);
+        
+        document.body.appendChild(form);
+        form.submit();
     };
 
     return (

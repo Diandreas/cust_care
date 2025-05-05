@@ -19,12 +19,13 @@ class Subscription extends Model
         'status',
         'clients_limit',
         'campaigns_limit',
-        'campaign_sms_limit',
+        'sms_allowed',
         'personal_sms_quota',
         'sms_used',
         'campaigns_used',
         'next_renewal_date',
-        'auto_renew',
+        'is_auto_renew',
+        'duration',
         'features'
     ];
 
@@ -32,7 +33,7 @@ class Subscription extends Model
         'starts_at' => 'datetime',
         'expires_at' => 'datetime',
         'next_renewal_date' => 'date',
-        'auto_renew' => 'boolean',
+        'is_auto_renew' => 'boolean',
         'features' => 'array'
     ];
 
@@ -49,7 +50,7 @@ class Subscription extends Model
      */
     public function plan(): BelongsTo
     {
-        return $this->belongsTo(SubscriptionPlan::class, 'plan_id');
+        return $this->belongsTo(Plan::class, 'plan_id');
     }
 
     /**
