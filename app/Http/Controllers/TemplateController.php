@@ -12,9 +12,11 @@ class TemplateController extends Controller
     public function index()
     {
         $templates = Auth::user()->templates()->get();
+        $isAdmin = Auth::user()->role === 'admin';
         
         return Inertia::render('Templates/Index', [
-            'templates' => $templates
+            'templates' => $templates,
+            'isAdmin' => $isAdmin
         ]);
     }
     
