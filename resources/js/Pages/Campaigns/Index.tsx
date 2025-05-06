@@ -61,7 +61,9 @@ import {
     PanelRightClose,
     Tag as TagIcon,
     ArrowRight,
-    Info
+    Info,
+    Zap,
+    Gift
 } from 'lucide-react';
 
 interface CampaignsIndexProps {
@@ -155,7 +157,7 @@ export default function CampaignsIndex({
             // Search filter
             const searchMatches = filterData.search === "" ||
                 campaign.name.toLowerCase().includes(filterData.search.toLowerCase()) ||
-                (campaign.subject && campaign.subject.toLowerCase().includes(filterData.search.toLowerCase()));
+                (campaign.message_content && campaign.message_content.toLowerCase().includes(filterData.search.toLowerCase()));
 
             return statusMatches && searchMatches;
         });
@@ -186,7 +188,7 @@ export default function CampaignsIndex({
             if (value.length >= 2) {
                 const results = campaigns.data.filter(campaign =>
                     campaign.name.toLowerCase().includes(value.toLowerCase()) ||
-                    (campaign.subject && campaign.subject.toLowerCase().includes(value.toLowerCase()))
+                    (campaign.message_content && campaign.message_content.toLowerCase().includes(value.toLowerCase()))
                 );
                 setSearchResults(results);
                 setShowSearchResults(true);
@@ -237,7 +239,7 @@ export default function CampaignsIndex({
         });
     };
 
-    // Gestion du formulaire Quick Add (implémentation simplifiée comme dans ClientsIndex)
+    // Gestion du formulaire Quick Add
     const handleQuickAdd = () => {
         if (!quickAddForm.name || !quickAddForm.message_content) {
             toast.error(t('campaigns.quickAddRequiredFields'));
@@ -251,6 +253,7 @@ export default function CampaignsIndex({
 
         setIsLoading(true);
 
+        // Utiliser Axios plutôt que Inertia ici pour un formulaire simple
         axios.post(route('campaigns.quick-add'), {
             name: quickAddForm.name,
             subject: quickAddForm.subject,
@@ -259,7 +262,7 @@ export default function CampaignsIndex({
             tag_id: quickAddForm.tag_id,
             send_now: quickAddForm.send_now
         })
-            .then(() => {
+            .then(response => {
                 toast.success(t('campaigns.quickAddSuccessfully', { name: quickAddForm.name }));
                 setIsLoading(false);
                 setShowQuickAddModal(false);
@@ -274,16 +277,14 @@ export default function CampaignsIndex({
                     send_now: false
                 });
 
-                // Refresh the campaigns list
-                get(route('campaigns.index'), {
-                    preserveState: true,
-                    only: ['campaigns']
-                });
+                // Reload the campaigns list
+                window.location.reload();
             })
             .catch(err => {
                 const errorMessage = err.response?.data?.message || t('campaigns.errorQuickAdd');
                 toast.error(errorMessage);
                 setIsLoading(false);
+                console.error('Error adding campaign:', err);
             });
     };
 
@@ -625,6 +626,111 @@ export default function CampaignsIndex({
         }
     };
 
+    // Enable all upcoming campaigns
+    const enableAllUpcomingCampaigns = () => {
+        if (window.confirm(t('campaigns.confirmEnableAllUpcoming'))) {
+            setIsLoading(true);
+            
+            // Filter upcoming campaigns that aren't already active
+            const upcomingCampaignIds = campaigns.data
+                .filter(campaign => {
+                    // Check if campaign is scheduled for the future
+                    const isUpcoming = campaign.scheduled_at && new Date(campaign.scheduled_at) > new Date();
+                    // Check if campaign is in draft or paused state
+                    const canBeEnabled = campaign.status === 'draft' || campaign.status === 'paused';
+                    return isUpcoming && canBeEnabled;
+                })
+                .map(campaign => campaign.id);
+                
+            if (upcomingCampaignIds.length === 0) {
+                toast.info(t('campaigns.noUpcomingCampaigns'));
+                setIsLoading(false);
+                return;
+            }
+
+            router.post(route('campaigns.bulk-enable'), { campaign_ids: upcomingCampaignIds }, {
+                onSuccess: () => {
+                    toast.success(t('campaigns.allUpcomingEnabledSuccessfully', { count: upcomingCampaignIds.length }));
+                    setIsLoading(false);
+                },
+                onError: () => {
+                    toast.error(t('campaigns.errorBulkEnabling'));
+                    setIsLoading(false);
+                }
+            });
+        }
+    };
+    
+    // Disable all campaigns
+    const disableAllCampaigns = () => {
+        if (window.confirm(t('campaigns.confirmDisableAll'))) {
+            setIsLoading(true);
+            
+            // Filter campaigns that can be disabled (not already sent or sending)
+            const disableCampaignIds = campaigns.data
+                .filter(campaign => {
+                    return !['sent', 'sending', 'partially_sent'].includes(campaign.status);
+                })
+                .map(campaign => campaign.id);
+                
+            if (disableCampaignIds.length === 0) {
+                toast.info(t('campaigns.noDisableableCampaigns'));
+                setIsLoading(false);
+                return;
+            }
+
+            router.post(route('campaigns.bulk-disable'), { campaign_ids: disableCampaignIds }, {
+                onSuccess: () => {
+                    toast.success(t('campaigns.allCampaignsDisabledSuccessfully', { count: disableCampaignIds.length }));
+                    setIsLoading(false);
+                },
+                onError: () => {
+                    toast.error(t('campaigns.errorBulkDisabling'));
+                    setIsLoading(false);
+                }
+            });
+        }
+    };
+    
+    // Disable birthday campaigns
+    const disableBirthdayCampaigns = () => {
+        if (window.confirm(t('campaigns.confirmDisableBirthday'))) {
+            setIsLoading(true);
+            
+            // Filter birthday campaigns
+            // Assuming birthday campaigns have "birthday" or "anniversaire" in their name or message content
+            const birthdayCampaignIds = campaigns.data
+                .filter(campaign => {
+                    const nameIncludes = campaign.name.toLowerCase().includes('birthday') || 
+                                         campaign.name.toLowerCase().includes('anniversaire');
+                    const messageIncludes = campaign.message_content &&
+                                          (campaign.message_content.toLowerCase().includes('birthday') || 
+                                           campaign.message_content.toLowerCase().includes('anniversaire'));
+                    const canBeDisabled = !['sent', 'sending', 'partially_sent'].includes(campaign.status);
+                    
+                    return (nameIncludes || messageIncludes) && canBeDisabled;
+                })
+                .map(campaign => campaign.id);
+                
+            if (birthdayCampaignIds.length === 0) {
+                toast.info(t('campaigns.noBirthdayCampaigns'));
+                setIsLoading(false);
+                return;
+            }
+
+            router.post(route('campaigns.bulk-disable'), { campaign_ids: birthdayCampaignIds }, {
+                onSuccess: () => {
+                    toast.success(t('campaigns.birthdayCampaignsDisabledSuccessfully', { count: birthdayCampaignIds.length }));
+                    setIsLoading(false);
+                },
+                onError: () => {
+                    toast.error(t('campaigns.errorDisablingBirthday'));
+                    setIsLoading(false);
+                }
+            });
+        }
+    };
+
     // Handle drag and drop for calendar events
     const handleEventDrop = (event: any) => {
         // Check if campaign is already sent
@@ -804,15 +910,22 @@ export default function CampaignsIndex({
 
     // Event Wrapper component to filter props
     const EventWrapper = ({ event, children }: any) => {
-        // Filtrer les props qui pourraient causer des avertissements
-        return React.cloneElement(React.Children.only(children), {
-            // Supprimer les props que React ne reconnaît pas
-            continuesPrior: undefined,
-            continuesAfter: undefined,
-            slotEnd: undefined,
-            slotStart: undefined,
-            isAllDay: undefined
-        });
+        // Instead of explicitly trying to remove specific props, 
+        // let's extract only the safe DOM props that we want to keep
+        // and create a clean props object for the DOM element
+        const child = React.Children.only(children);
+        
+        // Create a new clean props object
+        const cleanProps = {
+            className: child.props.className,
+            style: child.props.style,
+            onClick: child.props.onClick,
+            onDoubleClick: child.props.onDoubleClick,
+            // Add any other standard DOM props you want to keep
+        };
+        
+        // Clone the element with only the clean props
+        return React.cloneElement(child, cleanProps);
     };
 
     return (
@@ -887,8 +1000,8 @@ export default function CampaignsIndex({
                                                     ></div>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="font-medium truncate">{campaign.name}</div>
-                                                        {campaign.subject && (
-                                                            <div className="text-xs text-muted-foreground truncate">{campaign.subject}</div>
+                                                        {campaign.message_content && (
+                                                            <div className="text-xs text-muted-foreground truncate">{campaign.message_content.substring(0, 50)}{campaign.message_content.length > 50 ? '...' : ''}</div>
                                                         )}
                                                     </div>
                                                     <div className="text-xs text-muted-foreground">
@@ -917,6 +1030,33 @@ export default function CampaignsIndex({
                                             <CheckSquare className="h-4 w-4 mr-2" />
                                             <span>{t('campaigns.selectMode')}</span>
                                         </Button>
+                                        
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30 dark:hover:bg-blue-900/30"
+                                                >
+                                                    <Zap className="h-4 w-4 mr-2" />
+                                                    <span>{t('campaigns.quickActions')}</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem onClick={enableAllUpcomingCampaigns}>
+                                                    <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
+                                                    <span>{t('campaigns.enableAllUpcoming')}</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={disableAllCampaigns}>
+                                                    <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
+                                                    <span>{t('campaigns.disableAllCampaigns')}</span>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={disableBirthdayCampaigns}>
+                                                    <Gift className="mr-2 h-4 w-4 text-orange-500" />
+                                                    <span>{t('campaigns.disableBirthdayCampaigns')}</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
 
                                         <Button
                                             variant="outline"
@@ -1062,20 +1202,124 @@ export default function CampaignsIndex({
                                             <CardHeader className="pb-2">
                                                 <div className="flex items-center justify-between">
                                                     <CardTitle className="text-sm font-medium">
-                                                        {moment().format('MMMM YYYY')}
+                                                        {moment(selectedDate).format('MMMM YYYY')}
                                                     </CardTitle>
                                                     <div className="flex">
-                                                        <Button variant="ghost" size="icon" onClick={() => { }} className="h-7 w-7">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            onClick={() => {
+                                                                const newDate = moment(selectedDate).subtract(1, 'month').toDate();
+                                                                setSelectedDate(newDate);
+                                                                updateCurrentMonth(newDate);
+                                                            }} 
+                                                            className="h-7 w-7"
+                                                        >
                                                             <ChevronLeft className="h-4 w-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => { }} className="h-7 w-7">
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="icon" 
+                                                            onClick={() => {
+                                                                const newDate = moment(selectedDate).add(1, 'month').toDate();
+                                                                setSelectedDate(newDate);
+                                                                updateCurrentMonth(newDate);
+                                                            }} 
+                                                            className="h-7 w-7"
+                                                        >
                                                             <ChevronRight className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </div>
                                             </CardHeader>
-                                            <CardContent className="px-0 pb-2">
-                                                {/* Contenu du mini-calendrier */}
+                                            <CardContent className="px-2 pb-2">
+                                                {/* Mini-calendrier */}
+                                                <div className="text-xs">
+                                                    {/* Jours de la semaine */}
+                                                    <div className="grid grid-cols-7 text-center font-medium text-muted-foreground mb-1">
+                                                        {['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'].map((day, i) => (
+                                                            <div key={i} className="py-1">
+                                                                {day}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    
+                                                    {/* Jours du mois */}
+                                                    <div className="grid grid-cols-7 text-center">
+                                                        {(() => {
+                                                            // Générer les jours du mois pour le mini-calendrier
+                                                            const date = moment(selectedDate);
+                                                            const firstDay = moment(date).startOf('month');
+                                                            const lastDay = moment(date).endOf('month');
+                                                            const daysInMonth = date.daysInMonth();
+                                                            
+                                                            // Décalage pour commencer le 1er jour au bon endroit (0 = lundi, 6 = dimanche)
+                                                            const firstDayOfWeek = (firstDay.day() + 6) % 7; // Ajuste pour que lundi soit le premier jour
+                                                            
+                                                            // Tableau contenant tous les jours à afficher
+                                                            const days = [];
+                                                            
+                                                            // Jours du mois précédent
+                                                            for (let i = 0; i < firstDayOfWeek; i++) {
+                                                                const prevMonthDay = moment(firstDay).subtract(firstDayOfWeek - i, 'days');
+                                                                days.push({
+                                                                    day: prevMonthDay.date(),
+                                                                    inMonth: false,
+                                                                    date: prevMonthDay.toDate(),
+                                                                    isToday: prevMonthDay.isSame(moment(), 'day')
+                                                                });
+                                                            }
+                                                            
+                                                            // Jours du mois courant
+                                                            for (let i = 1; i <= daysInMonth; i++) {
+                                                                const currentDate = moment(firstDay).date(i);
+                                                                days.push({
+                                                                    day: i,
+                                                                    inMonth: true,
+                                                                    date: currentDate.toDate(),
+                                                                    isToday: currentDate.isSame(moment(), 'day'),
+                                                                    hasEvents: calendarEvents.some(event => 
+                                                                        moment(event.start).isSame(currentDate, 'day')
+                                                                    )
+                                                                });
+                                                            }
+                                                            
+                                                            // Jours du mois suivant pour compléter les 6 semaines (42 jours)
+                                                            const remainingDays = 42 - days.length;
+                                                            for (let i = 1; i <= remainingDays; i++) {
+                                                                const nextMonthDay = moment(lastDay).add(i, 'days');
+                                                                days.push({
+                                                                    day: i,
+                                                                    inMonth: false,
+                                                                    date: nextMonthDay.toDate(),
+                                                                    isToday: nextMonthDay.isSame(moment(), 'day')
+                                                                });
+                                                            }
+                                                            
+                                                            return days.map((day, i) => (
+                                                                <div 
+                                                                    key={i} 
+                                                                    className={`py-1 cursor-pointer rounded-full hover:bg-muted ${
+                                                                        !day.inMonth ? 'text-muted-foreground opacity-40' : ''
+                                                                    } ${
+                                                                        day.isToday ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''
+                                                                    } ${
+                                                                        day.hasEvents && !day.isToday ? 'font-medium text-blue-600 dark:text-blue-400' : ''
+                                                                    }`}
+                                                                    onClick={() => {
+                                                                        setSelectedDate(day.date);
+                                                                        updateCurrentMonth(day.date);
+                                                                    }}
+                                                                >
+                                                                    {day.day}
+                                                                    {day.hasEvents && !day.isToday && (
+                                                                        <div className="h-1 w-1 bg-blue-500 rounded-full mx-auto mt-0.5"></div>
+                                                                    )}
+                                                                </div>
+                                                            ));
+                                                        })()}
+                                                    </div>
+                                                </div>
                                             </CardContent>
                                         </Card>
 
@@ -1331,9 +1575,9 @@ export default function CampaignsIndex({
                                                         </CardHeader>
 
                                                         <CardContent className="pb-2">
-                                                            {campaign.subject && (
+                                                            {campaign.message_content && (
                                                                 <p className="text-sm text-muted-foreground mb-2 truncate">
-                                                                    {campaign.subject}
+                                                                    {campaign.message_content.substring(0, 50)}{campaign.message_content.length > 50 ? '...' : ''}
                                                                 </p>
                                                             )}
 
@@ -1457,7 +1701,7 @@ export default function CampaignsIndex({
                                         <DialogTitle className="text-lg font-semibold">{selectedEvent.campaign.name}</DialogTitle>
                                     </div>
                                     <DialogDescription className="mt-1.5">
-                                        {selectedEvent.campaign.subject && <p className="text-sm mb-2">{selectedEvent.campaign.subject}</p>}
+                                        {selectedEvent.campaign.message_content && <p className="text-sm mb-2">{selectedEvent.campaign.message_content.substring(0, 50)}{selectedEvent.campaign.message_content.length > 50 ? '...' : ''}</p>}
                                         <Badge
                                             variant={getStatusVariant(selectedEvent.campaign.status) as any}
                                             className="flex w-fit items-center gap-1"
@@ -1619,7 +1863,7 @@ export default function CampaignsIndex({
                                                     <div className="flex items-center">
                                                         <span>{tag.name}</span>
                                                         <Badge variant="outline" className="ml-2">
-                                                            {tag.clients_count} {t('common.clients')}
+                                                            {tag.clients_count}
                                                         </Badge>
                                                     </div>
                                                 </SelectItem>
