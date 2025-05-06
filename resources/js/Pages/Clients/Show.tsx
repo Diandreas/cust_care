@@ -962,12 +962,6 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                             <span className="text-xs font-medium">{t('common.email')}</span>
                                         </a>
                                     )}
-                                    <button
-                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700 transition-colors"
-                                    >
-                                        <Share2 className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">{t('common.share', 'Partager')}</span>
-                                    </button>
                                 </div>
                             </div>
                         </div>
