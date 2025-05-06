@@ -38,7 +38,7 @@ import {
     Search, SlidersHorizontal, LayoutGrid, List, PlusCircle, Upload, Download,
     MoreHorizontal, Check, X, MessageSquare, Eye, Edit, Trash2,
     Phone, Mail, Calendar, Clock, RefreshCw, Tag, AlertCircle,
-    FileText, Save, MessageSquarePlus, Users2, ShieldCheck, Zap, Import, UserPlus
+    FileText, Save, MessageSquarePlus, Users2, ShieldCheck, Zap, Import, UserPlus, Filter, Plus
 } from 'lucide-react';
 
 interface Client {
