@@ -3,6 +3,15 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/Components/ui/card';
+import { Input } from '@/Components/ui/input';
+import { Textarea } from '@/Components/ui/textarea';
+import { Checkbox } from '@/Components/ui/checkbox';
+import { Label } from '@/Components/ui/label';
+import { Separator } from '@/Components/ui/separator';
+import { Badge } from '@/Components/ui/badge';
+import { Plus, Edit, Trash, Check, Globe } from 'lucide-react';
 
 interface Template {
     id: number;
@@ -13,11 +22,13 @@ interface Template {
 
 interface TemplatesIndexProps extends Record<string, unknown> {
     templates: Template[];
+    isAdmin: boolean;
 }
 
 export default function TemplatesIndex({
     auth,
     templates,
+    isAdmin,
 }: PageProps<TemplatesIndexProps>) {
     const { t } = useTranslation();
     const [isCreating, setIsCreating] = useState(false);
@@ -89,238 +100,226 @@ export default function TemplatesIndex({
             <div className="py-12">
                 <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
                     <div className="mb-6 flex justify-end">
-                        <button
-                            type="button"
+                        <Button
                             onClick={() => setIsCreating(!isCreating)}
-                            className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                            className="gap-2"
                         >
-                            <svg
-                                className="-ml-1 mr-2 h-5 w-5"
-                                xmlns="http://www.w3.org/2000/svg"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                                />
-                            </svg>
-                            {isCreating ? t('templates.cancel') : t('templates.create')}
-                        </button>
+                            {isCreating ? t('templates.cancel') : (
+                                <>
+                                    <Plus className="h-4 w-4" />
+                                    {t('templates.create')}
+                                </>
+                            )}
+                        </Button>
                     </div>
 
                     {/* Formulaire de création de modèle */}
                     {isCreating && (
-                        <div className="mb-8 overflow-hidden bg-white shadow-sm dark:bg-gray-800 sm:rounded-lg">
-                            <div className="border-b border-gray-200 bg-white px-4 py-5 dark:border-gray-700 dark:bg-gray-800 sm:px-6">
-                                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">{t('templates.create')}</h3>
-                            </div>
-                            <div className="p-6">
+                        <Card className="mb-8">
+                            <CardHeader>
+                                <CardTitle>{t('templates.create')}</CardTitle>
+                                <CardDescription>{t('templates.createDescription', 'Créez un nouveau modèle de message que vous pourrez réutiliser')}</CardDescription>
+                            </CardHeader>
+                            <CardContent>
                                 <form onSubmit={handleCreateSubmit}>
-                                    <div className="mb-4">
-                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('templates.name')} *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="name"
-                                            name="name"
-                                            value={createData.name}
-                                            onChange={(e) => setCreateData('name', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                            required
-                                        />
-                                        {createErrors.name && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{createErrors.name}</p>}
-                                    </div>
-
-                                    <div className="mb-4">
-                                        <label htmlFor="content" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            {t('templates.content')} *
-                                        </label>
-                                        <textarea
-                                            id="content"
-                                            name="content"
-                                            rows={5}
-                                            value={createData.content}
-                                            onChange={(e) => setCreateData('content', e.target.value)}
-                                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                            required
-                                        ></textarea>
-                                        {createErrors.content && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{createErrors.content}</p>}
-                                    </div>
-
-                                    <div className="mb-6">
-                                        <div className="flex items-center">
-                                            <input
-                                                id="is_global"
-                                                name="is_global"
-                                                type="checkbox"
-                                                checked={createData.is_global}
-                                                onChange={(e) => setCreateData('is_global', e.target.checked)}
-                                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                    <div className="grid gap-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="name">{t('templates.name')} *</Label>
+                                            <Input
+                                                id="name"
+                                                value={createData.name}
+                                                onChange={(e) => setCreateData('name', e.target.value)}
+                                                required
                                             />
-                                            <label htmlFor="is_global" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                                                {t('templates.isGlobal')}
-                                            </label>
+                                            {createErrors.name && <p className="text-sm text-destructive">{createErrors.name}</p>}
                                         </div>
-                                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('templates.globalDescription')}</p>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="content">{t('templates.content')} *</Label>
+                                            <Textarea
+                                                id="content"
+                                                rows={5}
+                                                value={createData.content}
+                                                onChange={(e) => setCreateData('content', e.target.value)}
+                                                required
+                                            />
+                                            {createErrors.content && <p className="text-sm text-destructive">{createErrors.content}</p>}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <div className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id="is_global"
+                                                    checked={createData.is_global}
+                                                    onCheckedChange={(checked) => setCreateData('is_global', checked === true)}
+                                                    disabled={!isAdmin}
+                                                />
+                                                <Label htmlFor="is_global">{t('templates.isGlobal')}</Label>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                {isAdmin 
+                                                    ? t('templates.globalDescription') 
+                                                    : t('templates.globalDescriptionAdminOnly', 'Seul un administrateur peut rendre un modèle disponible pour tous les utilisateurs')}
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <div className="flex justify-end">
-                                        <button
+                                    <div className="mt-6 flex justify-end space-x-2">
+                                        <Button
                                             type="button"
+                                            variant="outline"
                                             onClick={() => setIsCreating(false)}
-                                            className="mr-3 inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                         >
                                             {t('common.cancel')}
-                                        </button>
-                                        <button
+                                        </Button>
+                                        <Button
                                             type="submit"
                                             disabled={createProcessing}
-                                            className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
                                         >
                                             {t('common.save')}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </form>
-                            </div>
-                        </div>
+                            </CardContent>
+                        </Card>
                     )}
 
                     {/* Liste des modèles */}
-                    <div className="overflow-hidden bg-white shadow-sm dark:bg-gray-800 sm:rounded-lg">
-                        <div className="border-b border-gray-200 bg-white px-4 py-5 dark:border-gray-700 dark:bg-gray-800 sm:px-6">
-                            <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">{t('templates.yourTemplates')}</h3>
-                        </div>
-                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>{t('templates.yourTemplates')}</CardTitle>
+                        </CardHeader>
+                        <CardContent>
                             {templates.length === 0 ? (
-                                <li className="px-4 py-5 sm:px-6">
-                                    <div className="text-center text-gray-500 dark:text-gray-400">
-                                        {t('templates.noTemplates')}
-                                    </div>
-                                </li>
+                                <div className="flex flex-col items-center justify-center py-12 text-center">
+                                    <p className="text-muted-foreground">{t('templates.noTemplates')}</p>
+                                </div>
                             ) : (
-                                templates.map((template) => (
-                                    <li key={template.id} className="px-4 py-5 sm:px-6">
-                                        {editingId === template.id ? (
-                                            <form onSubmit={(e) => handleEditSubmit(e, template.id)}>
-                                                <div className="mb-4">
-                                                    <label htmlFor={`edit-name-${template.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                        {t('templates.name')} *
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        id={`edit-name-${template.id}`}
-                                                        name="name"
-                                                        value={editData.name}
-                                                        onChange={(e) => setEditData('name', e.target.value)}
-                                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                        required
-                                                    />
-                                                    {editErrors.name && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{editErrors.name}</p>}
-                                                </div>
+                                <div className="space-y-4">
+                                    {templates.map((template) => (
+                                        <Card key={template.id} className="overflow-hidden">
+                                            {editingId === template.id ? (
+                                                <CardContent className="p-6">
+                                                    <form onSubmit={(e) => handleEditSubmit(e, template.id)}>
+                                                        <div className="grid gap-6">
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor={`edit-name-${template.id}`}>{t('templates.name')} *</Label>
+                                                                <Input
+                                                                    id={`edit-name-${template.id}`}
+                                                                    value={editData.name}
+                                                                    onChange={(e) => setEditData('name', e.target.value)}
+                                                                    required
+                                                                />
+                                                                {editErrors.name && <p className="text-sm text-destructive">{editErrors.name}</p>}
+                                                            </div>
 
-                                                <div className="mb-4">
-                                                    <label htmlFor={`edit-content-${template.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                        {t('templates.content')} *
-                                                    </label>
-                                                    <textarea
-                                                        id={`edit-content-${template.id}`}
-                                                        name="content"
-                                                        rows={5}
-                                                        value={editData.content}
-                                                        onChange={(e) => setEditData('content', e.target.value)}
-                                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                        required
-                                                    ></textarea>
-                                                    {editErrors.content && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{editErrors.content}</p>}
-                                                </div>
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor={`edit-content-${template.id}`}>{t('templates.content')} *</Label>
+                                                                <Textarea
+                                                                    id={`edit-content-${template.id}`}
+                                                                    rows={5}
+                                                                    value={editData.content}
+                                                                    onChange={(e) => setEditData('content', e.target.value)}
+                                                                    required
+                                                                />
+                                                                {editErrors.content && <p className="text-sm text-destructive">{editErrors.content}</p>}
+                                                            </div>
 
-                                                <div className="mb-6">
-                                                    <div className="flex items-center">
-                                                        <input
-                                                            id={`edit-is_global-${template.id}`}
-                                                            name="is_global"
-                                                            type="checkbox"
-                                                            checked={editData.is_global}
-                                                            onChange={(e) => setEditData('is_global', e.target.checked)}
-                                                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                                                        />
-                                                        <label htmlFor={`edit-is_global-${template.id}`} className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                                                            {t('templates.isGlobal')}
-                                                        </label>
-                                                    </div>
-                                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('templates.globalDescription')}</p>
-                                                </div>
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <Checkbox
+                                                                        id={`edit-is_global-${template.id}`}
+                                                                        checked={editData.is_global}
+                                                                        onCheckedChange={(checked) => setEditData('is_global', checked === true)}
+                                                                        disabled={!isAdmin}
+                                                                    />
+                                                                    <Label htmlFor={`edit-is_global-${template.id}`}>{t('templates.isGlobal')}</Label>
+                                                                </div>
+                                                                <p className="text-sm text-muted-foreground">
+                                                                    {isAdmin 
+                                                                        ? t('templates.globalDescription') 
+                                                                        : t('templates.globalDescriptionAdminOnly', 'Seul un administrateur peut rendre un modèle disponible pour tous les utilisateurs')}
+                                                                </p>
+                                                            </div>
+                                                        </div>
 
-                                                <div className="flex justify-end space-x-3">
-                                                    <button
-                                                        type="button"
-                                                        onClick={cancelEditing}
-                                                        className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                                    >
-                                                        {t('common.cancel')}
-                                                    </button>
-                                                    <button
-                                                        type="submit"
-                                                        disabled={editProcessing}
-                                                        className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
-                                                    >
-                                                        {t('common.save')}
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-                                                            {template.name}
-                                                            {template.is_global && (
-                                                                <span className="ml-2 inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300">
-                                                                    {t('templates.global')}
-                                                                </span>
-                                                            )}
-                                                        </h4>
-                                                    </div>
-                                                    <div className="flex space-x-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => startEditing(template)}
-                                                            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                                        >
-                                                            {t('common.edit')}
-                                                        </button>
-                                                        {!template.is_global && (
-                                                            <Link
-                                                                href={route('templates.destroy', template.id)}
-                                                                method="delete"
-                                                                as="button"
-                                                                className="inline-flex items-center rounded-md border border-transparent bg-red-600 px-3 py-2 text-sm font-medium leading-4 text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-700 dark:hover:bg-red-600"
-                                                                onClick={(e: React.MouseEvent) => {
-                                                                    if (!confirm(t('templates.confirmDelete'))) {
-                                                                        e.preventDefault();
-                                                                    }
-                                                                }}
+                                                        <div className="mt-6 flex justify-end space-x-2">
+                                                            <Button
+                                                                type="button"
+                                                                variant="outline"
+                                                                onClick={cancelEditing}
                                                             >
-                                                                {t('common.delete')}
-                                                            </Link>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <div className="mt-4 rounded-md bg-gray-50 p-4 dark:bg-gray-700">
-                                                    <p className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">{template.content}</p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </li>
-                                ))
+                                                                {t('common.cancel')}
+                                                            </Button>
+                                                            <Button
+                                                                type="submit"
+                                                                disabled={editProcessing}
+                                                            >
+                                                                {t('common.save')}
+                                                            </Button>
+                                                        </div>
+                                                    </form>
+                                                </CardContent>
+                                            ) : (
+                                                <>
+                                                    <CardHeader className="pb-3">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <CardTitle>{template.name}</CardTitle>
+                                                                {template.is_global && (
+                                                                    <Badge variant="outline" className="flex gap-1 items-center">
+                                                                        <Globe className="h-3 w-3" />
+                                                                        {t('templates.global')}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="gap-1"
+                                                                    onClick={() => startEditing(template)}
+                                                                >
+                                                                    <Edit className="h-3.5 w-3.5" />
+                                                                    {t('common.edit')}
+                                                                </Button>
+                                                                {!template.is_global && (
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="destructive"
+                                                                        className="gap-1"
+                                                                        asChild
+                                                                    >
+                                                                        <Link
+                                                                            href={route('templates.destroy', template.id)}
+                                                                            method="delete"
+                                                                            as="button"
+                                                                            onClick={(e: React.MouseEvent) => {
+                                                                                if (!confirm(t('templates.confirmDelete'))) {
+                                                                                    e.preventDefault();
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <Trash className="h-3.5 w-3.5" />
+                                                                            {t('common.delete')}
+                                                                        </Link>
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </CardHeader>
+                                                    <Separator />
+                                                    <CardContent className="pt-4">
+                                                        <p className="whitespace-pre-wrap text-sm text-muted-foreground">{template.content}</p>
+                                                    </CardContent>
+                                                </>
+                                            )}
+                                        </Card>
+                                    ))}
+                                </div>
                             )}
-                        </ul>
-                    </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
         </AuthenticatedLayout>
