@@ -195,29 +195,29 @@ export default function Plans({
                                                         const form = document.createElement('form');
                                                         form.method = 'POST';
                                                         form.action = route('payment.subscription', plan.id);
-                                                        
+
                                                         // Add CSRF token
                                                         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                                                         const csrfInput = document.createElement('input');
                                                         csrfInput.type = 'hidden';
                                                         csrfInput.name = '_token';
                                                         csrfInput.value = csrfToken;
-                                                        
+
                                                         // Add payment_method and duration
                                                         const paymentInput = document.createElement('input');
                                                         paymentInput.type = 'hidden';
                                                         paymentInput.name = 'payment_method';
                                                         paymentInput.value = data.payment_method;
-                                                        
+
                                                         const durationInput = document.createElement('input');
                                                         durationInput.type = 'hidden';
                                                         durationInput.name = 'duration';
                                                         durationInput.value = duration;
-                                                        
+
                                                         form.appendChild(csrfInput);
                                                         form.appendChild(paymentInput);
                                                         form.appendChild(durationInput);
-                                                        
+
                                                         document.body.appendChild(form);
                                                         form.submit();
                                                     }}
@@ -242,35 +242,35 @@ export default function Plans({
                                                             const form = document.createElement('form');
                                                             form.method = 'POST';
                                                             form.action = route('payment.subscription', plan.id);
-                                                            
+
                                                             // Add CSRF token
                                                             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                                                             const csrfInput = document.createElement('input');
                                                             csrfInput.type = 'hidden';
                                                             csrfInput.name = '_token';
                                                             csrfInput.value = csrfToken;
-                                                            
+
                                                             // Add payment_method, duration, and simulation_mode
                                                             const paymentInput = document.createElement('input');
                                                             paymentInput.type = 'hidden';
                                                             paymentInput.name = 'payment_method';
                                                             paymentInput.value = data.payment_method;
-                                                            
+
                                                             const durationInput = document.createElement('input');
                                                             durationInput.type = 'hidden';
                                                             durationInput.name = 'duration';
                                                             durationInput.value = duration;
-                                                            
+
                                                             const simulationInput = document.createElement('input');
                                                             simulationInput.type = 'hidden';
                                                             simulationInput.name = 'simulation_mode';
                                                             simulationInput.value = 'true';
-                                                            
+
                                                             form.appendChild(csrfInput);
                                                             form.appendChild(paymentInput);
                                                             form.appendChild(durationInput);
                                                             form.appendChild(simulationInput);
-                                                            
+
                                                             document.body.appendChild(form);
                                                             form.submit();
                                                         }}

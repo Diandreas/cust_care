@@ -28,7 +28,7 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
-Route::middleware(['auth:sanctum'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     // Route pour analyser les fichiers Excel
     Route::post('/parse-excel', [App\Http\Controllers\ClientController::class, 'parseExcel'])
         ->name('api.parse-excel');

@@ -21,7 +21,7 @@ class MessageFactory extends Factory
     {
         $statusOptions = ['sent', 'delivered', 'failed'];
         $status = fake()->randomElement($statusOptions);
-        $typeOptions = ['promotional', 'personal', 'automatic'];
+        $typeOptions = ['promotional', 'personal', 'transactional', 'other'];
         
         $createdAt = fake()->dateTimeBetween('-3 months', 'now');
         $sentAt = $createdAt;

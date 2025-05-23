@@ -61,83 +61,103 @@ interface AuthenticatedLayoutProps {
     fullWidth?: boolean;
 }
 
-// Component 1: Logo
+// Component 1: Logo minimaliste moderne
 const Logo = ({ expanded = true }) => (
-    <Link href={route('dashboard')} className="flex items-center justify-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-md shadow-indigo-500/30 transition-all duration-300 hover:scale-105 hover:shadow-lg">
-            <span className="text-lg font-bold text-white">E</span>
-        </div>
-        {expanded && (
-            <motion.span
-                initial={{ opacity: 0, width: 0 }}
-                animate={{ opacity: 1, width: 'auto' }}
-                exit={{ opacity: 0, width: 0 }}
-                className="ml-3 text-xl font-semibold overflow-hidden"
-            >
-                Elite<span className="text-indigo-500 dark:text-indigo-400">SMS</span>
-            </motion.span>
-        )}
+    <Link href={route('dashboard')} className="flex items-center justify-center group">
+        <motion.div
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 dark:from-white dark:to-slate-100 shadow-lg transition-all duration-300 group-hover:shadow-xl"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+        >
+            <span className="text-lg font-bold text-white dark:text-slate-900">E</span>
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        </motion.div>
+        <AnimatePresence>
+            {expanded && (
+                <motion.div
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: 'auto' }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="ml-3 overflow-hidden"
+                >
+                    <span className="text-xl font-bold text-slate-900 dark:text-white">
+                        Elite<span className="text-slate-600 dark:text-slate-300">SMS</span>
+                    </span>
+                </motion.div>
+            )}
+        </AnimatePresence>
     </Link>
 );
 
-// Component 2: NavItem
+// Component 2: NavItem épuré et moderne
 const NavItem = ({ item, expanded }) => {
     const { t } = useTranslation();
 
     const itemClasses = cn(
-        "flex items-center rounded-lg transition-all duration-200",
+        "relative flex items-center rounded-xl transition-all duration-300 group",
         item.current
-            ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-md shadow-indigo-500/20"
-            : "text-foreground/80 hover:text-indigo-500 hover:bg-accent/30",
-        expanded ? "px-4 py-3 gap-3" : "justify-center h-11 w-11 mx-auto"
-    );
-
-    const iconContainerClasses = cn(
-        "flex items-center justify-center rounded-lg",
-        item.current ? "bg-white/20" : "",
-        "h-8 w-8"
+            ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg"
+            : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50",
+        expanded ? "px-3 py-3 gap-3" : "justify-center h-11 w-11 mx-auto"
     );
 
     const iconClasses = cn(
-        "flex-shrink-0",
-        item.current ? "text-white" : "text-muted-foreground",
+        "transition-all duration-300",
+        item.current ? "text-white dark:text-slate-900" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200",
         "h-5 w-5"
     );
 
     return expanded ? (
-        <Link
-            href={item.href}
-            className={itemClasses}
-            aria-current={item.current ? 'page' : undefined}
+        <motion.div
+            whileHover={{ x: 4 }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
         >
-            <div className={iconContainerClasses}>
+            <Link
+                href={item.href}
+                className={itemClasses}
+                aria-current={item.current ? 'page' : undefined}
+            >
                 <item.icon className={iconClasses} aria-hidden="true" />
-            </div>
-            <span className="whitespace-nowrap font-medium">{item.name}</span>
-        </Link>
+                <span className="whitespace-nowrap font-medium">{item.name}</span>
+                {item.current && (
+                    <motion.div
+                        layoutId="activeIndicator"
+                        className="absolute right-2 h-1.5 w-1.5 rounded-full bg-white dark:bg-slate-900"
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                )}
+            </Link>
+        </motion.div>
     ) : (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Link
-                        href={item.href}
-                        className={itemClasses}
-                        aria-current={item.current ? 'page' : undefined}
+                    <motion.div
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
                     >
-                        <div className={iconContainerClasses}>
+                        <Link
+                            href={item.href}
+                            className={itemClasses}
+                            aria-current={item.current ? 'page' : undefined}
+                        >
                             <item.icon className={iconClasses} aria-hidden="true" />
-                        </div>
-                    </Link>
+                        </Link>
+                    </motion.div>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-card border-border shadow-lg">
-                    {item.name}
+                <TooltipContent
+                    side="right"
+                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-0 shadow-xl rounded-lg px-3 py-2"
+                >
+                    <span className="font-medium text-sm">{item.name}</span>
                 </TooltipContent>
             </Tooltip>
         </TooltipProvider>
     );
 };
 
-// Component 3: UserMenu
+// Component 3: UserMenu simplifié et élégant
 const UserMenu = ({ user }) => {
     const { t } = useTranslation();
 
@@ -146,57 +166,62 @@ const UserMenu = ({ user }) => {
             <DropdownMenuTrigger asChild>
                 <Button
                     variant="ghost"
-                    className="h-10 w-10 rounded-full border border-primary/30 hover:border-primary/80 transition-colors hover:bg-accent/30"
+                    className="h-10 w-10 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 transition-all duration-300 hover:shadow-lg"
                     aria-label={t('navigation.userMenu')}
                 >
-                    <Avatar className="h-9 w-9">
-                        <AvatarFallback className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white">
+                    <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm">
                             {user.name.charAt(0)}
                         </AvatarFallback>
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-lg">
-                <div className="flex items-center p-3 bg-accent/10 rounded-t-xl">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-                        <span className="text-sm font-bold text-white">{user.name.charAt(0)}</span>
-                    </div>
+            <DropdownMenuContent
+                align="end"
+                className="w-56 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2"
+            >
+                <div className="flex items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg mb-2">
+                    <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">
+                            {user.name.charAt(0)}
+                        </AvatarFallback>
+                    </Avatar>
                     <div className="ml-3 flex flex-col">
-                        <p className="text-sm font-medium">{user.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
                     </div>
                 </div>
-                <div className="p-2">
-                    <DropdownMenuItem asChild className="rounded-lg">
-                        <Link href={route('profile.edit')} className="flex cursor-pointer items-center py-2">
-                            <UserIcon className="mr-2 h-4 w-4 text-indigo-500" />
-                            <span>{t('navigation.profile')}</span>
+                <div className="space-y-1">
+                    <DropdownMenuItem asChild className="rounded-lg cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800/50">
+                        <Link href={route('profile.edit')} className="flex items-center py-2 px-3">
+                            <UserIcon className="mr-3 h-4 w-4 text-slate-500 dark:text-slate-400" />
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{t('navigation.profile')}</span>
                         </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="rounded-lg">
-                        <Link href={route('subscription.index')} className="flex cursor-pointer items-center py-2">
-                            <CreditCard className="mr-2 h-4 w-4 text-indigo-500" />
-                            <span>{t('navigation.subscription')}</span>
+                    <DropdownMenuItem asChild className="rounded-lg cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800/50">
+                        <Link href={route('subscription.index')} className="flex items-center py-2 px-3">
+                            <CreditCard className="mr-3 h-4 w-4 text-slate-500 dark:text-slate-400" />
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{t('navigation.subscription')}</span>
                         </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="rounded-lg">
-                        <Link href={route('dashboard')} className="flex cursor-pointer items-center py-2">
-                            <Settings className="mr-2 h-4 w-4 text-indigo-500" />
-                            <span>{t('navigation.settings')}</span>
+                    <DropdownMenuItem asChild className="rounded-lg cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800/50">
+                        <Link href={route('dashboard')} className="flex items-center py-2 px-3">
+                            <Settings className="mr-3 h-4 w-4 text-slate-500 dark:text-slate-400" />
+                            <span className="font-medium text-slate-700 dark:text-slate-300">{t('navigation.settings')}</span>
                         </Link>
                     </DropdownMenuItem>
                 </div>
-                <Separator />
-                <div className="p-2">
-                    <DropdownMenuItem asChild className="rounded-lg">
+                <Separator className="my-2 bg-slate-200 dark:bg-slate-700" />
+                <div className="pt-1">
+                    <DropdownMenuItem asChild className="rounded-lg cursor-pointer focus:bg-red-50 dark:focus:bg-red-900/20">
                         <Link
                             href={route('logout')}
                             method="post"
                             as="button"
-                            className="flex w-full cursor-pointer items-center text-destructive hover:text-destructive/90 py-2"
+                            className="flex w-full items-center text-red-600 dark:text-red-400 py-2 px-3"
                         >
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>{t('navigation.logout')}</span>
+                            <LogOut className="mr-3 h-4 w-4" />
+                            <span className="font-medium">{t('navigation.logout')}</span>
                         </Link>
                     </DropdownMenuItem>
                 </div>
@@ -207,11 +232,11 @@ const UserMenu = ({ user }) => {
 
 // Main Component
 export default function AuthenticatedLayout({
-                                                user,
-                                                header,
-                                                children,
-                                                fullWidth = false
-                                            }: AuthenticatedLayoutProps) {
+    user,
+    header,
+    children,
+    fullWidth = false
+}: AuthenticatedLayoutProps) {
     // State
     const [sheetOpen, setSheetOpen] = useState(false);
     const [sidebarExpanded, setSidebarExpanded] = useState(() => {
@@ -266,8 +291,14 @@ export default function AuthenticatedLayout({
 
     // Animation variants
     const sidebarVariants = {
-        collapsed: { width: "72px", transition: { duration: 0.3, ease: "easeInOut" } },
-        expanded: { width: "220px", transition: { duration: 0.3, ease: "easeInOut" } }
+        collapsed: {
+            width: "72px",
+            transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
+        },
+        expanded: {
+            width: "240px",
+            transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] }
+        }
     };
 
     // Helpers
@@ -280,15 +311,15 @@ export default function AuthenticatedLayout({
 
     return (
         <ThemeProvider defaultTheme="light" storageKey="elitesms-theme">
-            <div className="min-h-screen bg-background text-foreground">
-                {/* Mobile Sidebar using Sheet from shadcn/ui */}
+            <div className="min-h-screen bg-white dark:bg-slate-900 text-foreground">
+                {/* Mobile Sidebar */}
                 <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                    <SheetContent side="left" className="p-0 sm:max-w-xs border-r border-border/40">
-                        <SheetHeader className="p-4 border-b border-border/30 bg-card">
+                    <SheetContent side="left" className="p-0 sm:max-w-xs border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+                        <SheetHeader className="p-4 border-b border-slate-200 dark:border-slate-700">
                             <SheetTitle className="text-left">
                                 <Logo />
                             </SheetTitle>
-                            <SheetClose className="absolute right-4 top-4 text-muted-foreground hover:text-foreground rounded-full p-1 hover:bg-accent/30">
+                            <SheetClose className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 rounded-lg p-1 hover:bg-slate-100 dark:hover:bg-slate-800">
                                 <X className="h-5 w-5" />
                             </SheetClose>
                         </SheetHeader>
@@ -303,24 +334,24 @@ export default function AuthenticatedLayout({
                             </div>
                         </ScrollArea>
 
-                        <SheetFooter className="p-4 border-t border-border/30 block bg-accent/10 space-y-4">
+                        <SheetFooter className="p-4 border-t border-slate-200 dark:border-slate-700 block bg-slate-50 dark:bg-slate-800/50 space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-2">
-                                    <Avatar className="h-9 w-9 border border-border/50">
-                                        <AvatarFallback className="bg-primary/80 text-white">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">
                                             {user.name.charAt(0)}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col">
-                                        <p className="text-sm font-medium truncate max-w-[130px]">{user.name}</p>
-                                        <p className="text-xs text-muted-foreground truncate max-w-[130px]">{user.email}</p>
+                                        <p className="text-sm font-semibold truncate max-w-[130px] text-slate-900 dark:text-white">{user.name}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[130px]">{user.email}</p>
                                     </div>
                                 </div>
                                 <Link
                                     href={route('logout')}
                                     method="post"
                                     as="button"
-                                    className="p-2 rounded-lg hover:bg-accent/50 text-muted-foreground hover:text-destructive transition-colors"
+                                    className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-red-600 dark:text-slate-500 dark:hover:text-red-400 transition-colors"
                                 >
                                     <LogOut size={18} />
                                 </Link>
@@ -335,13 +366,13 @@ export default function AuthenticatedLayout({
 
                 {/* Desktop Sidebar */}
                 <motion.div
-                    className="sidebar-container fixed inset-y-0 left-0 z-30 hidden lg:flex lg:flex-col border-r border-border/40 bg-card text-card-foreground shadow-sm overflow-hidden"
+                    className="sidebar-container fixed inset-y-0 left-0 z-30 hidden lg:flex lg:flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden"
                     initial="collapsed"
                     animate={sidebarExpanded ? "expanded" : "collapsed"}
                     variants={sidebarVariants}
                     style={{ zIndex: isCampaignsPage ? 20 : 30 }}
                 >
-                    <div className="flex h-16 shrink-0 items-center justify-center py-6 border-b border-border/20">
+                    <div className="flex h-16 shrink-0 items-center justify-center py-6 border-b border-slate-200 dark:border-slate-800">
                         <Logo expanded={sidebarExpanded} />
                     </div>
 
@@ -354,21 +385,21 @@ export default function AuthenticatedLayout({
                             </nav>
 
                             {/* Toggle Button */}
-                            <div className="mt-4 flex justify-center">
-                                <Button
+                            <div className="mt-6 flex justify-center">
+                                <motion.button
                                     onClick={handleToggleSidebar}
-                                    variant="ghost"
-                                    size="icon"
-                                    className={`rounded-full text-muted-foreground hover:text-foreground ${sidebarExpanded ? 'rotate-180' : ''} transition-all duration-200`}
+                                    className={`p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 ${sidebarExpanded ? 'rotate-180' : ''}`}
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
                                 >
                                     <ChevronRight size={18} />
-                                </Button>
+                                </motion.button>
                             </div>
                         </div>
                     </ScrollArea>
 
                     {/* Bottom Section */}
-                    <div className="border-t border-border/20 pt-2 pb-3 px-3">
+                    <div className="border-t border-slate-200 dark:border-slate-800 pt-2 pb-3 px-3 bg-slate-50/50 dark:bg-slate-800/30">
                         <div className={cn(
                             "flex items-center justify-between",
                             sidebarExpanded ? "mb-3" : "mb-2 justify-center"
@@ -386,26 +417,26 @@ export default function AuthenticatedLayout({
                                 "flex items-center",
                                 sidebarExpanded ? "space-x-2" : "justify-center"
                             )}>
-                                <Avatar className="h-8 w-8 border border-border/50">
-                                    <AvatarFallback className="bg-primary/80 text-white">
+                                <Avatar className="h-8 w-8">
+                                    <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm">
                                         {user.name.charAt(0)}
                                     </AvatarFallback>
                                 </Avatar>
                                 {sidebarExpanded && (
                                     <div className="flex flex-col">
-                                        <p className="text-sm font-medium truncate max-w-[120px]">{user.name}</p>
-                                        <p className="text-xs text-muted-foreground truncate max-w-[120px]">{user.email}</p>
+                                        <p className="text-sm font-semibold truncate max-w-[120px] text-slate-900 dark:text-white">{user.name}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{user.email}</p>
                                     </div>
                                 )}
                             </div>
 
                             {sidebarExpanded ? (
-                                <Button variant="ghost" size="icon" asChild className="rounded-full">
+                                <Button variant="ghost" size="icon" asChild className="rounded-lg h-8 w-8">
                                     <Link
                                         href={route('logout')}
                                         method="post"
                                         as="button"
-                                        className="text-muted-foreground hover:text-destructive transition-colors"
+                                        className="text-slate-400 hover:text-red-600 dark:text-slate-500 dark:hover:text-red-400 transition-colors"
                                     >
                                         <LogOut size={16} />
                                     </Link>
@@ -418,12 +449,12 @@ export default function AuthenticatedLayout({
                                                 href={route('logout')}
                                                 method="post"
                                                 as="button"
-                                                className="p-2 rounded-lg hover:bg-accent/50 text-muted-foreground hover:text-destructive transition-colors"
+                                                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-red-600 dark:text-slate-500 dark:hover:text-red-400 transition-colors"
                                             >
                                                 <LogOut size={16} />
                                             </Link>
                                         </TooltipTrigger>
-                                        <TooltipContent side="right">
+                                        <TooltipContent side="right" className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-0 shadow-xl rounded-lg">
                                             {t('navigation.logout')}
                                         </TooltipContent>
                                     </Tooltip>
@@ -434,13 +465,18 @@ export default function AuthenticatedLayout({
                 </motion.div>
 
                 {/* Main Content */}
-                <div className={`${sidebarExpanded ? 'lg:ml-[220px]' : 'lg:ml-[72px]'} transition-all duration-300`}>
-                    {/* Header - Hidden on campaigns page */}
+                <div className={`${sidebarExpanded ? 'lg:ml-[240px]' : 'lg:ml-[72px]'} transition-all duration-400`}>
+                    {/* Header */}
                     {!isCampaignsPage && (
-                        <div className={`sticky top-0 z-20 flex h-16 items-center border-b border-border/50 bg-background/95 backdrop-blur-md ${isScrolled ? 'shadow-sm' : ''} transition-all duration-200`}>
+                        <motion.div
+                            className={`sticky top-0 z-20 flex h-16 items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm ${isScrolled ? 'shadow-sm shadow-slate-200/50 dark:shadow-slate-800/50' : ''} transition-all duration-200`}
+                            initial={{ y: -10, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            transition={{ duration: 0.3 }}
+                        >
                             <button
                                 type="button"
-                                className="px-4 text-muted-foreground hover:text-foreground focus:outline-none lg:hidden"
+                                className="px-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 focus:outline-none lg:hidden transition-colors"
                                 onClick={() => setSheetOpen(true)}
                                 aria-label={t('navigation.openSidebar')}
                             >
@@ -449,17 +485,22 @@ export default function AuthenticatedLayout({
 
                             <div className="flex flex-1 items-center justify-between px-4 sm:px-6 lg:px-8">
                                 <div className="flex items-center">{header}</div>
-
                                 <div className="flex items-center space-x-2">
                                     <UserMenu user={user} />
                                 </div>
                             </div>
-                        </div>
+                        </motion.div>
                     )}
 
                     {/* Main Content */}
                     <main className={`${fullWidth ? 'px-0' : 'px-4 sm:px-6 lg:px-8'} py-4 ${!isCampaignsPage ? 'pt-6' : ''}`}>
-                        {children}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.4, delay: 0.1 }}
+                        >
+                            {children}
+                        </motion.div>
                     </main>
                 </div>
             </div>
