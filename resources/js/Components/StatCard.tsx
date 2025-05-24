@@ -16,7 +16,7 @@ interface StatCardProps {
 export function StatCard({ icon, value, label, trend, color = 'primary' }: StatCardProps) {
   // Utilisation des variables de couleur du thème centralisé
   const getColorClass = (colorName: string) => {
-    switch(colorName) {
+    switch (colorName) {
       case 'blue': return 'text-blue-600 dark:text-blue-400';
       case 'green': return 'text-green-600 dark:text-green-400';
       case 'orange': return 'text-orange-600 dark:text-orange-400';
@@ -28,8 +28,8 @@ export function StatCard({ icon, value, label, trend, color = 'primary' }: StatC
 
   const iconColorClass = getColorClass(color);
   const valueColorClass = getColorClass(color);
-  const trendIconClass = trend?.isPositive 
-    ? 'text-green-500' 
+  const trendIconClass = trend?.isPositive
+    ? 'text-green-500'
     : 'text-kente-red';
 
   return (
@@ -44,7 +44,7 @@ export function StatCard({ icon, value, label, trend, color = 'primary' }: StatC
         <div className={uiConfig.stats.label}>
           {label}
         </div>
-        
+
         {trend && (
           <div className="flex items-center mt-2 text-xs">
             <span className={trendIconClass}>

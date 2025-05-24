@@ -868,8 +868,8 @@ export default function Welcome({
                                     <Link
                                         href={route('register')}
                                         className={`mt-auto rounded-2xl px-6 py-4 text-center font-bold transition-all duration-300 ${plan.popular
-                                                ? `bg-gradient-to-r ${plan.color} text-white shadow-xl hover:shadow-2xl transform hover:scale-105`
-                                                : `border border-white/30 text-white hover:bg-white/10`
+                                            ? `bg-gradient-to-r ${plan.color} text-white shadow-xl hover:shadow-2xl transform hover:scale-105`
+                                            : `border border-white/30 text-white hover:bg-white/10`
                                             }`}
                                     >
                                         Choisir ce plan
