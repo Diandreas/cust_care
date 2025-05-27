@@ -677,7 +677,9 @@
             "upgradeRequired": "Vous avez atteint la limite de clients pour votre plan gratuit. Veuillez souscrire à un abonnement pour ajouter plus de clients.",
             "importOverLimit": "L'importation dépasserait la limite de clients pour votre plan. Vous pouvez importer au maximum {count} clients.",
             "subscriptionRequired": "Vous devez avoir un abonnement actif pour accéder à cette fonctionnalité."
-        }
+        },
+        "smsBalanceInsufficient": "Solde SMS insuffisant pour cette opération. Veuillez recharger votre compte.",
+        "smsCreditCost": "1 crédit = 1 SMS"
     },
     "settings": {
         "title": "Paramètres",
@@ -900,6 +902,11 @@
         "characterCount": "Nombre de caractères",
         "segmentCount": "Nombre de segments",
         "recipientCount": "Nombre de destinataires",
-        "totalMessages": "Total des messages"
+        "totalMessages": "Total des messages",
+        "sending": "Envoi en cours...",
+        "sendSuccess": "Message(s) envoyé(s) avec succès à {count} client(s)",
+        "sendError": "Erreur lors de l'envoi du message",
+        "contentRequired": "Veuillez saisir un message",
+        "longMessageWarning": "Ce message est long et sera envoyé en plusieurs segments. Cela peut augmenter les coûts."
     }
 }

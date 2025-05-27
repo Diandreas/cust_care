@@ -9,7 +9,7 @@ import { Button } from '@/Components/ui/button';
 import { Label } from '@/Components/ui/label';
 import { Textarea } from '@/Components/ui/textarea';
 import { Card, CardContent } from '@/Components/ui/card';
-import { MessageSquare, MessageSquarePlus, Eye, Send } from 'lucide-react';
+import { MessageSquare, MessageSquarePlus, Eye, Send, AlertCircle } from 'lucide-react';
 
 interface BulkSmsModalProps {
     isOpen: boolean;
@@ -31,11 +31,33 @@ export default function BulkSmsModal({ isOpen, onClose, selectedClients, onSucce
     const [content, setContent] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
+    const [smsBalance, setSmsBalance] = useState(0);
     const [smsInfo, setSmsInfo] = useState<SmsPreviewInfo>({
         characters: 0,
         segments: 1,
         cost: 0
     });
+
+    // Get SMS balance when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            // Récupérer le solde SMS depuis le serveur ou localStorage
+            const fetchSmsBalance = async () => {
+                try {
+                    const response = await axios.get(route('subscription.sms-balance'));
+                    setSmsBalance(response.data.balance || 0);
+                } catch (err) {
+                    // Fallback: essayer de récupérer depuis localStorage ou un état global
+                    const localBalance = localStorage.getItem('smsBalance');
+                    if (localBalance) {
+                        setSmsBalance(parseInt(localBalance, 10));
+                    }
+                }
+            };
+
+            fetchSmsBalance();
+        }
+    }, [isOpen]);
 
     // Calculate SMS info when content changes
     useEffect(() => {
@@ -47,7 +69,7 @@ export default function BulkSmsModal({ isOpen, onClose, selectedClients, onSucce
             setSmsInfo({
                 characters,
                 segments,
-                cost: totalMessages * 0.05 // Assuming 0.05 per SMS
+                cost: totalMessages // 1 SMS = 1 crédit
             });
         } else {
             setSmsInfo({
@@ -67,6 +89,12 @@ export default function BulkSmsModal({ isOpen, onClose, selectedClients, onSucce
 
         if (selectedClients.length === 0) {
             toast.error(t('clients.noClientsSelected'));
+            return;
+        }
+
+        // Vérifier le solde SMS
+        if (smsInfo.cost > smsBalance) {
+            toast.error(t('subscription.smsBalanceInsufficient'));
             return;
         }
 
@@ -91,6 +119,12 @@ export default function BulkSmsModal({ isOpen, onClose, selectedClients, onSucce
             toast.success(t('sms.sendSuccess', {
                 count: response.data.sent || selectedClients.length
             }));
+
+            // Mettre à jour le solde SMS
+            if (response.data.remaining !== undefined) {
+                setSmsBalance(response.data.remaining);
+                localStorage.setItem('smsBalance', response.data.remaining.toString());
+            }
 
             handleClose();
             onSuccess();
@@ -131,6 +165,9 @@ export default function BulkSmsModal({ isOpen, onClose, selectedClients, onSucce
         if (smsInfo.characters > 480) return 'text-orange-600 dark:text-orange-400';
         return 'text-gray-500 dark:text-gray-400';
     };
+
+    // Vérifier si le solde SMS est suffisant
+    const isBalanceSufficient = smsBalance >= smsInfo.cost;
 
     return (
         <>
@@ -203,18 +240,39 @@ export default function BulkSmsModal({ isOpen, onClose, selectedClients, onSucce
                                             {smsInfo.segments}
                                         </span>
                                     </div>
-                                    <div className="col-span-2 pt-2 border-t border-indigo-200 dark:border-indigo-800/50">
+                                    <div>
                                         <span className="text-gray-600 dark:text-gray-400">{t('sms.totalMessages')}:</span>
                                         <span className="ml-2 font-bold text-indigo-600 dark:text-indigo-400">
-                                            {smsInfo.segments * selectedClients.length}
+                                            {smsInfo.cost}
                                         </span>
-                                        <span className="ml-4 text-gray-600 dark:text-gray-400">
-                                            (~{smsInfo.cost.toFixed(2)} €)
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400">{t('stats.smsRemaining')}:</span>
+                                        <span className={`ml-2 font-bold ${isBalanceSufficient ? 'text-green-600 dark:text-green-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                            {Math.max(0, smsBalance - smsInfo.cost)}
+                                        </span>
+                                        <span className="text-xs text-gray-500 ml-1">
+                                            (sur {smsBalance})
                                         </span>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
+
+                        {/* Warning for insufficient balance */}
+                        {!isBalanceSufficient && (
+                            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg dark:bg-rose-900/20 dark:border-rose-800/50">
+                                <div className="flex items-start">
+                                    <AlertCircle className="h-5 w-5 text-rose-600 dark:text-rose-400 mr-2 flex-shrink-0 mt-0.5" />
+                                    <p className="text-sm text-rose-700 dark:text-rose-300">
+                                        {t('subscription.smsBalanceInsufficient')}
+                                        <a href={route('subscription.top-up')} className="ml-1 underline font-medium">
+                                            {t('subscription.topUp')}
+                                        </a>
+                                    </p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Warning for large messages */}
                         {smsInfo.segments > 3 && (
@@ -237,7 +295,7 @@ export default function BulkSmsModal({ isOpen, onClose, selectedClients, onSucce
                         </Button>
                         <Button
                             onClick={handleSendSms}
-                            disabled={isSubmitting || !content.trim()}
+                            disabled={isSubmitting || !content.trim() || !isBalanceSufficient}
                             className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200 disabled:opacity-70"
                         >
                             {isSubmitting ? (
@@ -256,75 +314,29 @@ export default function BulkSmsModal({ isOpen, onClose, selectedClients, onSucce
                 </DialogContent>
             </Dialog>
 
-            {/* SMS Preview Modal */}
-            <Dialog open={showPreview} onOpenChange={() => setShowPreview(false)}>
+            {/* Preview Modal */}
+            <Dialog open={isOpen && showPreview} onOpenChange={() => setShowPreview(false)}>
                 <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700/60">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <Eye className="h-5 w-5" />
                             {t('sms.preview')}
                         </DialogTitle>
-                        <DialogDescription className="dark:text-gray-400">
-                            {t('sms.previewDescription')}
-                        </DialogDescription>
                     </DialogHeader>
 
-                    <div className="mt-4">
-                        {/* Phone mockup */}
-                        <div className="mx-auto max-w-xs">
-                            <div className="bg-gray-100 dark:bg-slate-700 rounded-lg p-4">
-                                <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-lg p-3 text-white max-w-[80%] ml-auto">
-                                    <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                                        {content}
-                                    </p>
-                                    <div className="text-xs opacity-75 mt-2 text-right">
-                                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* SMS Details */}
-                        <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-                            <div className="flex justify-between">
-                                <span>{t('sms.characterCount')}:</span>
-                                <span className="font-medium">{smsInfo.characters}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>{t('sms.segmentCount')}:</span>
-                                <span className="font-medium">{smsInfo.segments}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>{t('sms.recipientCount')}:</span>
-                                <span className="font-medium">{selectedClients.length}</span>
-                            </div>
-                            <div className="flex justify-between pt-2 border-t border-gray-200 dark:border-slate-600">
-                                <span className="font-bold">{t('sms.totalMessages')}:</span>
-                                <span className="font-bold text-indigo-600 dark:text-indigo-400">
-                                    {smsInfo.segments * selectedClients.length}
-                                </span>
-                            </div>
+                    <div className="space-y-4 mt-4">
+                        <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 dark:bg-slate-700 dark:border-slate-600">
+                            <p className="text-sm whitespace-pre-wrap dark:text-gray-200">{content}</p>
                         </div>
                     </div>
 
-                    <DialogFooter className="mt-6">
+                    <DialogFooter className="mt-4">
                         <Button
                             variant="outline"
                             onClick={() => setShowPreview(false)}
                             className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
                         >
                             {t('common.back')}
-                        </Button>
-                        <Button
-                            onClick={() => {
-                                setShowPreview(false);
-                                handleSendSms();
-                            }}
-                            disabled={isSubmitting}
-                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
-                        >
-                            <Send className="mr-2 h-4 w-4" />
-                            {t('sms.send')}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

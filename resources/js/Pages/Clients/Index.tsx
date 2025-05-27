@@ -219,10 +219,8 @@ export default function ClientsIndex({
                 return;
             }
             setShowBulkSmsModal(true);
-        } else if (action === 'export') {
-            router.visit(route('clients.import-export', { tab: 'export', selected: selectedClients }));
         }
-    }, [selectedClients, t, router]);
+    }, [selectedClients, t]);
 
     // Handle single client deletion
     const handleDeleteClient = useCallback((clientId: number) => {

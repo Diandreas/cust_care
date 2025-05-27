@@ -5,13 +5,16 @@ import { PageProps } from '@/types';
 import { format, formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
-import { useToast } from '@/Utils/toast';
+import { useToast } from '@/Components/ui/use-toast';
 import axios from 'axios';
 import {
     CalendarDays, Phone, Mail, MapPin, Tag, Clock, MessageSquare,
     CheckCircle, AlertCircle, FileText, User, MessageCircle, Home,
     Edit, Save, X, Plus, Check, ArrowLeft, Send, ChevronDown,
-    Calendar, Activity, PieChart, Users, Copy, Share2, Trash2, MessageCircleOff, PlusCircle
+    Calendar, Activity, PieChart, Users, Copy, Share2, Trash2,
+    MessageCircleOff, PlusCircle, Star, MoreVertical, ExternalLink,
+    Briefcase, Heart, TrendingUp, Archive, Bell, Settings,
+    Building, Globe, Smartphone, Zap, Target, Eye
 } from 'lucide-react';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -95,7 +98,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
     const [visits, setVisits] = useState<Visit[]>(initialClient.visits || []);
     const [isLoadingVisit, setIsLoadingVisit] = useState(false);
     const [isLoadingMessage, setIsLoadingMessage] = useState(false);
-    const [activeTab, setActiveTab] = useState<'messages' | 'visits'>('messages');
+    const [activeTab, setActiveTab] = useState<'overview' | 'messages' | 'visits' | 'activity'>('overview');
     const [isEditing, setIsEditing] = useState(false);
     const [client, setClient] = useState<Client>(initialClient);
     const [tags, setTags] = useState<Tag[]>(initialTags);
@@ -130,24 +133,24 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'delivered':
-                return 'bg-green-100 text-green-800 dark:bg-green-800/20 dark:text-green-400';
+                return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800';
             case 'failed':
-                return 'bg-red-100 text-red-800 dark:bg-red-800/20 dark:text-red-400';
+                return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800';
             case 'pending':
-                return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800/20 dark:text-yellow-400';
+                return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800';
             default:
-                return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+                return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600';
         }
     };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'delivered':
-                return <CheckCircle className="h-4 w-4 mr-1" />;
+                return <CheckCircle className="h-3 w-3 mr-1" />;
             case 'failed':
-                return <AlertCircle className="h-4 w-4 mr-1" />;
+                return <AlertCircle className="h-3 w-3 mr-1" />;
             case 'pending':
-                return <Clock className="h-4 w-4 mr-1" />;
+                return <Clock className="h-3 w-3 mr-1" />;
             default:
                 return null;
         }
@@ -156,13 +159,13 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
     const getStatusLabel = (status: string) => {
         switch (status) {
             case 'delivered':
-                return t('messages.status.delivered');
+                return 'Livré';
             case 'failed':
-                return t('messages.status.failed');
+                return 'Échec';
             case 'pending':
-                return t('messages.status.pending');
+                return 'En attente';
             default:
-                return t('common.unknown');
+                return 'Inconnu';
         }
     };
 
@@ -181,9 +184,39 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
         return formatDistanceToNow(new Date(date), { addSuffix: true, locale: fr });
     };
 
+    // Function to generate avatar gradient based on name
+    const getAvatarGradient = (name: string) => {
+        const gradients = [
+            'from-violet-500 via-purple-500 to-purple-600',
+            'from-blue-500 via-blue-600 to-indigo-600',
+            'from-emerald-500 via-teal-500 to-cyan-600',
+            'from-orange-500 via-amber-500 to-yellow-500',
+            'from-pink-500 via-rose-500 to-red-500',
+            'from-indigo-500 via-purple-500 to-pink-500',
+            'from-green-500 via-emerald-500 to-teal-500',
+            'from-red-500 via-pink-500 to-rose-500',
+        ];
+        const index = name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % gradients.length;
+        return gradients[index];
+    };
+
+    // Calculate statistics
+    const messageStats = {
+        total: client.messages_count || 0,
+        delivered: client.successful_messages_count || 0,
+        failedOrPending: (client.messages_count || 0) - (client.successful_messages_count || 0)
+    };
+
+    const deliveryRate = messageStats.total > 0
+        ? Math.round((messageStats.delivered / messageStats.total) * 100)
+        : 0;
+
+    const totalVisits = visits.length;
+
+    // Handle visit registration
     const registerVisit = () => {
         if (!visitNotes.trim()) {
-            error(t('visits.notesRequired'));
+            error('Les notes de visite sont requises');
             return;
         }
 
@@ -192,7 +225,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
             notes: visitNotes
         })
             .then(response => {
-                success(t('visits.registeredSuccess'));
+                success('Visite enregistrée avec succès');
 
                 // Add the new visit to the visits state
                 const newVisit = response.data.visit;
@@ -204,21 +237,22 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                     last_visit_date: newVisit.visit_date
                 }));
 
-                // Reset form
+                // Reset form and close modal
                 setIsAddingVisit(false);
                 setVisitNotes('');
             })
             .catch(err => {
-                error(t('visits.registrationError'));
+                error('Erreur lors de l\'enregistrement de la visite');
             })
             .finally(() => {
                 setIsLoadingVisit(false);
             });
     };
 
+    // Handle direct message sending
     const sendDirectMessage = () => {
         if (!messageContent.trim()) {
-            error(t('messages.contentRequired'));
+            error('Le contenu du message est requis');
             return;
         }
 
@@ -227,7 +261,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
             content: messageContent
         })
             .then(response => {
-                success(t('messages.sendSuccess'));
+                success('Message envoyé avec succès');
 
                 // Add the new message to the messages state
                 const newMessage = response.data.sms;
@@ -243,18 +277,19 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                     lastContact: new Date().toISOString()
                 }));
 
-                // Reset form
+                // Reset form and close modal
                 setIsAddingMessage(false);
                 setMessageContent('');
             })
             .catch(err => {
-                error(t('messages.sendError'));
+                error('Erreur lors de l\'envoi du message');
             })
             .finally(() => {
                 setIsLoadingMessage(false);
             });
     };
 
+    // Handle client update
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -264,7 +299,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
             tag_ids: selectedTagsState
         })
             .then(response => {
-                success(t('clients.updateSuccess'));
+                success('Client mis à jour avec succès');
 
                 // Update the client state with the new data
                 const updatedClient = response.data.client || {
@@ -293,76 +328,74 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                         error(`${key}: ${serverErrors[key][0]}`);
                     }
                 } else {
-                    error(t('clients.updateError'));
+                    error('Erreur lors de la mise à jour du client');
                 }
             });
     };
-
-    // Function to generate avatar gradient based on name
-    const getAvatarGradient = (name: string) => {
-        const colors = [
-            'from-red-500 to-pink-500',
-            'from-orange-500 to-amber-500',
-            'from-yellow-500 to-lime-500',
-            'from-green-500 to-emerald-500',
-            'from-teal-500 to-cyan-500',
-            'from-blue-500 to-indigo-500',
-            'from-indigo-500 to-purple-500',
-            'from-purple-500 to-pink-500',
-        ];
-        const index = name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0) % colors.length;
-        return colors[index];
-    };
-
-    // Calculate statistics
-    const messageStats = {
-        total: client.messages_count || 0,
-        delivered: client.successful_messages_count || 0,
-        failedOrPending: (client.messages_count || 0) - (client.successful_messages_count || 0)
-    };
-
-    // Get total visits count
-    const totalVisits = visits.length;
-
-    // Calculate delivery rate percentage
-    const deliveryRate = messageStats.total > 0
-        ? Math.round((messageStats.delivered / messageStats.total) * 100)
-        : 0;
 
     return (
         <AuthenticatedLayout
             user={auth.user}
             header={
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-4">
                         <Link
                             href={route('clients.index')}
-                            className="inline-flex items-center justify-center rounded-full h-8 w-8 bg-white dark:bg-gray-800 shadow-sm text-gray-600 transition-colors hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400"
+                            className="inline-flex items-center justify-center rounded-xl h-10 w-10 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700 text-gray-600 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-700 transition-all duration-200"
                         >
                             <ArrowLeft className="h-5 w-5" />
                         </Link>
-                        <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-white flex items-center gap-2">
-                            {client.name}
-                            {client.is_active ? (
-                                <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800 dark:bg-green-800/30 dark:text-green-300">
-                                    {t('common.active')}
+                        <div className="flex items-center space-x-3">
+                            <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${getAvatarGradient(client.name)} flex items-center justify-center shadow-lg`}>
+                                <span className="text-white text-lg font-bold">
+                                    {client.name.charAt(0).toUpperCase()}
                                 </span>
-                            ) : (
-                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-                                    {t('common.inactive')}
-                                </span>
-                            )}
-                        </h2>
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                    {client.name}
+                                </h1>
+                                <div className="flex items-center space-x-2 mt-1">
+                                    {client.is_active ? (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5"></div>
+                                            Actif
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                                            <div className="w-1.5 h-1.5 bg-gray-500 rounded-full mr-1.5"></div>
+                                            Inactif
+                                        </span>
+                                    )}
+                                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                                        Client depuis {formatTimeAgo(client.created_at)}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => setIsAddingMessage(true)}
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors duration-200"
+                        >
+                            <Send className="h-4 w-4 mr-2" />
+                            Envoyer SMS
+                        </button>
+                        <button
+                            onClick={() => setIsAddingVisit(true)}
+                            className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors duration-200"
+                        >
+                            <Home className="h-4 w-4 mr-2" />
+                            Nouvelle visite
+                        </button>
                         <div className="relative">
                             <button
                                 onClick={() => setShowActionsMenu(!showActionsMenu)}
-                                className="inline-flex items-center rounded-md bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none"
+                                className="inline-flex items-center px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 shadow-sm transition-colors duration-200"
                             >
-                                {t('common.actions')}
-                                <ChevronDown className="ml-2 h-4 w-4" />
+                                <MoreVertical className="h-4 w-4" />
                             </button>
                             <Transition
                                 show={showActionsMenu}
@@ -373,39 +406,27 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                 leaveFrom="transform opacity-100 scale-100"
                                 leaveTo="transform opacity-0 scale-95"
                             >
-                                <div className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-white dark:bg-gray-800 shadow-lg ring-1 ring-black ring-opacity-5">
-                                    <div className="py-1" role="menu">
+                                <div className="absolute right-0 z-20 mt-2 w-48 origin-top-right rounded-xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-black ring-opacity-5 border border-gray-200 dark:border-gray-700">
+                                    <div className="py-1">
                                         <button
-                                            onClick={() => setIsAddingMessage(true)}
-                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                            role="menuitem"
+                                            onClick={() => setIsEditing(true)}
+                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                                         >
-                                            <Send className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('common.send')}
+                                            <Edit className="mr-3 h-4 w-4" />
+                                            Modifier
                                         </button>
-                                        <button
-                                            onClick={() => setIsAddingVisit(true)}
-                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                            role="menuitem"
-                                        >
-                                            <Home className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('visits.register')}
+                                        <button className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                            <Star className="mr-3 h-4 w-4" />
+                                            Marquer favoris
                                         </button>
-                                        <button
-                                            onClick={() => setIsEditing(!isEditing)}
-                                            className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                                            role="menuitem"
-                                        >
-                                            <Edit className="mr-3 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                            {t('common.edit')}
+                                        <button className="flex w-full items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                                            <Archive className="mr-3 h-4 w-4" />
+                                            Archiver
                                         </button>
                                         <div className="border-t border-gray-100 dark:border-gray-700"></div>
-                                        <button
-                                            className="flex w-full items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                            role="menuitem"
-                                        >
+                                        <button className="flex w-full items-center px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20">
                                             <Trash2 className="mr-3 h-4 w-4" />
-                                            {t('common.delete')}
+                                            Supprimer
                                         </button>
                                     </div>
                                 </div>
@@ -415,838 +436,622 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                 </div>
             }
         >
-            <Head title={`${t('clients.client')}: ${client.name}`} />
+            <Head title={`Client: ${client.name}`} />
 
-            <div className="py-6">
-                <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    {/* Formulaire d'ajout de visite */}
-                    {isAddingVisit && (
-                        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 animate-in fade-in duration-300">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
-                                    <Home className="h-5 w-5 mr-2 text-indigo-500 dark:text-indigo-400" />
-                                    {t('visits.registerNew')}
-                                </h3>
-                                <button
-                                    onClick={() => setIsAddingVisit(false)}
-                                    className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </div>
-                            <div className="mb-4">
-                                <label htmlFor="visitNotes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {t('visits.notes')}
-                                </label>
-                                <textarea
-                                    id="visitNotes"
-                                    rows={4}
-                                    className="mt-1 block w-full rounded-md border border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                    value={visitNotes}
-                                    onChange={(e) => setVisitNotes(e.target.value)}
-                                    placeholder={t('visits.notesPlaceholder')}
-                                />
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                    {t('visits.notesHint')}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Quick Stats Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Messages envoyés</p>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{messageStats.total}</p>
+                                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                                    {deliveryRate}% de réussite
                                 </p>
                             </div>
-                            <div className="flex justify-end space-x-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAddingVisit(false)}
-                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={registerVisit}
-                                    disabled={isLoadingVisit || !visitNotes.trim()}
-                                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600"
-                                >
-                                    {isLoadingVisit ? (
-                                        <>
-                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            {t('common.saving')}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Check className="mr-2 h-4 w-4" />
-                                            {t('visits.register')}
-                                        </>
-                                    )}
-                                </button>
+                            <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                                <MessageCircle className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {/* Formulaire d'envoi de message direct */}
-                    {isAddingMessage && (
-                        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 animate-in fade-in duration-300">
-                            <div className="mb-4 flex items-center justify-between">
-                                <h3 className="text-lg font-medium text-gray-900 dark:text-white flex items-center">
-                                    <MessageCircle className="h-5 w-5 mr-2 text-blue-500" />
-                                    {t('messages.sendDirect')}
-                                </h3>
-                                <button
-                                    onClick={() => setIsAddingMessage(false)}
-                                    className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 transition-colors"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Visites totales</p>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{totalVisits}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {client.last_visit_date ? `Dernière: ${formatTimeAgo(client.last_visit_date)}` : 'Aucune visite'}
+                                </p>
                             </div>
-                            <div className="mb-4">
-                                <label htmlFor="messageContent" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    {t('messages.content')}
-                                </label>
-                                <textarea
-                                    id="messageContent"
-                                    rows={4}
-                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                    value={messageContent}
-                                    onChange={(e) => setMessageContent(e.target.value)}
-                                    placeholder={t('messages.contentPlaceholder')}
-                                    maxLength={160}
-                                />
-                                <div className="mt-1 flex justify-between items-center">
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">{messageContent.length} / 160 {t('messages.characters')}</span>
-                                    <span className={`text-xs font-medium ${messageContent.length > 160 ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
-                                        {Math.ceil(messageContent.length / 160)} SMS
-                                    </span>
-                                </div>
-
-                                {/* Message templates suggestions */}
-                                <div className="mt-3">
-                                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">{t('messages.templates')}:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setMessageContent(`${t('messages.templates.appointment', { name: client.name })}`)}
-                                            className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        >
-                                            {t('messages.templates.appointmentConfirmation')}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setMessageContent(`${t('messages.templates.proposal', { name: client.name })}`)}
-                                            className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        >
-                                            {t('messages.templates.appointmentProposal')}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setMessageContent(`${t('messages.templates.thanks', { name: client.name })}`)}
-                                            className="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
-                                        >
-                                            {t('messages.templates.thanksAfterVisit')}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="flex justify-end space-x-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsAddingMessage(false)}
-                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
-                                >
-                                    {t('common.cancel')}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={sendDirectMessage}
-                                    disabled={isLoadingMessage || !messageContent.trim()}
-                                    className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all dark:bg-blue-700 dark:hover:bg-blue-600"
-                                >
-                                    {isLoadingMessage ? (
-                                        <>
-                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            {t('messages.sending')}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="mr-2 h-4 w-4" />
-                                            {t('messages.send')}
-                                        </>
-                                    )}
-                                </button>
+                            <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                                <Home className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                             </div>
                         </div>
-                    )}
+                    </div>
 
-                    {/* Informations du client */}
-                    <div className="grid gap-6 md:grid-cols-3">
-                        {/* Profile et détails */}
-                        <div className="md:col-span-1 space-y-6">
-                            <div className="rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                                <div className={`bg-gradient-to-r ${getAvatarGradient(client.name)} p-6 relative`}>
-                                    <div className="flex justify-center">
-                                        <div className="h-24 w-24 rounded-full bg-white dark:bg-gray-700 flex items-center justify-center text-3xl font-bold shadow-lg">
-                                            <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
-                                                {client.name.charAt(0).toUpperCase() + (client.name.split(' ')[1]?.[0]?.toUpperCase() || '')}
-                                            </span>
-                                        </div>
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Taux de livraison</p>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{deliveryRate}%</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {messageStats.delivered}/{messageStats.total} messages
+                                </p>
+                            </div>
+                            <div className="h-12 w-12 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center">
+                                <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Dernière activité</p>
+                                <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    {client.lastContact ? formatTimeAgo(client.lastContact) : 'Jamais'}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Dernier contact
+                                </p>
+                            </div>
+                            <div className="h-12 w-12 bg-orange-100 dark:bg-orange-900/30 rounded-xl flex items-center justify-center">
+                                <Clock className="h-6 w-6 text-orange-600 dark:text-orange-400" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Sidebar - Client Info */}
+                    <div className="lg:col-span-1 space-y-6">
+                        {/* Profile Card */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            {/* Profile Header */}
+                            <div className={`relative bg-gradient-to-br ${getAvatarGradient(client.name)} px-6 py-8`}>
+                                <div className="absolute top-4 right-4">
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="p-2 bg-white/20 rounded-lg text-white hover:bg-white/30 transition-colors"
+                                    >
+                                        <Edit className="h-4 w-4" />
+                                    </button>
+                                </div>
+                                <div className="text-center">
+                                    <div className="h-20 w-20 mx-auto bg-white/20 rounded-2xl flex items-center justify-center text-white text-2xl font-bold mb-4">
+                                        {client.name.charAt(0).toUpperCase()}
                                     </div>
-                                    <h3 className="mt-4 text-center text-xl font-semibold text-white">
-                                        {client.name}
-                                    </h3>
+                                    <h3 className="text-xl font-bold text-white">{client.name}</h3>
                                     {client.birthday && (
-                                        <p className="mt-1 text-center text-sm text-white/80">
+                                        <p className="text-white/80 text-sm mt-1">
                                             {calculateAge(client.birthday)} ans
                                         </p>
                                     )}
-
-                                    {/* Quick action buttons */}
-                                    <div className="absolute top-2 right-2">
-                                        <button onClick={() => setIsEditing(!isEditing)} className="rounded-full p-2 bg-white/20 text-white hover:bg-white/30 transition-colors">
-                                            <Edit className="h-4 w-4" />
-                                        </button>
-                                    </div>
                                 </div>
+                            </div>
 
-                                {/* Profil en mode affichage */}
-                                {!isEditing ? (
-                                    <div className="p-5">
-                                        <ul className="space-y-4">
-                                            <li className="flex items-start">
-                                                <div className="flex-shrink-0">
-                                                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
-                                                        <Phone className="h-4 w-4" />
-                                                    </span>
+                            {/* Contact Information */}
+                            {!isEditing ? (
+                                <div className="p-6 space-y-4">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                                <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-medium text-gray-900 dark:text-white">Téléphone</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-400">{client.phone}</p>
+                                            </div>
+                                            <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                                <Copy className="h-4 w-4" />
+                                            </button>
+                                        </div>
+
+                                        {client.email && (
+                                            <div className="flex items-center space-x-3">
+                                                <div className="h-10 w-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+                                                    <Mail className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                                                 </div>
-                                                <div className="ml-3">
-                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.phone')}</p>
-                                                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                        {client.phone}
-                                                    </p>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">Email</p>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">{client.email}</p>
                                                 </div>
-                                            </li>
-
-                                            {client.email && (
-                                                <li className="flex items-start">
-                                                    <div className="flex-shrink-0">
-                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                                                            <Mail className="h-4 w-4" />
-                                                        </span>
-                                                    </div>
-                                                    <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.email')}</p>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                            <a href={`mailto:${client.email}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                                                {client.email}
-                                                            </a>
-                                                        </p>
-                                                    </div>
-                                                </li>
-                                            )}
-
-                                            {client.address && (
-                                                <li className="flex items-start">
-                                                    <div className="flex-shrink-0">
-                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                                            <MapPin className="h-4 w-4" />
-                                                        </span>
-                                                    </div>
-                                                    <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.address')}</p>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                            {client.address}
-                                                            <a
-                                                                href={`https://maps.google.com/?q=${encodeURIComponent(client.address)}`}
-                                                                target="_blank"
-                                                                className="block text-xs text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 mt-1"
-                                                            >
-                                                                {t('common.viewOnGoogleMaps', 'Voir sur Google Maps')}
-                                                            </a>
-                                                        </p>
-                                                    </div>
-                                                </li>
-                                            )}
-
-                                            {client.birthday && (
-                                                <li className="flex items-start">
-                                                    <div className="flex-shrink-0">
-                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
-                                                            <CalendarDays className="h-4 w-4" />
-                                                        </span>
-                                                    </div>
-                                                    <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.birthday')}</p>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                            {formatDate(client.birthday)}
-                                                        </p>
-                                                    </div>
-                                                </li>
-                                            )}
-
-                                            {client.gender && (
-                                                <li className="flex items-start">
-                                                    <div className="flex-shrink-0">
-                                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                                                            <User className="h-4 w-4" />
-                                                        </span>
-                                                    </div>
-                                                    <div className="ml-3">
-                                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{t('common.gender')}</p>
-                                                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                            {client.gender === 'male' ? t('gender.male') : client.gender === 'female' ? t('gender.female') : t('gender.other')}
-                                                        </p>
-                                                    </div>
-                                                </li>
-                                            )}
-                                        </ul>
-
-                                        {/* Tags section */}
-                                        {client.tags.length > 0 && (
-                                            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                                <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                                    <Tag className="h-4 w-4 mr-1 text-gray-500" />
-                                                    {t('common.tags')}
-                                                </h4>
-                                                <div className="flex flex-wrap gap-1.5">
-                                                    {client.tags.map(tag => (
-                                                        <span
-                                                            key={tag.id}
-                                                            className="inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                                        >
-                                                            {tag.name}
-                                                        </span>
-                                                    ))}
-                                                </div>
+                                                <a
+                                                    href={`mailto:${client.email}`}
+                                                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                                >
+                                                    <ExternalLink className="h-4 w-4" />
+                                                </a>
                                             </div>
                                         )}
 
-                                        {/* Notes section */}
-                                        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                            <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                                <FileText className="h-4 w-4 mr-1 text-gray-500" />
-                                                {t('common.notes')}
-                                            </h4>
-                                            <div className="rounded-md bg-gray-50 p-3 dark:bg-gray-700/50">
-                                                <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
-                                                    {client.notes || t('common.noNotes')}
-                                                </p>
+                                        {client.address && (
+                                            <div className="flex items-start space-x-3">
+                                                <div className="h-10 w-10 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg flex items-center justify-center">
+                                                    <MapPin className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">Adresse</p>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">{client.address}</p>
+                                                </div>
+                                                <a
+                                                    href={`https://maps.google.com/?q=${encodeURIComponent(client.address)}`}
+                                                    target="_blank"
+                                                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                                >
+                                                    <ExternalLink className="h-4 w-4" />
+                                                </a>
+                                            </div>
+                                        )}
+
+                                        {client.birthday && (
+                                            <div className="flex items-center space-x-3">
+                                                <div className="h-10 w-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+                                                    <CalendarDays className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-medium text-gray-900 dark:text-white">Anniversaire</p>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(client.birthday)}</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Tags */}
+                                    {client.tags.length > 0 && (
+                                        <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">Tags</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                {client.tags.map(tag => (
+                                                    <span
+                                                        key={tag.id}
+                                                        className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                                                    >
+                                                        <Tag className="h-3 w-3 mr-1" />
+                                                        {tag.name}
+                                                    </span>
+                                                ))}
                                             </div>
                                         </div>
+                                    )}
 
-                                        {/* Trackers */}
-                                        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                                            <h4 className="flex items-center font-medium text-gray-700 dark:text-gray-300 mb-3">
-                                                <Clock className="h-4 w-4 mr-1 text-gray-500" />
-                                                {t('clients.history')}
-                                            </h4>
-                                            <ul className="space-y-2">
-                                                <li className="flex justify-between text-sm">
-                                                    <span className="text-gray-500 dark:text-gray-400">{t('clients.clientSince')}</span>
-                                                    <span className="font-medium text-gray-900 dark:text-white">{formatDate(client.created_at)}</span>
-                                                </li>
-                                                <li className="flex justify-between text-sm">
-                                                    <span className="text-gray-500 dark:text-gray-400">{t('clients.lastContact')}</span>
-                                                    <span className="font-medium text-gray-900 dark:text-white">{formatTimeAgo(client.lastContact || '')}</span>
-                                                </li>
-                                                <li className="flex justify-between text-sm">
-                                                    <span className="text-gray-500 dark:text-gray-400">{t('clients.lastVisit')}</span>
-                                                    <span className="font-medium text-gray-900 dark:text-white">{client.last_visit_date ? formatTimeAgo(client.last_visit_date) : '-'}</span>
-                                                </li>
-                                            </ul>
+                                    {/* Notes */}
+                                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">Notes</p>
+                                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
+                                                {client.notes || 'Aucune note'}
+                                            </p>
                                         </div>
                                     </div>
-                                ) : (
-                                    /* Formulaire d'édition */
-                                    <div className="p-5 animate-in fade-in duration-300">
-                                        <form onSubmit={handleSubmit} className="space-y-5">
-                                            <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-4">
-                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('clients.editInfo')}</h3>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsEditing(false)}
-                                                    className="rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 transition-colors"
-                                                >
-                                                    <X className="h-5 w-5" />
-                                                </button>
-                                            </div>
+                                </div>
+                            ) : (
+                                /* Edit Form */
+                                <div className="p-6">
+                                    <form className="space-y-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">Modifier le profil</h4>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditing(false)}
+                                                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                            >
+                                                <X className="h-5 w-5" />
+                                            </button>
+                                        </div>
 
-                                            <div>
-                                                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t('clients.name')} *
-                                                </label>
-                                                <input
-                                                    id="name"
-                                                    type="text"
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                    value={data.name}
-                                                    onChange={e => setData('name', e.target.value)}
-                                                    required
-                                                />
-                                                {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
-                                            </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Nom complet
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={data.name}
+                                                onChange={e => setData('name', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                            />
+                                        </div>
 
-                                            <div>
-                                                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t('clients.phone')} *
-                                                </label>
-                                                <input
-                                                    id="phone"
-                                                    type="text"
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                    value={data.phone}
-                                                    onChange={e => setData('phone', e.target.value)}
-                                                    required
-                                                />
-                                                {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone}</p>}
-                                            </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Téléphone
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={data.phone}
+                                                onChange={e => setData('phone', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                            />
+                                        </div>
 
-                                            <div>
-                                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t('clients.email')}
-                                                </label>
-                                                <input
-                                                    id="email"
-                                                    type="email"
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                    value={data.email}
-                                                    onChange={e => setData('email', e.target.value)}
-                                                />
-                                                {errors.email && <p className="mt-1 text-xs text-red-600">{errors.email}</p>}
-                                            </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Email
+                                            </label>
+                                            <input
+                                                type="email"
+                                                value={data.email}
+                                                onChange={e => setData('email', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                            />
+                                        </div>
 
-                                            <div>
-                                                <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    {t('clients.address')}
-                                                </label>
-                                                <input
-                                                    id="address"
-                                                    type="text"
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                    value={data.address}
-                                                    onChange={e => setData('address', e.target.value)}
-                                                />
-                                                {errors.address && <p className="mt-1 text-xs text-red-600">{errors.address}</p>}
-                                            </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Adresse
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={data.address}
+                                                onChange={e => setData('address', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                            />
+                                        </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label htmlFor="birthday" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                        Date de naissance
-                                                    </label>
-                                                    <input
-                                                        id="birthday"
-                                                        type="date"
-                                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                        value={data.birthday}
-                                                        onChange={e => setData('birthday', e.target.value)}
-                                                    />
-                                                    {errors.birthday && <p className="mt-1 text-xs text-red-600">{errors.birthday}</p>}
-                                                </div>
-
-                                                <div>
-                                                    <label htmlFor="gender" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                        Genre
-                                                    </label>
-                                                    <select
-                                                        id="gender"
-                                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                        value={data.gender}
-                                                        onChange={e => setData('gender', e.target.value)}
-                                                    >
-                                                        <option value="">Sélectionner</option>
-                                                        <option value="male">Homme</option>
-                                                        <option value="female">Femme</option>
-                                                        <option value="other">Autre</option>
-                                                    </select>
-                                                    {errors.gender && <p className="mt-1 text-xs text-red-600">{errors.gender}</p>}
-                                                </div>
-                                            </div>
-
+                                        <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                                    Tags
+                                                    Date de naissance
                                                 </label>
-                                                <TagSelector
-                                                    tags={tags}
-                                                    selectedTags={selectedTagsState}
-                                                    onTagsChange={(tagIds) => {
-                                                        setSelectedTagsState(tagIds);
-                                                    }}
-                                                    className="mt-1"
+                                                <input
+                                                    type="date"
+                                                    value={data.birthday}
+                                                    onChange={e => setData('birthday', e.target.value)}
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                                                 />
-                                                {errors.tags && <p className="mt-1 text-xs text-red-600">{errors.tags}</p>}
                                             </div>
-
                                             <div>
-                                                <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                    Notes
+                                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                    Genre
                                                 </label>
-                                                <textarea
-                                                    id="notes"
-                                                    rows={3}
-                                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                                    value={data.notes}
-                                                    onChange={e => setData('notes', e.target.value)}
-                                                />
-                                                {errors.notes && <p className="mt-1 text-xs text-red-600">{errors.notes}</p>}
-                                            </div>
-
-                                            <div className="pt-2 flex justify-end space-x-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsEditing(false)}
-                                                    className="inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600"
+                                                <select
+                                                    value={data.gender}
+                                                    onChange={e => setData('gender', e.target.value)}
+                                                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
                                                 >
-                                                    {t('common.cancel')}
-                                                </button>
-                                                <button
-                                                    type="submit"
-                                                    disabled={processing}
-                                                    className="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed transition-all dark:bg-indigo-500 dark:hover:bg-indigo-600"
-                                                >
-                                                    {processing ? (
-                                                        <>
-                                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                            </svg>
-                                                            {t('common.saving')}
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Save className="mr-2 h-4 w-4" />
-                                                            {t('common.save')}
-                                                        </>
-                                                    )}
-                                                </button>
+                                                    <option value="">Sélectionner</option>
+                                                    <option value="male">Homme</option>
+                                                    <option value="female">Femme</option>
+                                                    <option value="other">Autre</option>
+                                                </select>
                                             </div>
-                                        </form>
-                                    </div>
-                                )}
-                            </div>
+                                        </div>
 
-                            {/* Quick Actions Card */}
-                            <div className="rounded-lg border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
-                                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-200">Actions rapides</h3>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Notes
+                                            </label>
+                                            <textarea
+                                                rows={3}
+                                                value={data.notes}
+                                                onChange={e => setData('notes', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                            />
+                                        </div>
+
+                                        <div className="flex justify-end space-x-3 pt-4">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditing(false)}
+                                                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                            >
+                                                Annuler
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                                            >
+                                                Sauvegarder
+                                            </button>
+                                        </div>
+                                    </form>
                                 </div>
-                                <div className="p-4 grid grid-cols-3 gap-2">
-                                    <button
-                                        onClick={() => setIsAddingMessage(true)}
-                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 transition-colors"
-                                    >
-                                        <Send className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">{t('common.send')}</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setIsAddingVisit(true)}
-                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20 transition-colors"
-                                    >
-                                        <Home className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">{t('visits.register')}</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setIsEditing(true)}
-                                        className="flex flex-col items-center justify-center p-3 rounded-lg text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-colors"
-                                    >
-                                        <Edit className="h-5 w-5 mb-1" />
-                                        <span className="text-xs font-medium">{t('common.edit')}</span>
-                                    </button>
-                                    {client.email && (
-                                        <a
-                                            href={`mailto:${client.email}`}
-                                            className="flex flex-col items-center justify-center p-3 rounded-lg text-purple-600 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20 transition-colors"
-                                        >
-                                            <Mail className="h-5 w-5 mb-1" />
-                                            <span className="text-xs font-medium">{t('common.email')}</span>
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
+                            )}
                         </div>
 
-                        {/* Statistiques et Activités */}
-                        <div className="md:col-span-2 space-y-6">
-                            {/* Résumé des statistiques */}
-                            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
-                                    <div className="flex items-center">
-                                        <div className="flex-shrink-0">
-                                            <MessageCircle className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                                        </div>
-                                        <div className="ml-5 w-0 flex-1">
-                                            <dl>
-                                                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                    {t('stats.totalMessages')}
-                                                </dt>
-                                                <dd>
-                                                    <div className="text-lg font-medium text-gray-900 dark:text-white">
-                                                        {client.messages_count}
-                                                    </div>
-                                                </dd>
-                                            </dl>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-4">
-                                    <div className="flex items-center">
-                                        <div className="flex-shrink-0">
-                                            <Calendar className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-                                        </div>
-                                        <div className="ml-5 w-0 flex-1">
-                                            <dl>
-                                                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                                                    {t('stats.totalVisits')}
-                                                </dt>
-                                                <dd>
-                                                    <div className="text-lg font-medium text-gray-900 dark:text-white">
-                                                        {client.visits.length}
-                                                    </div>
-                                                </dd>
-                                            </dl>
-                                        </div>
-                                    </div>
-                                </div>
+                        {/* Quick Actions */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Actions rapides</h3>
+                            <div className="grid grid-cols-1 gap-3">
+                                <button
+                                    onClick={() => setIsAddingMessage(true)}
+                                    className="flex items-center justify-center p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                                >
+                                    <Send className="h-5 w-5 mr-3" />
+                                    <span className="font-medium">Envoyer SMS</span>
+                                </button>
+                                <button
+                                    onClick={() => setIsAddingVisit(true)}
+                                    className="flex items-center justify-center p-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors"
+                                >
+                                    <Home className="h-5 w-5 mr-3" />
+                                    <span className="font-medium">Nouvelle visite</span>
+                                </button>
+                                {client.email && (
+                                    <a
+                                        href={`mailto:${client.email}`}
+                                        className="flex items-center justify-center p-4 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                                    >
+                                        <Mail className="h-5 w-5 mr-3" />
+                                        <span className="font-medium">Envoyer email</span>
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div className="lg:col-span-2 space-y-6">
+
+
+                        {/* Tabs Navigation */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            <div className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                                <nav className="flex space-x-8 px-6">
+                                    {[
+                                        { id: 'overview', label: 'Vue d\'ensemble', icon: Eye, count: null },
+                                        { id: 'messages', label: 'Messages', icon: MessageCircle, count: client.messages_count },
+                                        { id: 'visits', label: 'Visites', icon: Home, count: totalVisits },
+                                        { id: 'activity', label: 'Activité', icon: Activity, count: null }
+                                    ].map((tab) => (
+                                        <button
+                                            key={tab.id}
+                                            onClick={() => setActiveTab(tab.id as any)}
+                                            className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                                                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                                                }`}
+                                        >
+                                            <tab.icon className="h-4 w-4 mr-2" />
+                                            {tab.label}
+                                            {tab.count !== null && (
+                                                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs font-medium ${activeTab === tab.id
+                                                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                                                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                                    }`}>
+                                                    {tab.count}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </nav>
                             </div>
 
-                            {/* Onglets Messages/Visites */}
-                            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
-                                <div className="border-b border-gray-200 dark:border-gray-700">
-                                    <nav className="flex">
-                                        <button
-                                            onClick={() => setActiveTab('messages')}
-                                            className={`px-6 py-4 text-sm font-medium transition-colors flex items-center ${activeTab === 'messages'
-                                                ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                                                }`}
-                                        >
-                                            <MessageCircle className="h-4 w-4 mr-2" />
-                                            Messages
-                                            <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                                {client.messages_count}
-                                            </span>
-                                        </button>
-                                        <button
-                                            onClick={() => setActiveTab('visits')}
-                                            className={`px-6 py-4 text-sm font-medium transition-colors flex items-center ${activeTab === 'visits'
-                                                ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                                                }`}
-                                        >
-                                            <Home className="h-4 w-4 mr-2" />
-                                            Visites
-                                            <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
-                                                {client.visits.length}
-                                            </span>
-                                        </button>
-                                    </nav>
-                                </div>
-
-                                <div className="p-4">
-                                    {activeTab === 'messages' && (
-                                        <div className="overflow-hidden">
-                                            {client.messages.length === 0 ? (
-                                                <div className="text-center py-10">
-                                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/30">
-                                                        <MessageCircle className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
-                                                    </div>
-                                                    <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-white">Aucun message</h3>
-                                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                                        Aucun message n'a encore été envoyé à ce client.
-                                                    </p>
-                                                    <div className="mt-6">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setIsAddingMessage(true)}
-                                                            className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-500 dark:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
-                                                        >
-                                                            <Send className="mr-2 h-4 w-4" />
-                                                            Envoyer un message
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Historique des messages</h3>
-                                                        <button
-                                                            onClick={() => setIsAddingMessage(true)}
-                                                            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-500 transition-colors dark:bg-blue-700 dark:hover:bg-blue-600"
-                                                        >
-                                                            <Plus className="mr-1 h-3 w-3" />
-                                                            Nouveau message
-                                                        </button>
-                                                    </div>
-                                                    <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                                                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                                            <thead className="bg-gray-50 dark:bg-gray-700">
-                                                                <tr>
-                                                                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Date</th>
-                                                                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Message</th>
-                                                                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Type</th>
-                                                                    <th scope="col" className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-300">Statut</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-                                                                {client.messages.slice(0, 5).map((message) => (
-                                                                    <tr key={message.id} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                                                                        <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                                                            {formatDateTime(message.sent_at)}
-                                                                        </td>
-                                                                        <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
-                                                                            <div className="max-w-xs overflow-hidden text-ellipsis" title={message.content}>
-                                                                                {message.content}
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                                                            {message.campaign ? (
-                                                                                <Link
-                                                                                    href={route('campaigns.show', message.campaign.id)}
-                                                                                    className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-800/40 transition-colors"
-                                                                                >
-                                                                                    <Activity className="mr-1 h-3 w-3" />
-                                                                                    {message.campaign.name}
-                                                                                </Link>
-                                                                            ) : (
-                                                                                <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                                                                                    <MessageCircle className="mr-1 h-3 w-3" />
-                                                                                    Message Direct
-                                                                                </span>
-                                                                            )}
-                                                                        </td>
-                                                                        <td className="whitespace-nowrap px-3 py-3 text-sm">
-                                                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(message.status)}`}>
-                                                                                {getStatusIcon(message.status)}
-                                                                                {getStatusLabel(message.status)}
-                                                                            </span>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {activeTab === 'visits' && (
+                            {/* Tab Contents */}
+                            <div className="p-6">
+                                {activeTab === 'overview' && (
+                                    <div className="space-y-6">
                                         <div>
-                                            {client.visits.length === 0 ? (
-                                                <div className="text-center py-10">
-                                                    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
-                                                        <Home className="h-8 w-8 text-amber-600 dark:text-amber-400" />
-                                                    </div>
-                                                    <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-white">Aucune visite</h3>
-                                                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                                        Ce client n'a pas encore reçu de visite.
-                                                    </p>
-                                                    <div className="mt-6">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setIsAddingVisit(true)}
-                                                            className="inline-flex items-center rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-amber-500 transition-colors dark:bg-amber-700 dark:hover:bg-amber-600"
-                                                        >
-                                                            <Home className="mr-2 h-4 w-4" />
-                                                            Nouvelle visite
-                                                        </button>
+                                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Résumé du client</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Messages échangés</p>
+                                                            <p className="text-2xl font-bold text-blue-900 dark:text-blue-300">{messageStats.total}</p>
+                                                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                                                                {messageStats.delivered} livrés avec succès
+                                                            </p>
+                                                        </div>
+                                                        <MessageCircle className="h-8 w-8 text-blue-500" />
                                                     </div>
                                                 </div>
-                                            ) : (
-                                                <>
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Historique des visites</h3>
-                                                        <button
-                                                            onClick={() => setIsAddingVisit(true)}
-                                                            className="inline-flex items-center rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-amber-500 transition-colors dark:bg-amber-700 dark:hover:bg-amber-600"
-                                                        >
-                                                            <Plus className="mr-1 h-3 w-3" />
-                                                            Nouvelle visite
-                                                        </button>
+
+                                                <div className="bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Visites effectuées</p>
+                                                            <p className="text-2xl font-bold text-emerald-900 dark:text-emerald-300">{totalVisits}</p>
+                                                            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                                                                {client.last_visit_date ? formatTimeAgo(client.last_visit_date) : 'Aucune visite'}
+                                                            </p>
+                                                        </div>
+                                                        <Home className="h-8 w-8 text-emerald-500" />
                                                     </div>
-                                                    <div className="space-y-4">
-                                                        {client.visits.map((visit) => (
-                                                            <div key={visit.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 hover:shadow-md transition-shadow">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">Activité récente</h4>
+                                            <div className="space-y-3">
+                                                {client.messages.slice(0, 3).map((message, index) => (
+                                                    <div key={message.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                                        <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                                                            <MessageCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm text-gray-900 dark:text-white truncate">
+                                                                Message envoyé
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                                {formatTimeAgo(message.sent_at)}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(message.status)}`}>
+                                                            {getStatusIcon(message.status)}
+                                                            {getStatusLabel(message.status)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                                {visits.slice(0, 2).map((visit, index) => (
+                                                    <div key={visit.id} className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                                        <div className="h-8 w-8 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center">
+                                                            <Home className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm text-gray-900 dark:text-white">
+                                                                Visite effectuée
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                                {formatTimeAgo(visit.visit_date)}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'messages' && (
+                                    <div className="space-y-4">
+                                        {client.messages.length === 0 ? (
+                                            <div className="text-center py-12">
+                                                <div className="h-16 w-16 mx-auto bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                                                    <MessageCircleOff className="h-8 w-8 text-gray-400" />
+                                                </div>
+                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Aucun message</h3>
+                                                <p className="text-gray-500 dark:text-gray-400 mt-1">
+                                                    Commencez la conversation avec ce client
+                                                </p>
+                                                <button
+                                                    onClick={() => setIsAddingMessage(true)}
+                                                    className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                >
+                                                    <Send className="h-4 w-4 mr-2" />
+                                                    Envoyer le premier message
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {client.messages.map((message) => (
+                                                    <div key={message.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center space-x-2 mb-2">
+                                                                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                                                        {formatDateTime(message.sent_at)}
+                                                                    </span>
+                                                                    {message.campaign && (
+                                                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                                                                            <Activity className="h-3 w-3 mr-1" />
+                                                                            {message.campaign.name}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-sm text-gray-700 dark:text-gray-300">
+                                                                    {message.content}
+                                                                </p>
+                                                            </div>
+                                                            <span className={`ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(message.status)}`}>
+                                                                {getStatusIcon(message.status)}
+                                                                {getStatusLabel(message.status)}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {activeTab === 'visits' && (
+                                    <div className="space-y-4">
+                                        {visits.length === 0 ? (
+                                            <div className="text-center py-12">
+                                                <div className="h-16 w-16 mx-auto bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                                                    <Home className="h-8 w-8 text-gray-400" />
+                                                </div>
+                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Aucune visite</h3>
+                                                <p className="text-gray-500 dark:text-gray-400 mt-1">
+                                                    Enregistrez la première visite chez ce client
+                                                </p>
+                                                <button
+                                                    onClick={() => setIsAddingVisit(true)}
+                                                    className="mt-4 inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                                                >
+                                                    <Home className="h-4 w-4 mr-2" />
+                                                    Enregistrer une visite
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {visits.map((visit) => (
+                                                    <div key={visit.id} className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                                                        <div className="flex items-start space-x-4">
+                                                            <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                                                                <Home className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                                                            </div>
+                                                            <div className="flex-1">
                                                                 <div className="flex items-center justify-between mb-2">
-                                                                    <div className="flex items-center">
-                                                                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
-                                                                            <Home className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                                                                        </div>
-                                                                        <div className="ml-3">
-                                                                            <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                                                                                Visite du {formatDate(visit.visit_date)}
-                                                                            </h3>
-                                                                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                                                                                Enregistrée le {format(new Date(visit.created_at), 'dd/MM/yyyy à HH:mm')}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                                                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                                                                        Visite du {formatDate(visit.visit_date)}
+                                                                    </h4>
+                                                                    <span className="text-sm text-gray-500 dark:text-gray-400">
                                                                         {formatTimeAgo(visit.visit_date)}
                                                                     </span>
                                                                 </div>
-                                                                <div className="mt-3 rounded-md bg-gray-50 dark:bg-gray-700/50 p-3">
+                                                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                                                    Enregistrée le {formatDateTime(visit.created_at)}
+                                                                </p>
+                                                                <div className="bg-white dark:bg-gray-800 rounded-lg p-4">
                                                                     <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">
                                                                         {visit.notes || "Aucune note pour cette visite"}
                                                                     </p>
                                                                 </div>
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white mb-4 flex items-center">
-                                    <MessageCircle className="h-5 w-5 mr-2 text-indigo-500" />
-                                    {t('messages.lastMessage')}
-                                </h3>
-                                {client.messages.length > 0 ? (
-                                    <div className="overflow-hidden bg-white dark:bg-gray-800 shadow sm:rounded-md">
-                                        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
-                                            {client.messages.slice(0, 5).map(message => (
-                                                <li key={message.id}>
-                                                    <div className="block hover:bg-gray-50 dark:hover:bg-gray-700">
-                                                        <div className="px-4 py-4 sm:px-6">
-                                                            <div className="flex items-center justify-between">
-                                                                <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400 truncate">{formatDateTime(message.sent_at)}</p>
-                                                                <div className="ml-2 flex-shrink-0 flex">
-                                                                    <p className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                                                                        {message.sent_by_client ? t('messages.fromClient') : t('messages.fromUser')}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="mt-2 flex justify-between">
-                                                                <div className="sm:flex">
-                                                                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                                                                        {message.content}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
                                                         </div>
                                                     </div>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div className="text-center py-6 bg-white dark:bg-gray-800 shadow sm:rounded-md">
-                                        <MessageCircleOff className="mx-auto h-12 w-12 text-gray-400" />
-                                        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">{t('messages.noMessages')}</h3>
-                                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('messages.sendFirstMessage')}</p>
-                                        <div className="mt-6">
-                                            <button
-                                                onClick={() => setIsAddingMessage(true)}
-                                                className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                                            >
-                                                <PlusCircle className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-                                                {t('messages.newMessage')}
-                                            </button>
+                                )}
+
+                                {activeTab === 'activity' && (
+                                    <div className="space-y-6">
+                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Historique complet</h3>
+                                        <div className="space-y-4">
+                                            {/* Combine messages and visits, sort by date */}
+                                            {[...client.messages.map(m => ({ ...m, type: 'message' })), ...visits.map(v => ({ ...v, type: 'visit' }))]
+                                                .sort((a, b) => new Date(b.created_at || b.sent_at).getTime() - new Date(a.created_at || a.sent_at).getTime())
+                                                .slice(0, 10)
+                                                .map((item, index) => (
+                                                    <div key={`${item.type}-${item.id}`} className="flex items-start space-x-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                                                        <div className={`h-10 w-10 rounded-full flex items-center justify-center ${item.type === 'message'
+                                                                ? 'bg-blue-100 dark:bg-blue-900/30'
+                                                                : 'bg-emerald-100 dark:bg-emerald-900/30'
+                                                            }`}>
+                                                            {item.type === 'message' ? (
+                                                                <MessageCircle className={`h-5 w-5 ${item.type === 'message'
+                                                                        ? 'text-blue-600 dark:text-blue-400'
+                                                                        : 'text-emerald-600 dark:text-emerald-400'
+                                                                    }`} />
+                                                            ) : (
+                                                                <Home className={`h-5 w-5 ${item.type === 'message'
+                                                                        ? 'text-blue-600 dark:text-blue-400'
+                                                                        : 'text-emerald-600 dark:text-emerald-400'
+                                                                    }`} />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between">
+                                                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                                                    {item.type === 'message' ? 'Message envoyé' : 'Visite effectuée'}
+                                                                </p>
+                                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                                    {formatTimeAgo(item.type === 'message' ? item.sent_at : item.visit_date)}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                                {item.type === 'message'
+                                                                    ? (item.content?.length > 100 ? item.content.substring(0, 100) + '...' : item.content)
+                                                                    : (item.notes?.length > 100 ? item.notes.substring(0, 100) + '...' : item.notes || 'Aucune note')
+                                                                }
+                                                            </p>
+                                                            {item.type === 'message' && item.status && (
+                                                                <span className={`inline-flex items-center mt-2 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.status)}`}>
+                                                                    {getStatusIcon(item.status)}
+                                                                    {getStatusLabel(item.status)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
                                         </div>
                                     </div>
                                 )}
@@ -1255,6 +1060,224 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                     </div>
                 </div>
             </div>
+
+            {/* Modal pour l'ajout de message */}
+            <Transition show={isAddingMessage} as={React.Fragment}>
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex min-h-screen items-center justify-center p-4">
+                        <Transition
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0"
+                            enterTo="opacity-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                        >
+                            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsAddingMessage(false)} />
+                        </Transition>
+
+                        <Transition
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0 scale-95"
+                            enterTo="opacity-100 scale-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100 scale-100"
+                            leaveTo="opacity-0 scale-95"
+                        >
+                            <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
+                                            <Send className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Nouveau message SMS</h3>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">Envoyer un message direct à {client.name}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsAddingMessage(false)}
+                                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                            Contenu du message
+                                        </label>
+                                        <textarea
+                                            rows={5}
+                                            value={messageContent}
+                                            onChange={(e) => setMessageContent(e.target.value)}
+                                            placeholder="Tapez votre message ici..."
+                                            maxLength={320}
+                                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                                        />
+                                        <div className="flex justify-between items-center mt-3">
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                {messageContent.length} caractères
+                                            </span>
+                                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${messageContent.length > 160
+                                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400'
+                                                    : 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                                }`}>
+                                                {Math.ceil(messageContent.length / 160)} SMS
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Modèles rapides :</p>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setMessageContent(`Bonjour ${client.name}, j'espère que vous allez bien. Confirmez-vous notre rendez-vous ?`)}
+                                                className="px-4 py-2 text-sm text-left bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                            >
+                                                Confirmation de rendez-vous
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMessageContent(`Bonjour ${client.name}, j'ai une proposition qui pourrait vous intéresser. Pouvons-nous en discuter ?`)}
+                                                className="px-4 py-2 text-sm text-left bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                            >
+                                                Proposition commerciale
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMessageContent(`Merci ${client.name} pour votre confiance lors de notre dernière rencontre !`)}
+                                                className="px-4 py-2 text-sm text-left bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                                            >
+                                                Remerciement
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                        <button
+                                            onClick={() => setIsAddingMessage(false)}
+                                            className="px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        >
+                                            Annuler
+                                        </button>
+                                        <button
+                                            onClick={sendDirectMessage}
+                                            disabled={isLoadingMessage || !messageContent.trim()}
+                                            className="px-6 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                                        >
+                                            {isLoadingMessage ? (
+                                                <>
+                                                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                                                    Envoi...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Send className="h-4 w-4 mr-2" />
+                                                    Envoyer le message
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </Transition>
+                    </div>
+                </div>
+            </Transition>
+
+            {/* Modal pour l'ajout de visite */}
+            <Transition show={isAddingVisit} as={React.Fragment}>
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex min-h-screen items-center justify-center p-4">
+                        <Transition
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0"
+                            enterTo="opacity-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                        >
+                            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsAddingVisit(false)} />
+                        </Transition>
+
+                        <Transition
+                            enter="ease-out duration-300"
+                            enterFrom="opacity-0 scale-95"
+                            enterTo="opacity-100 scale-100"
+                            leave="ease-in duration-200"
+                            leaveFrom="opacity-100 scale-100"
+                            leaveTo="opacity-0 scale-95"
+                        >
+                            <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
+                                            <Home className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Enregistrer une visite</h3>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400">Documenter la visite chez {client.name}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsAddingVisit(false)}
+                                        className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                            Notes de visite
+                                        </label>
+                                        <textarea
+                                            rows={6}
+                                            value={visitNotes}
+                                            onChange={(e) => setVisitNotes(e.target.value)}
+                                            placeholder="Décrivez ce qui s'est passé lors de cette visite, les besoins du client, les points à retenir..."
+                                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                                        />
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                                            Décrivez les points importants de cette visite, les besoins exprimés par le client, les actions à suivre, etc.
+                                        </p>
+                                    </div>
+
+                                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                                        <button
+                                            onClick={() => setIsAddingVisit(false)}
+                                            className="px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                        >
+                                            Annuler
+                                        </button>
+                                        <button
+                                            onClick={registerVisit}
+                                            disabled={isLoadingVisit || !visitNotes.trim()}
+                                            className="px-6 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center"
+                                        >
+                                            {isLoadingVisit ? (
+                                                <>
+                                                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                                                    Enregistrement...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="h-4 w-4 mr-2" />
+                                                    Enregistrer la visite
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </Transition>
+                    </div>
+                </div>
+            </Transition>
         </AuthenticatedLayout>
     );
 }

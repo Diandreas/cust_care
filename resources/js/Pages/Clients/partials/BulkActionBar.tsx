@@ -2,10 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
-import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
-} from '@/Components/ui/dropdown-menu';
-import { Check, X, MessageSquare } from 'lucide-react';
+import { Check, X, MessageSquare, Trash2 } from 'lucide-react';
 
 interface BulkActionBarProps {
     selectedCount: number;
@@ -33,27 +30,16 @@ export default function BulkActionBar({ selectedCount, onBulkAction, onCancel }:
                         <MessageSquare className="mr-2 h-4 w-4" />
                         {t('clients.sendMessage')}
                     </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className="border-border/60 bg-white/80 dark:border-slate-700/80 dark:bg-slate-800/90 dark:text-gray-200 dark:hover:bg-slate-700/90"
-                            >
-                                {t('common.moreActions')}
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="dark:bg-slate-800 dark:border-slate-700/60">
-                            <DropdownMenuItem onSelect={() => onBulkAction('export')} className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
-                                {t('clients.exportSelected')}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onSelect={() => onBulkAction('delete')}
-                                className="text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400 dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90"
-                            >
-                                {t('clients.deleteSelected')}
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+
+                    <Button
+                        onClick={() => onBulkAction('delete')}
+                        variant="outline"
+                        className="border-border/60 bg-white/80 text-rose-600 hover:bg-rose-50 dark:border-slate-700/80 dark:bg-slate-800/90 dark:text-rose-400 dark:hover:bg-slate-700/90"
+                    >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        {t('clients.deleteSelected')}
+                    </Button>
+
                     <Button
                         variant="outline"
                         onClick={onCancel}

@@ -625,7 +625,16 @@
                 "a3": "You can purchase additional SMS credits at any time. Your base plan will renew with the standard allocation at the start of each billing cycle."
             }
         },
-        "noSubscription": "You don't have an active subscription"
+        "noSubscription": "You don't have an active subscription",
+        "limit": {
+            "freePlan": "Free Plan",
+            "freePlanLimit": "Limited to 50 clients",
+            "upgradeRequired": "You have reached the client limit for your free plan. Please subscribe to add more clients.",
+            "importOverLimit": "The import would exceed your plan's client limit. You can import a maximum of {count} clients.",
+            "subscriptionRequired": "You must have an active subscription to access this feature."
+        },
+        "smsBalanceInsufficient": "Insufficient SMS balance for this operation. Please top up your account.",
+        "smsCreditCost": "1 credit = 1 SMS"
     },
     "settings": {
         "title": "Settings",
@@ -848,6 +857,11 @@
         "characterCount": "Character count",
         "segmentCount": "Segment count",
         "recipientCount": "Recipient count",
-        "totalMessages": "Total messages"
+        "totalMessages": "Total messages",
+        "sending": "Sending...",
+        "sendSuccess": "Message(s) sent successfully to {count} client(s)",
+        "sendError": "Error sending message",
+        "contentRequired": "Please enter a message",
+        "longMessageWarning": "This is a long message and will be sent as multiple segments. This may increase costs."
     }
 }

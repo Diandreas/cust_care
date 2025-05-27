@@ -15,7 +15,23 @@ import { Textarea } from '@/Components/ui/textarea';
 import { ScrollArea } from '@/Components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/Components/ui/table';
-import { RefreshCw, Upload, Download, FileText, ArrowLeft } from 'lucide-react';
+import { Badge } from '@/Components/ui/badge';
+import { Separator } from '@/Components/ui/separator';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import {
+    RefreshCw,
+    Upload,
+    Download,
+    FileText,
+    ArrowLeft,
+    FileSpreadsheet,
+    Users,
+    CheckCircle,
+    AlertCircle,
+    Info,
+    ChevronRight,
+    Zap
+} from 'lucide-react';
 
 export default function ImportExport({ auth }) {
     const { t } = useTranslation();
@@ -384,214 +400,388 @@ export default function ImportExport({ auth }) {
         }
     };
 
+    const requiredFields = Object.values(fieldMapping).filter(v => ['name', 'phone'].includes(v));
+    const isImportReady = selectedFile && requiredFields.length >= 2;
+
     return (
         <AuthenticatedLayout
             user={auth.user}
             header={
                 <div className="flex items-center justify-between">
-                    <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                        {t('clients.importExport') || 'Importation / Exportation de Clients'}
-                    </h2>
+                    <div className="flex items-center space-x-4">
+                        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                            <Users className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                            <h2 className="font-semibold text-xl text-gray-900 dark:text-gray-100 leading-tight">
+                                {t('clients.importExport') || 'Gestion des Contacts'}
+                            </h2>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Importez et exportez vos contacts facilement
+                            </p>
+                        </div>
+                    </div>
                     <Button
                         onClick={() => router.visit(route('clients.index'))}
                         variant="outline"
                         size="sm"
-                        className="flex items-center gap-2"
+                        className="border-gray-300 hover:border-gray-400 dark:border-slate-600 dark:hover:border-slate-500"
                     >
-                        <ArrowLeft className="h-4 w-4" />
-                        {t('common.back') || 'Retour'}
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Retour
                     </Button>
                 </div>
             }
         >
             <Head title={t('clients.importExport') || 'Importation / Exportation'} />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            <div className="py-8">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                    {/* Header Statistics */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                        <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800/50 dark:to-slate-700/50">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Import CSV</p>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">Fichier</p>
+                                    </div>
+                                    <div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                        <FileSpreadsheet className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-800/50 dark:to-slate-700/50">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-green-600 dark:text-green-400">Import Simple</p>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">Texte</p>
+                                    </div>
+                                    <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                        <FileText className="h-6 w-6 text-green-600 dark:text-green-400" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-50 to-violet-50 dark:from-slate-800/50 dark:to-slate-700/50">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Export</p>
+                                        <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">Multi-format</p>
+                                    </div>
+                                    <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                        <Download className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'import' | 'export')} className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 mb-6">
-                            <TabsTrigger value="import" className="flex items-center gap-2">
+                        <TabsList className="grid w-full grid-cols-2 h-12 p-1 bg-gray-100 dark:bg-slate-800 rounded-xl border-0">
+                            <TabsTrigger
+                                value="import"
+                                className="flex items-center gap-3 h-10 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-700 font-medium"
+                            >
                                 <Upload className="h-4 w-4" />
-                                {t('import.title') || 'Importer des contacts'}
+                                Importer des contacts
                             </TabsTrigger>
-                            <TabsTrigger value="export" className="flex items-center gap-2">
+                            <TabsTrigger
+                                value="export"
+                                className="flex items-center gap-3 h-10 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-700 font-medium"
+                            >
                                 <Download className="h-4 w-4" />
-                                {t('export.title') || 'Exporter des contacts'}
+                                Exporter des contacts
                             </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="import" className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>{t('import.method') || 'Méthode d\'importation'}</CardTitle>
-                                    <CardDescription>
-                                        {t('import.methodDescription') || 'Choisissez comment vous souhaitez importer vos contacts'}
-                                    </CardDescription>
+                        <TabsContent value="import" className="mt-8 space-y-6">
+                            <Card className="border-0 shadow-sm">
+                                <CardHeader className="pb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="h-8 w-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                            <Upload className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg">Méthode d'importation</CardTitle>
+                                            <CardDescription className="text-sm">
+                                                Choisissez comment vous souhaitez importer vos contacts
+                                            </CardDescription>
+                                        </div>
+                                    </div>
                                 </CardHeader>
                                 <CardContent>
                                     <Tabs value={importMethod} onValueChange={(val) => setImportMethod(val as 'csv' | 'simple')} className="w-full">
-                                        <TabsList className="grid w-full grid-cols-2 mb-6">
-                                            <TabsTrigger value="csv" className="flex items-center gap-2">
-                                                <FileText className="h-4 w-4" />
-                                                {t('import.fromCSV') || 'Depuis CSV'}
+                                        <TabsList className="grid w-full grid-cols-2 h-11 p-1 bg-gray-50 dark:bg-slate-800/50 rounded-lg">
+                                            <TabsTrigger
+                                                value="csv"
+                                                className="flex items-center gap-2 h-9 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-700"
+                                            >
+                                                <FileSpreadsheet className="h-4 w-4" />
+                                                Fichier CSV
                                             </TabsTrigger>
-                                            <TabsTrigger value="simple">
-                                                {t('import.simpleFormat') || 'Format simple'}
+                                            <TabsTrigger
+                                                value="simple"
+                                                className="flex items-center gap-2 h-9 rounded-md data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-700"
+                                            >
+                                                <FileText className="h-4 w-4" />
+                                                Format simple
                                             </TabsTrigger>
                                         </TabsList>
 
-                                        <TabsContent value="csv" className="space-y-6">
-                                            <div>
-                                                <Label htmlFor="file_import">{t('import.selectFile') || 'Sélectionner un fichier'}</Label>
-                                                <Input
-                                                    id="file_import"
-                                                    type="file"
-                                                    accept=".csv,.txt"
-                                                    onChange={handleFileChange}
-                                                    className="mt-1 bg-white border-border/60 dark:bg-slate-700 dark:border-slate-600"
-                                                    disabled={importLoading}
-                                                />
-                                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                    {t('import.fileFormats') || 'Formats acceptés: CSV, TXT (max 5MB)'}
-                                                </p>
+                                        <TabsContent value="csv" className="mt-6 space-y-6">
+                                            {/* File Upload Section */}
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between">
+                                                    <Label htmlFor="file_import" className="text-sm font-medium">
+                                                        Sélectionner un fichier
+                                                    </Label>
+                                                    {selectedFile && (
+                                                        <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                                            {selectedFile.name}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+
+                                                <div className="relative">
+                                                    <Input
+                                                        id="file_import"
+                                                        type="file"
+                                                        accept=".csv,.txt"
+                                                        onChange={handleFileChange}
+                                                        className="h-12 bg-white border-2 border-dashed border-gray-300 hover:border-gray-400 dark:bg-slate-800 dark:border-slate-600 dark:hover:border-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/30 dark:file:text-blue-400"
+                                                        disabled={importLoading}
+                                                    />
+                                                </div>
+
+                                                <Alert>
+                                                    <Info className="h-4 w-4" />
+                                                    <AlertDescription className="text-xs">
+                                                        Formats acceptés: CSV, TXT • Taille maximale: 5MB • Encodage: UTF-8 recommandé
+                                                    </AlertDescription>
+                                                </Alert>
                                             </div>
 
+                                            {/* Preview Section */}
                                             {previewData.length > 0 && (
-                                                <div>
-                                                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
-                                                        {t('import.preview') || 'Aperçu'}
-                                                    </h3>
-                                                    <ScrollArea className="h-40 rounded-md border border-border/60 bg-gray-50/80 p-2 dark:border-slate-700/60 dark:bg-slate-700/80">
-                                                        <Table>
-                                                            <TableHeader>
-                                                                <TableRow className="dark:border-slate-600">
-                                                                    {Object.keys(previewData[0]).map(header => (
-                                                                        <TableHead key={header} className="px-3 py-2 text-xs font-medium">
-                                                                            {header}
-                                                                        </TableHead>
-                                                                    ))}
-                                                                </TableRow>
-                                                            </TableHeader>
-                                                            <TableBody>
-                                                                {previewData.map((row, rowIndex) => (
-                                                                    <TableRow key={rowIndex} className="dark:border-slate-600">
-                                                                        {Object.entries(row).map(([key, value]) => (
-                                                                            <TableCell key={key} className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                                                                                {value}
-                                                                            </TableCell>
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <CheckCircle className="h-5 w-5 text-green-500" />
+                                                        <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                                                            Aperçu des données
+                                                        </h3>
+                                                        <Badge variant="outline">
+                                                            {previewData.length} lignes détectées
+                                                        </Badge>
+                                                    </div>
+
+                                                    <div className="rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
+                                                        <ScrollArea className="h-48">
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow className="bg-gray-50 dark:bg-slate-800/50">
+                                                                        {Object.keys(previewData[0]).map(header => (
+                                                                            <TableHead key={header} className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                                                                                {header}
+                                                                            </TableHead>
                                                                         ))}
                                                                     </TableRow>
-                                                                ))}
-                                                            </TableBody>
-                                                        </Table>
-                                                    </ScrollArea>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {previewData.map((row, rowIndex) => (
+                                                                        <TableRow key={rowIndex} className="hover:bg-gray-50 dark:hover:bg-slate-800/30">
+                                                                            {Object.entries(row).map(([key, value]) => (
+                                                                                <TableCell key={key} className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                                                                                    {value || <span className="text-gray-400 italic">vide</span>}
+                                                                                </TableCell>
+                                                                            ))}
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </ScrollArea>
+                                                    </div>
                                                 </div>
                                             )}
 
+                                            {/* Field Mapping Section */}
                                             {Object.keys(fieldMapping).length > 0 && (
-                                                <div>
-                                                    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                        {t('import.fieldMapping') || 'Correspondance des champs'}
-                                                    </h3>
-                                                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400 mb-3">
-                                                        {t('import.fieldMappingDescription') || 'Associez les colonnes de votre fichier aux champs de l\'application'}
-                                                    </p>
-                                                    <ScrollArea className="h-60 pr-4">
-                                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                                            {Object.entries(fieldMapping).map(([csvField, appField]) => (
-                                                                <div key={csvField}>
-                                                                    <Label htmlFor={`mapping_${csvField}`} className="text-sm font-medium">
-                                                                        {csvField}
-                                                                    </Label>
-                                                                    <Select
-                                                                        value={appField}
-                                                                        onValueChange={(val) => setFieldMapping({
-                                                                            ...fieldMapping,
-                                                                            [csvField]: val,
-                                                                        })}
-                                                                        disabled={importLoading}
-                                                                    >
-                                                                        <SelectTrigger id={`mapping_${csvField}`} className="mt-1 w-full border-border/60 dark:bg-slate-700 dark:border-slate-600">
-                                                                            <SelectValue placeholder={t('import.ignore') || 'Ignorer'} />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent className="dark:bg-slate-800 dark:border-slate-700/60">
-                                                                            <SelectItem value="ignore">{t('import.ignore') || 'Ignorer'}</SelectItem>
-                                                                            <SelectItem value="name">{t('common.name') || 'Nom'} *</SelectItem>
-                                                                            <SelectItem value="phone">{t('common.phone') || 'Téléphone'} *</SelectItem>
-                                                                            <SelectItem value="email">{t('common.email') || 'Email'}</SelectItem>
-                                                                            <SelectItem value="birthday">{t('common.birthday') || 'Anniversaire'}</SelectItem>
-                                                                            <SelectItem value="address">{t('common.address') || 'Adresse'}</SelectItem>
-                                                                            <SelectItem value="notes">{t('common.notes') || 'Notes'}</SelectItem>
-                                                                            <SelectItem value="tags">{t('common.tags') || 'Tags'}</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </div>
-                                                            ))}
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center space-x-2">
+                                                            <Zap className="h-5 w-5 text-orange-500" />
+                                                            <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                                                                Correspondance des champs
+                                                            </h3>
                                                         </div>
-                                                    </ScrollArea>
-                                                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                                                        * Champs obligatoires
-                                                    </p>
+                                                        <div className="flex items-center space-x-2">
+                                                            {requiredFields.includes('name') && (
+                                                                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                                                    Nom mappé
+                                                                </Badge>
+                                                            )}
+                                                            {requiredFields.includes('phone') && (
+                                                                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                                                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                                                    Téléphone mappé
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <Alert>
+                                                        <AlertCircle className="h-4 w-4" />
+                                                        <AlertDescription className="text-xs">
+                                                            Associez les colonnes de votre fichier aux champs de l'application. Les champs <strong>Nom</strong> et <strong>Téléphone</strong> sont obligatoires.
+                                                        </AlertDescription>
+                                                    </Alert>
+
+                                                    <div className="rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+                                                        <ScrollArea className="max-h-80">
+                                                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                                {Object.entries(fieldMapping).map(([csvField, appField]) => (
+                                                                    <div key={csvField} className="space-y-2">
+                                                                        <div className="flex items-center justify-between">
+                                                                            <Label htmlFor={`mapping_${csvField}`} className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                                                {csvField}
+                                                                            </Label>
+                                                                            <ChevronRight className="h-4 w-4 text-gray-400" />
+                                                                        </div>
+                                                                        <Select
+                                                                            value={appField}
+                                                                            onValueChange={(val) => setFieldMapping({
+                                                                                ...fieldMapping,
+                                                                                [csvField]: val,
+                                                                            })}
+                                                                            disabled={importLoading}
+                                                                        >
+                                                                            <SelectTrigger
+                                                                                id={`mapping_${csvField}`}
+                                                                                className={`h-10 ${['name', 'phone'].includes(appField)
+                                                                                        ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
+                                                                                        : 'border-gray-300 dark:border-slate-600'
+                                                                                    }`}
+                                                                            >
+                                                                                <SelectValue placeholder="Ignorer" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+                                                                                <SelectItem value="ignore" className="text-gray-500">
+                                                                                    <span className="flex items-center">
+                                                                                        Ignorer ce champ
+                                                                                    </span>
+                                                                                </SelectItem>
+                                                                                <Separator className="my-1" />
+                                                                                <SelectItem value="name" className="font-medium">
+                                                                                    <span className="flex items-center">
+                                                                                        <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                                                                                        Nom *
+                                                                                    </span>
+                                                                                </SelectItem>
+                                                                                <SelectItem value="phone" className="font-medium">
+                                                                                    <span className="flex items-center">
+                                                                                        <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                                                                                        Téléphone *
+                                                                                    </span>
+                                                                                </SelectItem>
+                                                                                <Separator className="my-1" />
+                                                                                <SelectItem value="email">Email</SelectItem>
+                                                                                <SelectItem value="birthday">Anniversaire</SelectItem>
+                                                                                <SelectItem value="address">Adresse</SelectItem>
+                                                                                <SelectItem value="notes">Notes</SelectItem>
+                                                                                <SelectItem value="tags">Tags</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </ScrollArea>
+                                                    </div>
                                                 </div>
                                             )}
 
-                                            <div className="flex justify-end">
+                                            {/* Import Button */}
+                                            <div className="flex justify-end pt-4">
                                                 <Button
                                                     onClick={handleCsvImport}
-                                                    disabled={
-                                                        importLoading ||
-                                                        !selectedFile ||
-                                                        Object.values(fieldMapping).filter(v => v !== 'ignore').length === 0
-                                                    }
-                                                    className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200 disabled:opacity-70"
+                                                    disabled={importLoading || !isImportReady}
+                                                    size="lg"
+                                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     {importLoading ? (
                                                         <>
-                                                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                                                            {t('import.importing') || 'Importation...'}
+                                                            <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                                                            Importation en cours...
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <Upload className="mr-2 h-4 w-4" />
-                                                            {t('import.import') || 'Importer'}
+                                                            <Upload className="mr-2 h-5 w-5" />
+                                                            Importer {selectedFile ? `(${Object.keys(fieldMapping).length} colonnes)` : ''}
                                                         </>
                                                     )}
                                                 </Button>
                                             </div>
                                         </TabsContent>
 
-                                        <TabsContent value="simple" className="space-y-6">
-                                            <div>
-                                                <Label htmlFor="contacts_text">{t('import.contactList') || 'Liste des contacts'}</Label>
+                                        <TabsContent value="simple" className="mt-6 space-y-6">
+                                            {/* Instructions */}
+                                            <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20">
+                                                <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                <AlertDescription className="text-blue-800 dark:text-blue-300">
+                                                    <strong>Format requis:</strong> Nom - Numéro de téléphone (un contact par ligne)
+                                                    <br />
+                                                    <strong>Exemple:</strong> Jean Dupont - 0123456789
+                                                </AlertDescription>
+                                            </Alert>
+
+                                            <div className="space-y-3">
+                                                <Label htmlFor="contacts_text" className="text-sm font-medium">
+                                                    Liste des contacts
+                                                </Label>
                                                 <Textarea
                                                     id="contacts_text"
                                                     value={contactsText}
                                                     onChange={(e) => setContactsText(e.target.value)}
                                                     rows={12}
-                                                    placeholder={t('import.contactsPlaceholder') || 'Jean Dupont - 0123456789\nMarie Martin - 0987654321\n...'}
-                                                    className="mt-1 border-border/60 dark:bg-slate-700 dark:border-slate-600"
+                                                    placeholder={`Jean Dupont - 0123456789
+Marie Martin - 0987654321
+Pierre Durand - 0156789432
+Sophie Leblanc - 0178945623
+
+Ajoutez un contact par ligne...`}
+                                                    className="font-mono text-sm resize-none border-2 border-gray-300 focus:border-blue-500 dark:border-slate-600 dark:focus:border-blue-400 dark:bg-slate-800"
                                                     disabled={importLoading}
                                                 />
-                                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                                    {t('import.contactsExample') || 'Format: Nom - Numéro (un contact par ligne)'}
-                                                </p>
+                                                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                                                    <span>
+                                                        {contactsText.trim().split('\n').filter(line => line.trim()).length} lignes détectées
+                                                    </span>
+                                                    <span>Format: Nom - Numéro</span>
+                                                </div>
                                             </div>
 
-                                            <div className="flex justify-end">
+                                            <div className="flex justify-end pt-4">
                                                 <Button
                                                     onClick={handleSimpleImport}
                                                     disabled={importLoading || !contactsText.trim()}
-                                                    className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200 disabled:opacity-70"
+                                                    size="lg"
+                                                    className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
                                                 >
                                                     {importLoading ? (
                                                         <>
-                                                            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                                                            {t('import.importing') || 'Importation...'}
+                                                            <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                                                            Importation en cours...
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <Upload className="mr-2 h-4 w-4" />
-                                                            {t('import.import') || 'Importer'}
+                                                            <Upload className="mr-2 h-5 w-5" />
+                                                            Importer les contacts
                                                         </>
                                                     )}
                                                 </Button>
@@ -602,71 +792,122 @@ export default function ImportExport({ auth }) {
                             </Card>
                         </TabsContent>
 
-                        <TabsContent value="export" className="space-y-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>{t('export.title') || 'Exportation de contacts'}</CardTitle>
-                                    <CardDescription>
-                                        {t('export.description') || 'Exportez vos contacts dans différents formats'}
-                                    </CardDescription>
+                        <TabsContent value="export" className="mt-8">
+                            <Card className="border-0 shadow-sm">
+                                <CardHeader className="pb-4">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="h-8 w-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                            <Download className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                                        </div>
+                                        <div>
+                                            <CardTitle className="text-lg">Exportation de contacts</CardTitle>
+                                            <CardDescription className="text-sm">
+                                                Téléchargez vos contacts dans le format de votre choix
+                                            </CardDescription>
+                                        </div>
+                                    </div>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
-                                    <div>
-                                        <Label htmlFor="export_format" className="text-sm font-medium">
-                                            {t('export.format') || 'Format d\'exportation'}
-                                        </Label>
-                                        <Select
-                                            value={exportFormat}
-                                            onValueChange={(val) => setExportFormat(val as 'csv' | 'excel')}
-                                            disabled={exportLoading}
-                                        >
-                                            <SelectTrigger id="export_format" className="mt-1 w-full border-border/60 dark:bg-slate-700 dark:border-slate-600">
-                                                <SelectValue placeholder={t('export.selectFormat') || 'Sélectionner un format'} />
-                                            </SelectTrigger>
-                                            <SelectContent className="dark:bg-slate-800 dark:border-slate-700/60">
-                                                <SelectItem value="csv">CSV</SelectItem>
-                                                <SelectItem value="excel">Excel (XLSX)</SelectItem>
-                                            </SelectContent>
-                                        </Select>
+                                    {/* Export Options */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
+                                            <Label htmlFor="export_format" className="text-sm font-medium">
+                                                Format d'exportation
+                                            </Label>
+                                            <Select
+                                                value={exportFormat}
+                                                onValueChange={(val) => setExportFormat(val as 'csv' | 'excel')}
+                                                disabled={exportLoading}
+                                            >
+                                                <SelectTrigger id="export_format" className="h-12 border-2 border-gray-300 dark:border-slate-600">
+                                                    <SelectValue placeholder="Sélectionner un format" />
+                                                </SelectTrigger>
+                                                <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+                                                    <SelectItem value="csv" className="py-3">
+                                                        <div className="flex items-center space-x-3">
+                                                            <FileText className="h-4 w-4 text-blue-500" />
+                                                            <div>
+                                                                <div className="font-medium">CSV</div>
+                                                                <div className="text-xs text-gray-500">Compatible avec Excel, Google Sheets</div>
+                                                            </div>
+                                                        </div>
+                                                    </SelectItem>
+                                                    <SelectItem value="excel" className="py-3">
+                                                        <div className="flex items-center space-x-3">
+                                                            <FileSpreadsheet className="h-4 w-4 text-green-500" />
+                                                            <div>
+                                                                <div className="font-medium">Excel (XLSX)</div>
+                                                                <div className="text-xs text-gray-500">Format natif Microsoft Excel</div>
+                                                            </div>
+                                                        </div>
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <Label htmlFor="export_filter" className="text-sm font-medium">
+                                                Sélection des contacts
+                                            </Label>
+                                            <Select
+                                                value={exportFilter}
+                                                onValueChange={(val) => setExportFilter(val as 'all' | 'filtered')}
+                                                disabled={exportLoading}
+                                            >
+                                                <SelectTrigger id="export_filter" className="h-12 border-2 border-gray-300 dark:border-slate-600">
+                                                    <SelectValue placeholder="Sélectionner un filtre" />
+                                                </SelectTrigger>
+                                                <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+                                                    <SelectItem value="all" className="py-3">
+                                                        <div className="flex items-center space-x-3">
+                                                            <Users className="h-4 w-4 text-blue-500" />
+                                                            <div>
+                                                                <div className="font-medium">Tous les contacts</div>
+                                                                <div className="text-xs text-gray-500">Exporter l'intégralité de votre base</div>
+                                                            </div>
+                                                        </div>
+                                                    </SelectItem>
+                                                    <SelectItem value="filtered" className="py-3">
+                                                        <div className="flex items-center space-x-3">
+                                                            <CheckCircle className="h-4 w-4 text-orange-500" />
+                                                            <div>
+                                                                <div className="font-medium">Contacts filtrés</div>
+                                                                <div className="text-xs text-gray-500">Selon vos filtres actuels</div>
+                                                            </div>
+                                                        </div>
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <Label htmlFor="export_filter" className="text-sm font-medium">
-                                            {t('export.filter') || 'Filtre d\'exportation'}
-                                        </Label>
-                                        <Select
-                                            value={exportFilter}
-                                            onValueChange={(val) => setExportFilter(val as 'all' | 'filtered')}
-                                            disabled={exportLoading}
-                                        >
-                                            <SelectTrigger id="export_filter" className="mt-1 w-full border-border/60 dark:bg-slate-700 dark:border-slate-600">
-                                                <SelectValue placeholder={t('export.selectFilter') || 'Sélectionner un filtre'} />
-                                            </SelectTrigger>
-                                            <SelectContent className="dark:bg-slate-800 dark:border-slate-700/60">
-                                                <SelectItem value="all">{t('export.allContacts') || 'Tous les contacts'}</SelectItem>
-                                                <SelectItem value="filtered">{t('export.filteredContacts') || 'Contacts filtrés'}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                            {t('export.filterDescription') || 'Exportez tous les contacts ou uniquement ceux correspondant à vos filtres actuels'}
-                                        </p>
-                                    </div>
+                                    {/* Export Preview Info */}
+                                    <Alert className="border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800/50">
+                                        <Info className="h-4 w-4" />
+                                        <AlertDescription>
+                                            <strong>Colonnes exportées:</strong> Nom, Téléphone, Email, Anniversaire, Adresse, Notes, Tags
+                                            <br />
+                                            <strong>Encodage:</strong> UTF-8 pour une compatibilité maximale
+                                        </AlertDescription>
+                                    </Alert>
 
-                                    <div className="flex justify-end">
+                                    {/* Export Button */}
+                                    <div className="flex justify-end pt-4">
                                         <Button
                                             onClick={handleExport}
                                             disabled={exportLoading}
-                                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200 disabled:opacity-70"
+                                            size="lg"
+                                            className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
                                         >
                                             {exportLoading ? (
                                                 <>
-                                                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                                                    {t('export.exporting') || 'Exportation...'}
+                                                    <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+                                                    Préparation du fichier...
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Download className="mr-2 h-4 w-4" />
-                                                    {t('export.export') || 'Exporter'}
+                                                    <Download className="mr-2 h-5 w-5" />
+                                                    Télécharger ({exportFormat.toUpperCase()})
                                                 </>
                                             )}
                                         </Button>
@@ -679,4 +920,4 @@ export default function ImportExport({ auth }) {
             </div>
         </AuthenticatedLayout>
     );
-} 
+}

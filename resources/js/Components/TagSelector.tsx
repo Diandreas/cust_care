@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useToast } from '@/Utils/toast';
+import { useToast } from '@/Components/ui/use-toast';
 import { useTranslation } from 'react-i18next';
 import { Plus, X } from 'lucide-react';
 
