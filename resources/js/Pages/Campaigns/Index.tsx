@@ -241,17 +241,29 @@ export default function CampaignsIndex({
 
     // Gestion du formulaire Quick Add
     const handleQuickAdd = () => {
+        console.log('Début de handleQuickAdd', quickAddForm);
+
+        // Validation des champs obligatoires
         if (!quickAddForm.name || !quickAddForm.message_content) {
+            console.error('Champs obligatoires manquants', {
+                name: quickAddForm.name,
+                message_content: quickAddForm.message_content
+            });
             toast.error(t('campaigns.quickAddRequiredFields'));
             return;
         }
 
         if (!quickAddForm.tag_id) {
+            console.error('Tag obligatoire manquant');
             toast.error(t('campaigns.tagRequired'));
             return;
         }
 
         setIsLoading(true);
+        console.log('Envoi de la requête POST vers campaigns.quick-add', {
+            formData: quickAddForm,
+            routeExists: typeof route === 'function' && route('campaigns.quick-add') !== undefined
+        });
 
         // Utiliser Axios plutôt que Inertia ici pour un formulaire simple
         axios.post(route('campaigns.quick-add'), {
@@ -263,6 +275,7 @@ export default function CampaignsIndex({
             send_now: quickAddForm.send_now
         })
             .then(response => {
+                console.log('Réponse de succès reçue', response.data);
                 toast.success(t('campaigns.quickAddSuccessfully', { name: quickAddForm.name }));
                 setIsLoading(false);
                 setShowQuickAddModal(false);
@@ -281,10 +294,21 @@ export default function CampaignsIndex({
                 window.location.reload();
             })
             .catch(err => {
-                const errorMessage = err.response?.data?.message || t('campaigns.errorQuickAdd');
+                console.error('Erreur lors de l\'ajout de la campagne', {
+                    status: err.response?.status,
+                    statusText: err.response?.statusText,
+                    data: err.response?.data,
+                    message: err.message,
+                    error: err
+                });
+
+                // Extraire le message d'erreur de la réponse
+                const errorMessage = err.response?.data?.error ||
+                    err.response?.data?.message ||
+                    t('campaigns.errorQuickAdd');
+
                 toast.error(errorMessage);
                 setIsLoading(false);
-                console.error('Error adding campaign:', err);
             });
     };
 
@@ -630,7 +654,7 @@ export default function CampaignsIndex({
     const enableAllUpcomingCampaigns = () => {
         if (window.confirm(t('campaigns.confirmEnableAllUpcoming'))) {
             setIsLoading(true);
-            
+
             // Filter upcoming campaigns that aren't already active
             const upcomingCampaignIds = campaigns.data
                 .filter(campaign => {
@@ -641,7 +665,7 @@ export default function CampaignsIndex({
                     return isUpcoming && canBeEnabled;
                 })
                 .map(campaign => campaign.id);
-                
+
             if (upcomingCampaignIds.length === 0) {
                 toast.info(t('campaigns.noUpcomingCampaigns'));
                 setIsLoading(false);
@@ -660,19 +684,19 @@ export default function CampaignsIndex({
             });
         }
     };
-    
+
     // Disable all campaigns
     const disableAllCampaigns = () => {
         if (window.confirm(t('campaigns.confirmDisableAll'))) {
             setIsLoading(true);
-            
+
             // Filter campaigns that can be disabled (not already sent or sending)
             const disableCampaignIds = campaigns.data
                 .filter(campaign => {
                     return !['sent', 'sending', 'partially_sent'].includes(campaign.status);
                 })
                 .map(campaign => campaign.id);
-                
+
             if (disableCampaignIds.length === 0) {
                 toast.info(t('campaigns.noDisableableCampaigns'));
                 setIsLoading(false);
@@ -691,27 +715,27 @@ export default function CampaignsIndex({
             });
         }
     };
-    
+
     // Disable birthday campaigns
     const disableBirthdayCampaigns = () => {
         if (window.confirm(t('campaigns.confirmDisableBirthday'))) {
             setIsLoading(true);
-            
+
             // Filter birthday campaigns
             // Assuming birthday campaigns have "birthday" or "anniversaire" in their name or message content
             const birthdayCampaignIds = campaigns.data
                 .filter(campaign => {
-                    const nameIncludes = campaign.name.toLowerCase().includes('birthday') || 
-                                         campaign.name.toLowerCase().includes('anniversaire');
+                    const nameIncludes = campaign.name.toLowerCase().includes('birthday') ||
+                        campaign.name.toLowerCase().includes('anniversaire');
                     const messageIncludes = campaign.message_content &&
-                                          (campaign.message_content.toLowerCase().includes('birthday') || 
-                                           campaign.message_content.toLowerCase().includes('anniversaire'));
+                        (campaign.message_content.toLowerCase().includes('birthday') ||
+                            campaign.message_content.toLowerCase().includes('anniversaire'));
                     const canBeDisabled = !['sent', 'sending', 'partially_sent'].includes(campaign.status);
-                    
+
                     return (nameIncludes || messageIncludes) && canBeDisabled;
                 })
                 .map(campaign => campaign.id);
-                
+
             if (birthdayCampaignIds.length === 0) {
                 toast.info(t('campaigns.noBirthdayCampaigns'));
                 setIsLoading(false);
@@ -914,7 +938,7 @@ export default function CampaignsIndex({
         // let's extract only the safe DOM props that we want to keep
         // and create a clean props object for the DOM element
         const child = React.Children.only(children);
-        
+
         // Create a new clean props object
         const cleanProps = {
             className: child.props.className,
@@ -923,7 +947,7 @@ export default function CampaignsIndex({
             onDoubleClick: child.props.onDoubleClick,
             // Add any other standard DOM props you want to keep
         };
-        
+
         // Clone the element with only the clean props
         return React.cloneElement(child, cleanProps);
     };
@@ -1030,7 +1054,7 @@ export default function CampaignsIndex({
                                             <CheckSquare className="h-4 w-4 mr-2" />
                                             <span>{t('campaigns.selectMode')}</span>
                                         </Button>
-                                        
+
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button
@@ -1205,26 +1229,26 @@ export default function CampaignsIndex({
                                                         {moment(selectedDate).format('MMMM YYYY')}
                                                     </CardTitle>
                                                     <div className="flex">
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
                                                             onClick={() => {
                                                                 const newDate = moment(selectedDate).subtract(1, 'month').toDate();
                                                                 setSelectedDate(newDate);
                                                                 updateCurrentMonth(newDate);
-                                                            }} 
+                                                            }}
                                                             className="h-7 w-7"
                                                         >
                                                             <ChevronLeft className="h-4 w-4" />
                                                         </Button>
-                                                        <Button 
-                                                            variant="ghost" 
-                                                            size="icon" 
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
                                                             onClick={() => {
                                                                 const newDate = moment(selectedDate).add(1, 'month').toDate();
                                                                 setSelectedDate(newDate);
                                                                 updateCurrentMonth(newDate);
-                                                            }} 
+                                                            }}
                                                             className="h-7 w-7"
                                                         >
                                                             <ChevronRight className="h-4 w-4" />
@@ -1243,7 +1267,7 @@ export default function CampaignsIndex({
                                                             </div>
                                                         ))}
                                                     </div>
-                                                    
+
                                                     {/* Jours du mois */}
                                                     <div className="grid grid-cols-7 text-center">
                                                         {(() => {
@@ -1252,13 +1276,13 @@ export default function CampaignsIndex({
                                                             const firstDay = moment(date).startOf('month');
                                                             const lastDay = moment(date).endOf('month');
                                                             const daysInMonth = date.daysInMonth();
-                                                            
+
                                                             // Décalage pour commencer le 1er jour au bon endroit (0 = lundi, 6 = dimanche)
                                                             const firstDayOfWeek = (firstDay.day() + 6) % 7; // Ajuste pour que lundi soit le premier jour
-                                                            
+
                                                             // Tableau contenant tous les jours à afficher
                                                             const days = [];
-                                                            
+
                                                             // Jours du mois précédent
                                                             for (let i = 0; i < firstDayOfWeek; i++) {
                                                                 const prevMonthDay = moment(firstDay).subtract(firstDayOfWeek - i, 'days');
@@ -1269,7 +1293,7 @@ export default function CampaignsIndex({
                                                                     isToday: prevMonthDay.isSame(moment(), 'day')
                                                                 });
                                                             }
-                                                            
+
                                                             // Jours du mois courant
                                                             for (let i = 1; i <= daysInMonth; i++) {
                                                                 const currentDate = moment(firstDay).date(i);
@@ -1278,12 +1302,12 @@ export default function CampaignsIndex({
                                                                     inMonth: true,
                                                                     date: currentDate.toDate(),
                                                                     isToday: currentDate.isSame(moment(), 'day'),
-                                                                    hasEvents: calendarEvents.some(event => 
+                                                                    hasEvents: calendarEvents.some(event =>
                                                                         moment(event.start).isSame(currentDate, 'day')
                                                                     )
                                                                 });
                                                             }
-                                                            
+
                                                             // Jours du mois suivant pour compléter les 6 semaines (42 jours)
                                                             const remainingDays = 42 - days.length;
                                                             for (let i = 1; i <= remainingDays; i++) {
@@ -1295,17 +1319,14 @@ export default function CampaignsIndex({
                                                                     isToday: nextMonthDay.isSame(moment(), 'day')
                                                                 });
                                                             }
-                                                            
+
                                                             return days.map((day, i) => (
-                                                                <div 
-                                                                    key={i} 
-                                                                    className={`py-1 cursor-pointer rounded-full hover:bg-muted ${
-                                                                        !day.inMonth ? 'text-muted-foreground opacity-40' : ''
-                                                                    } ${
-                                                                        day.isToday ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''
-                                                                    } ${
-                                                                        day.hasEvents && !day.isToday ? 'font-medium text-blue-600 dark:text-blue-400' : ''
-                                                                    }`}
+                                                                <div
+                                                                    key={i}
+                                                                    className={`py-1 cursor-pointer rounded-full hover:bg-muted ${!day.inMonth ? 'text-muted-foreground opacity-40' : ''
+                                                                        } ${day.isToday ? 'bg-primary text-primary-foreground hover:bg-primary/90' : ''
+                                                                        } ${day.hasEvents && !day.isToday ? 'font-medium text-blue-600 dark:text-blue-400' : ''
+                                                                        }`}
                                                                     onClick={() => {
                                                                         setSelectedDate(day.date);
                                                                         updateCurrentMonth(day.date);

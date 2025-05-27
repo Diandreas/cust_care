@@ -192,6 +192,17 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('campaigns', CampaignController::class);
         Route::put('campaigns/{campaign}/status', [CampaignController::class, 'changeStatus'])->name('campaigns.status');
         
+        // Bulk actions pour les campagnes
+        Route::post('/campaigns/bulk-disable', [CampaignController::class, 'bulkDisable'])->name('campaigns.bulk-disable');
+        Route::post('/campaigns/bulk-enable', [CampaignController::class, 'bulkEnable'])->name('campaigns.bulk-enable');
+        Route::post('/campaigns/bulk-delete', [CampaignController::class, 'bulkDelete'])->name('campaigns.bulk-delete');
+        
+        // Quick add campaign route
+        Route::post('/campaigns/quick-add', [CampaignController::class, 'quickAdd'])->name('campaigns.quick-add');
+        
+        // Reschedule campaign via drag-drop
+        Route::put('/campaigns/{campaign}/reschedule', [CampaignController::class, 'reschedule'])->name('campaigns.reschedule');
+        
         // Messages et templates
         Route::resource('messages', MessageController::class);
         Route::resource('templates', TemplateController::class);
@@ -221,18 +232,6 @@ Route::middleware(['auth'])->group(function () {
 
 // Routes pour les clients
 Route::middleware(['auth', 'verified'])->group(function () {
-
-// Routes for bulk actions
-Route::post('/campaigns/bulk-disable', [CampaignController::class, 'bulkDisable'])->name('campaigns.bulk-disable');
-Route::post('/campaigns/bulk-enable', [CampaignController::class, 'bulkEnable'])->name('campaigns.bulk-enable');
-Route::post('/campaigns/bulk-delete', [CampaignController::class, 'bulkDelete'])->name('campaigns.bulk-delete');
-
-// Quick add campaign route
-Route::post('/campaigns/quick-add', [CampaignController::class, 'quickAdd'])->name('campaigns.quick-add');
-
-// Reschedule campaign via drag-drop
-Route::put('/campaigns/{campaign}/reschedule', [CampaignController::class, 'reschedule'])->name('campaigns.reschedule');
-
 
     Route::resource('clients', ClientController::class);
     Route::post('clients/import/simple', [ClientImportController::class, 'store'])->name('clients.import.simple');

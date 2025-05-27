@@ -43,69 +43,150 @@ class CampaignController extends Controller
      */
     public function quickAdd(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'subject' => 'nullable|string|max:255',
-            'message_content' => 'required|string',
-            'scheduled_at' => 'required|date',
-            'tag_id' => 'required|exists:tags,id',
-            'send_now' => 'boolean'
+        Log::info('Début de l\'appel quickAdd', [
+            'request_data' => $request->all(),
+            'user_id' => Auth::id()
         ]);
 
-        $user = Auth::user();
-        $tag = Tag::findOrFail($validated['tag_id']);
-        
-        // Check if tag belongs to user
-        if ($tag->user_id !== $user->id) {
-            return redirect()->back()->with('error', 'Tag non valide.');
-        }
-        
-        // Get clients associated with the tag
-        $clientIds = $tag->clients()->pluck('clients.id')->toArray();
-        $clientsCount = count($clientIds);
-        
-        if ($clientsCount === 0) {
-            return redirect()->back()->with('error', 'Le tag sélectionné ne contient aucun client.');
-        }
-        
-        // Vérifier les quotas SMS
-        if (!$this->usageTracker->canSendSms($user, $clientsCount)) {
-            return redirect()->back()->with('error', 'Votre quota SMS est insuffisant pour cette campagne.');
-        }
-
-        if (!$this->usageTracker->trackCampaignUsage($user)) {
-            return redirect()->route('subscription.index')->with('error', 'Vous avez atteint votre limite de campagnes ce mois-ci.');
-        }
-
-        DB::beginTransaction();
         try {
-            $campaign = new Campaign();
-            $campaign->user_id = Auth::id();
-            $campaign->name = $validated['name'];
-            $campaign->subject = $validated['subject'] ?? null;
-            $campaign->message_content = $validated['message_content'];
-            $campaign->scheduled_at = $validated['scheduled_at'];
-            
-            // Déterminer le statut en fonction de l'envoi immédiat ou non
-            $campaign->status = $validated['send_now'] ? 'sending' : 'scheduled';
-            
-            $campaign->recipients_count = $clientsCount;
-            $campaign->save();
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'subject' => 'nullable|string|max:255',
+                'message_content' => 'required|string',
+                'scheduled_at' => 'required|date',
+                'tag_id' => 'required|exists:tags,id',
+                'send_now' => 'boolean'
+            ]);
 
-            $campaign->recipients()->attach($clientIds);
+            Log::info('Données validées', [
+                'validated_data' => $validated
+            ]);
+
+            $user = Auth::user();
+            $tag = Tag::findOrFail($validated['tag_id']);
             
-            // Si la campagne doit être envoyée immédiatement
-            if ($validated['send_now']) {
-                ProcessCampaignJob::dispatch($campaign);
+            Log::info('Tag trouvé', [
+                'tag_id' => $tag->id,
+                'tag_name' => $tag->name,
+                'tag_user_id' => $tag->user_id,
+                'current_user_id' => $user->id
+            ]);
+            
+            // Check if tag belongs to user
+            if ($tag->user_id !== $user->id) {
+                Log::warning('Tag non valide - appartient à un autre utilisateur', [
+                    'tag_id' => $tag->id,
+                    'tag_user_id' => $tag->user_id,
+                    'current_user_id' => $user->id
+                ]);
+                return response()->json(['error' => 'Tag non valide.'], 422);
             }
             
-            DB::commit();
+            // Get clients associated with the tag
+            $clientIds = $tag->clients()->pluck('clients.id')->toArray();
+            $clientsCount = count($clientIds);
             
-            return redirect()->back()->with('success', 'Campagne créée avec succès.');
+            Log::info('Clients associés au tag', [
+                'tag_id' => $tag->id,
+                'clients_count' => $clientsCount,
+                'client_ids' => $clientIds
+            ]);
+            
+            if ($clientsCount === 0) {
+                Log::warning('Aucun client associé au tag', [
+                    'tag_id' => $tag->id
+                ]);
+                return response()->json(['error' => 'Le tag sélectionné ne contient aucun client.'], 422);
+            }
+            
+            // Vérifier les quotas SMS
+            $canSendSms = $this->usageTracker->canSendSms($user, $clientsCount);
+            Log::info('Vérification des quotas SMS', [
+                'can_send_sms' => $canSendSms,
+                'clients_count' => $clientsCount
+            ]);
+
+            if (!$canSendSms) {
+                Log::warning('Quota SMS insuffisant', [
+                    'user_id' => $user->id
+                ]);
+                return response()->json(['error' => 'Votre quota SMS est insuffisant pour cette campagne.'], 422);
+            }
+
+            $canCreateCampaign = $this->usageTracker->trackCampaignUsage($user);
+            Log::info('Vérification des quotas de campagnes', [
+                'can_create_campaign' => $canCreateCampaign
+            ]);
+
+            if (!$canCreateCampaign) {
+                Log::warning('Limite de campagnes atteinte', [
+                    'user_id' => $user->id
+                ]);
+                return response()->json(['error' => 'Vous avez atteint votre limite de campagnes ce mois-ci.'], 422);
+            }
+
+            DB::beginTransaction();
+            try {
+                $campaign = new Campaign();
+                $campaign->user_id = Auth::id();
+                $campaign->name = $validated['name'];
+                $campaign->subject = $validated['subject'] ?? null;
+                $campaign->message_content = $validated['message_content'];
+                $campaign->scheduled_at = $validated['scheduled_at'];
+                
+                // Déterminer le statut en fonction de l'envoi immédiat ou non
+                $campaign->status = $validated['send_now'] ? 'sending' : 'scheduled';
+                
+                $campaign->recipients_count = $clientsCount;
+                $campaign->save();
+
+                Log::info('Campagne créée', [
+                    'campaign_id' => $campaign->id,
+                    'campaign_name' => $campaign->name,
+                    'status' => $campaign->status
+                ]);
+
+                $campaign->recipients()->attach($clientIds);
+                Log::info('Destinataires attachés à la campagne', [
+                    'campaign_id' => $campaign->id,
+                    'recipients_count' => $clientsCount
+                ]);
+                
+                // Si la campagne doit être envoyée immédiatement
+                if ($validated['send_now']) {
+                    ProcessCampaignJob::dispatch($campaign);
+                    Log::info('Job de traitement de campagne dispatché', [
+                        'campaign_id' => $campaign->id
+                    ]);
+                }
+                
+                DB::commit();
+                Log::info('Transaction validée avec succès');
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Campagne créée avec succès.',
+                    'campaign' => $campaign
+                ], 200);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Erreur lors de la création de la campagne', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return response()->json(['error' => 'Une erreur est survenue: ' . $e->getMessage()], 500);
+            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Erreur de validation', [
+                'errors' => $e->errors()
+            ]);
+            return response()->json(['error' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Quick add campaign failed', ['error' => $e->getMessage()]);
-            return redirect()->back()->with('error', 'Une erreur est survenue: ' . $e->getMessage());
+            Log::error('Exception non gérée dans quickAdd', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Une erreur inattendue est survenue: ' . $e->getMessage()], 500);
         }
     }
 
