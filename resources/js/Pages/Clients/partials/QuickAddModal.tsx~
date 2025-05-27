@@ -1,0 +1,537 @@
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import axios, { AxiosError } from 'axios';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from '@/Components/ui/dialog';
+import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Badge } from '@/Components/ui/badge';
+import { Separator } from '@/Components/ui/separator';
+import { Check, X, Save, UserPlus, Loader2, Phone, User, Tag as TagIcon } from 'lucide-react';
+
+interface Tag {
+    id: number;
+    name: string;
+    color?: string;
+}
+
+interface QuickAddModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    tags?: Tag[];
+    onSuccess?: () => void;
+    defaultValues?: Partial<ClientFormData>;
+}
+
+interface ClientFormData {
+    name: string;
+    phone: string;
+    gender: string;
+    tagIds: number[];
+}
+
+interface PhoneValidation {
+    isValid: boolean;
+    formattedNumber: string;
+    errorType: 'format' | 'length' | 'characters' | '';
+    country: string;
+    displayNumber: string;
+}
+
+interface ApiErrorResponse {
+    message?: string;
+    errors?: Record<string, string[]>;
+}
+
+// Configuration des formats de téléphone supportés
+const PHONE_PATTERNS = {
+    cameroon: {
+        international: /^\+237[6-9][0-9]{8}$/,
+        local: /^6[0-9]{8}$/,
+        prefix: '+237',
+        name: 'Cameroun',
+        format: '+237 6XX XXX XXX'
+    },
+    france: {
+        international: /^\+33[1-9][0-9]{8}$/,
+        local: /^0[1-9][0-9]{8}$/,
+        prefix: '+33',
+        name: 'France',
+        format: '+33 X XX XX XX XX'
+    },
+    international: {
+        pattern: /^\+[1-9][0-9]{10,14}$/,
+        name: 'International'
+    }
+} as const;
+
+const INITIAL_FORM_STATE: ClientFormData = {
+    name: '',
+    phone: '',
+    gender: '',
+    tagIds: []
+};
+
+const INITIAL_PHONE_VALIDATION: PhoneValidation = {
+    isValid: true,
+    formattedNumber: '',
+    errorType: '',
+    country: '',
+    displayNumber: ''
+};
+
+export default function QuickAddModal({
+                                          isOpen,
+                                          onClose,
+                                          tags = [],
+                                          onSuccess,
+                                          defaultValues = {}
+                                      }: QuickAddModalProps) {
+    const { t } = useTranslation();
+    const nameInputRef = useRef<HTMLInputElement>(null);
+
+    // États du formulaire
+    const [form, setForm] = useState<ClientFormData>(() => ({
+        ...INITIAL_FORM_STATE,
+        ...defaultValues
+    }));
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [phoneValidation, setPhoneValidation] = useState<PhoneValidation>(INITIAL_PHONE_VALIDATION);
+
+    // Focus automatique sur le champ nom à l'ouverture
+    useEffect(() => {
+        if (isOpen && nameInputRef.current) {
+            const timer = setTimeout(() => {
+                nameInputRef.current?.focus();
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
+
+    // Validation et formatage du numéro de téléphone
+    const validateAndFormatPhone = useCallback((phone: string): PhoneValidation => {
+        const validation: PhoneValidation = {
+            isValid: false,
+            formattedNumber: '',
+            errorType: '',
+            country: '',
+            displayNumber: ''
+        };
+
+        // Ignorer si vide
+        if (!phone.trim()) {
+            validation.isValid = true;
+            return validation;
+        }
+
+        // Nettoyer le numéro
+        const cleanedPhone = phone.replace(/[\s\-().]/g, '');
+
+        // Détecter le format international
+        const isInternational = /^(\+|00)/.test(cleanedPhone);
+
+        if (isInternational) {
+            // Format international
+            const normalizedPhone = cleanedPhone.startsWith('00')
+                ? '+' + cleanedPhone.substring(2)
+                : cleanedPhone;
+
+            if (PHONE_PATTERNS.cameroon.international.test(normalizedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = normalizedPhone;
+                validation.country = PHONE_PATTERNS.cameroon.name;
+                validation.displayNumber = `${normalizedPhone.substring(0, 4)} ${normalizedPhone.substring(4, 5)} ${normalizedPhone.substring(5, 8)} ${normalizedPhone.substring(8, 11)} ${normalizedPhone.substring(11)}`;
+            } else if (PHONE_PATTERNS.france.international.test(normalizedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = normalizedPhone;
+                validation.country = PHONE_PATTERNS.france.name;
+                validation.displayNumber = `${normalizedPhone.substring(0, 3)} ${normalizedPhone.substring(3, 4)} ${normalizedPhone.substring(4, 6)} ${normalizedPhone.substring(6, 8)} ${normalizedPhone.substring(8, 10)} ${normalizedPhone.substring(10)}`;
+            } else if (PHONE_PATTERNS.international.pattern.test(normalizedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = normalizedPhone;
+                validation.country = PHONE_PATTERNS.international.name;
+                validation.displayNumber = normalizedPhone;
+            } else {
+                validation.errorType = 'format';
+            }
+        } else {
+            // Format local
+            if (PHONE_PATTERNS.cameroon.local.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `${PHONE_PATTERNS.cameroon.prefix}${cleanedPhone}`;
+                validation.country = PHONE_PATTERNS.cameroon.name;
+                validation.displayNumber = `${PHONE_PATTERNS.cameroon.prefix} ${cleanedPhone.substring(0, 1)} ${cleanedPhone.substring(1, 4)} ${cleanedPhone.substring(4, 7)} ${cleanedPhone.substring(7)}`;
+            } else if (PHONE_PATTERNS.france.local.test(cleanedPhone)) {
+                validation.isValid = true;
+                validation.formattedNumber = `${PHONE_PATTERNS.france.prefix}${cleanedPhone.substring(1)}`;
+                validation.country = PHONE_PATTERNS.france.name;
+                const withoutZero = cleanedPhone.substring(1);
+                validation.displayNumber = `${PHONE_PATTERNS.france.prefix} ${withoutZero.substring(0, 1)} ${withoutZero.substring(1, 3)} ${withoutZero.substring(3, 5)} ${withoutZero.substring(5, 7)} ${withoutZero.substring(7)}`;
+            } else {
+                // Déterminer le type d'erreur
+                if (/^[0-9]+$/.test(cleanedPhone)) {
+                    validation.errorType = 'length';
+                } else {
+                    validation.errorType = 'characters';
+                }
+            }
+        }
+
+        return validation;
+    }, []);
+
+    // Gestionnaire de changement du téléphone
+    const handlePhoneChange = useCallback((value: string) => {
+        setForm(prev => ({ ...prev, phone: value }));
+        const validation = validateAndFormatPhone(value);
+        setPhoneValidation(validation);
+    }, [validateAndFormatPhone]);
+
+    // Validation du formulaire
+    const formValidation = useMemo(() => {
+        const isNameValid = form.name.trim().length >= 2;
+        const isPhoneValid = form.phone.trim() !== '' && phoneValidation.isValid;
+
+        return {
+            isValid: isNameValid && isPhoneValid,
+            errors: {
+                name: !isNameValid && form.name.trim() !== '' ? t('validation.nameMinLength') : '',
+                phone: form.phone.trim() !== '' && !phoneValidation.isValid ? getPhoneErrorMessage() : ''
+            }
+        };
+    }, [form.name, form.phone, phoneValidation.isValid, t]);
+
+    // Message d'erreur pour la validation du téléphone
+    const getPhoneErrorMessage = useCallback(() => {
+        switch (phoneValidation.errorType) {
+            case 'format':
+                return t('validation.phone.invalidFormat');
+            case 'length':
+                return t('validation.phone.invalidLength');
+            case 'characters':
+                return t('validation.phone.invalidCharacters');
+            default:
+                return '';
+        }
+    }, [phoneValidation.errorType, t]);
+
+    // Gestion de la soumission du formulaire
+    const handleSubmit = useCallback(async () => {
+        if (!formValidation.isValid) {
+            toast.error(t('validation.checkFields'));
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // Préparer les données
+            const submitData = {
+                name: form.name.trim(),
+                phone: phoneValidation.formattedNumber,
+                gender: form.gender || null,
+                tag_ids: form.tagIds.length > 0 ? form.tagIds : null
+            };
+
+            // Configuration Axios avec token CSRF
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (token) {
+                axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+            }
+
+            // Rafraîchir le cookie CSRF
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+
+            // Soumettre le formulaire
+            await axios.post(route('clients.store'), submitData, {
+                withCredentials: true,
+                timeout: 10000, // 10 secondes de timeout
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            });
+
+            toast.success(t('clients.addSuccess'));
+            handleClose();
+            onSuccess?.();
+
+        } catch (error) {
+            console.error('Submit error:', error);
+            handleSubmitError(error as AxiosError<ApiErrorResponse>);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }, [form, phoneValidation.formattedNumber, formValidation.isValid, onSuccess, t]);
+
+    // Gestion des erreurs de soumission
+    const handleSubmitError = useCallback((error: AxiosError<ApiErrorResponse>) => {
+        const status = error.response?.status;
+        const data = error.response?.data;
+
+        switch (status) {
+            case 419:
+                toast.error(t('errors.sessionExpired'));
+                break;
+            case 403:
+                toast.error(t('errors.unauthorized'));
+                break;
+            case 422:
+                if (data?.errors) {
+                    const errorMessages = Object.entries(data.errors)
+                        .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+                        .join('\n');
+                    toast.error(t('validation.errors'), { description: errorMessages });
+                } else {
+                    toast.error(t('validation.invalidData'));
+                }
+                break;
+            case 409:
+                toast.error(t('clients.phoneAlreadyExists'));
+                break;
+            default:
+                toast.error(t('errors.generic'), {
+                    description: data?.message || error.message || t('errors.unknownError')
+                });
+        }
+    }, [t]);
+
+    // Fermeture de la modal
+    const handleClose = useCallback(() => {
+        if (isSubmitting) return;
+
+        setForm(INITIAL_FORM_STATE);
+        setPhoneValidation(INITIAL_PHONE_VALIDATION);
+        onClose();
+    }, [isSubmitting, onClose]);
+
+    // Gestion des tags
+    const toggleTag = useCallback((tagId: number) => {
+        setForm(prev => ({
+            ...prev,
+            tagIds: prev.tagIds.includes(tagId)
+                ? prev.tagIds.filter(id => id !== tagId)
+                : [...prev.tagIds, tagId]
+        }));
+    }, []);
+
+    // Gestion des raccourcis clavier
+    const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+            event.preventDefault();
+            handleSubmit();
+        }
+    }, [handleSubmit]);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={handleClose}>
+            <DialogContent
+                className="sm:max-w-lg dark:bg-slate-800 dark:border-slate-700/60"
+                onKeyDown={handleKeyDown}
+            >
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-lg">
+                        <UserPlus className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                        {t('clients.quickAdd')}
+                    </DialogTitle>
+                    <DialogDescription className="dark:text-gray-400">
+                        {t('clients.quickAddDescription')}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6 py-4">
+                    {/* Champ Nom */}
+                    <div className="space-y-2">
+                        <Label htmlFor="quick_name" className="text-sm font-medium flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            {t('common.name')}
+                            <span className="text-rose-500">*</span>
+                        </Label>
+                        <Input
+                            ref={nameInputRef}
+                            id="quick_name"
+                            value={form.name}
+                            onChange={(e) => setForm(prev => ({ ...prev, name: e.target.value }))}
+                            className={`border-border/60 dark:bg-slate-700 dark:border-slate-600 transition-colors ${
+                                formValidation.errors.name ? 'border-rose-500 focus:border-rose-500' : ''
+                            }`}
+                            placeholder={t('clients.namePlaceholder')}
+                            disabled={isSubmitting}
+                            maxLength={100}
+                            autoComplete="name"
+                        />
+                        {formValidation.errors.name && (
+                            <p className="text-xs text-rose-600 dark:text-rose-400">
+                                {formValidation.errors.name}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Champ Téléphone */}
+                    <div className="space-y-2">
+                        <Label htmlFor="quick_phone" className="text-sm font-medium flex items-center gap-2">
+                            <Phone className="h-4 w-4" />
+                            {t('common.phone')}
+                            <span className="text-rose-500">*</span>
+                        </Label>
+                        <div className="relative">
+                            <Input
+                                id="quick_phone"
+                                type="tel"
+                                value={form.phone}
+                                onChange={(e) => handlePhoneChange(e.target.value)}
+                                className={`pr-10 border-border/60 dark:bg-slate-700 dark:border-slate-600 transition-colors ${
+                                    form.phone && !phoneValidation.isValid
+                                        ? 'border-rose-500 focus:border-rose-500'
+                                        : form.phone && phoneValidation.isValid
+                                            ? 'border-green-500 focus:border-green-500'
+                                            : ''
+                                }`}
+                                placeholder={t('clients.phonePlaceholder')}
+                                disabled={isSubmitting}
+                                autoComplete="tel"
+                            />
+                            {form.phone && (
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                                    {phoneValidation.isValid ? (
+                                        <Check className="h-4 w-4 text-green-500" />
+                                    ) : (
+                                        <X className="h-4 w-4 text-rose-500" />
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Feedback de validation du téléphone */}
+                        {form.phone && (
+                            <div className="space-y-1">
+                                {phoneValidation.isValid ? (
+                                    <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                                        <Check className="h-3 w-3" />
+                                        <span>
+                                            {phoneValidation.country}: {phoneValidation.displayNumber}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                                        <X className="h-3 w-3" />
+                                        {getPhoneErrorMessage()}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {t('clients.phoneFormatsHelp')}
+                        </p>
+                    </div>
+
+                    <Separator className="dark:border-slate-700" />
+
+                    {/* Champ Genre */}
+                    <div className="space-y-2">
+                        <Label htmlFor="quick_gender" className="text-sm font-medium">
+                            {t('common.gender')}
+                            <span className="text-gray-400 ml-1">({t('common.optional')})</span>
+                        </Label>
+                        <Select
+                            value={form.gender}
+                            onValueChange={(value) => setForm(prev => ({ ...prev, gender: value }))}
+                            disabled={isSubmitting}
+                        >
+                            <SelectTrigger className="border-border/60 dark:bg-slate-700 dark:border-slate-600">
+                                <SelectValue placeholder={t('clients.selectGender')} />
+                            </SelectTrigger>
+                            <SelectContent className="dark:bg-slate-800 dark:border-slate-700/60">
+                                <SelectItem value="male">{t('gender.male')}</SelectItem>
+                                <SelectItem value="female">{t('gender.female')}</SelectItem>
+                                <SelectItem value="other">{t('gender.other')}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Champ Tags */}
+                    {tags.length > 0 && (
+                        <div className="space-y-2">
+                            <Label className="text-sm font-medium flex items-center gap-2">
+                                <TagIcon className="h-4 w-4" />
+                                {t('common.tags')}
+                                <span className="text-gray-400 ml-1">({t('common.optional')})</span>
+                            </Label>
+                            <div className="border border-border/60 rounded-lg p-3 min-h-[4rem] dark:border-slate-700/60 dark:bg-slate-700/30">
+                                {tags.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {tags.map(tag => (
+                                            <Badge
+                                                key={tag.id}
+                                                variant={form.tagIds.includes(tag.id) ? "default" : "outline"}
+                                                className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                                    form.tagIds.includes(tag.id)
+                                                        ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:border-indigo-700'
+                                                        : 'hover:bg-gray-100 dark:hover:bg-slate-600'
+                                                } ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                onClick={() => !isSubmitting && toggleTag(tag.id)}
+                                            >
+                                                {tag.name}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                                        {t('tags.noTagsAvailable')}
+                                    </p>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {t('clients.tagsHelp')}
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                <DialogFooter className="gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={handleClose}
+                        disabled={isSubmitting}
+                        className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
+                    >
+                        {t('common.cancel')}
+                    </Button>
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={!formValidation.isValid || isSubmitting}
+                        className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 transition-all duration-200 disabled:opacity-50 min-w-[100px]"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                {t('common.saving')}
+                            </>
+                        ) : (
+                            <>
+                                <Save className="mr-2 h-4 w-4" />
+                                {t('common.save')}
+                            </>
+                        )}
+                    </Button>
+                </DialogFooter>
+
+                {/* Indication du raccourci clavier */}
+                <div className="text-xs text-gray-500 dark:text-gray-400 text-center border-t dark:border-slate-700 pt-2">
+                    {t('common.submitHint')} {/* Ctrl+Enter pour sauvegarder */}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}

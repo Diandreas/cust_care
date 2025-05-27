@@ -1,0 +1,214 @@
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import axios from 'axios';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
+} from '@/Components/ui/dialog';
+import { Button } from '@/Components/ui/button';
+import { AlertTriangle, Trash2, Loader2 } from 'lucide-react';
+
+interface DeleteConfirmModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    clientToDelete: number | null;
+    clientsToDelete: number[];
+    onSuccess: () => void;
+}
+
+export default function DeleteConfirmModal({
+                                               isOpen,
+                                               onClose,
+                                               clientToDelete,
+                                               clientsToDelete,
+                                               onSuccess
+                                           }: DeleteConfirmModalProps) {
+    const { t } = useTranslation();
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Déterminer le type de suppression
+    const isBulkDelete = clientsToDelete.length > 0;
+    const deleteCount = isBulkDelete ? clientsToDelete.length : 1;
+
+    // Reset de l'état quand la modal se ferme
+    useEffect(() => {
+        if (!isOpen) {
+            setIsDeleting(false);
+        }
+    }, [isOpen]);
+
+    // Handle delete confirmation
+    const handleDeleteConfirm = async () => {
+        setIsDeleting(true);
+
+        try {
+            // Get fresh CSRF token
+            const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (token) {
+                axios.defaults.headers.common['X-CSRF-TOKEN'] = token;
+            }
+
+            // Refresh CSRF cookie
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+
+            if (clientToDelete) {
+                // SUPPRESSION SIMPLE - Marche bien
+                await axios.post(route('clients.destroy', clientToDelete), {
+                    _method: 'DELETE'
+                }, {
+                    withCredentials: true
+                });
+
+                toast.success(t('clients.deleteSuccess', { count: 1 }));
+            } else if (clientsToDelete.length > 0) {
+                // SUPPRESSION EN LOT - Problématique, on simplifie
+                console.log('🗑️ Bulk delete - clients to delete:', clientsToDelete);
+
+                // On fait les suppressions une par une au lieu d'un appel bulk
+                // Cela évite les problèmes de timeout et d'état
+                let successCount = 0;
+                for (const clientId of clientsToDelete) {
+                    try {
+                        await axios.post(route('clients.destroy', clientId), {
+                            _method: 'DELETE'
+                        }, {
+                            withCredentials: true
+                        });
+                        successCount++;
+                        console.log(`✅ Client ${clientId} deleted (${successCount}/${clientsToDelete.length})`);
+                    } catch (error) {
+                        console.error(`❌ Failed to delete client ${clientId}:`, error);
+                        // Continue avec les autres même si un échoue
+                    }
+                }
+
+                if (successCount > 0) {
+                    toast.success(t('clients.deleteSuccess', { count: successCount }));
+                    if (successCount < clientsToDelete.length) {
+                        toast.warning(`${clientsToDelete.length - successCount} clients n'ont pas pu être supprimés`);
+                    }
+                } else {
+                    toast.error('Aucun client n\'a pu être supprimé');
+                }
+            }
+
+            // Fermer SEULEMENT après succès
+            handleClose();
+            onSuccess();
+        } catch (err: any) {
+            console.error('Delete error:', err);
+
+            if (err.response?.status === 419) {
+                toast.error("Session expirée. Veuillez recharger la page.");
+            } else if (err.response?.status === 403) {
+                toast.error(t('common.unauthorized'));
+            } else if (err.response?.status === 404) {
+                toast.error(t('clients.notFound'));
+            } else if (err.response?.status === 422) {
+                const errors = err.response.data.errors;
+                const errorMessages = Object.values(errors).flat().join(', ');
+                toast.error(`Erreur de validation: ${errorMessages}`);
+            } else {
+                toast.error(t('common.error', {
+                    details: err.response?.data?.message || t('common.unknownError')
+                }));
+            }
+        } finally {
+            // IMPORTANT: Reset l'état même en cas d'erreur
+            setIsDeleting(false);
+        }
+    };
+
+    // Handle modal close - Simplifié
+    const handleClose = () => {
+        // Ne pas empêcher la fermeture pendant deletion
+        // Cela peut causer des blocages
+        console.log('🚪 Closing delete modal, isDeleting:', isDeleting);
+        onClose();
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={handleClose}>
+            <DialogContent className="sm:max-w-md dark:bg-slate-800 dark:border-slate-700/60">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
+                        <AlertTriangle className="h-5 w-5" />
+                        {isBulkDelete
+                            ? `Supprimer ${deleteCount} clients`
+                            : 'Supprimer le client'}
+                    </DialogTitle>
+                    <DialogDescription className="dark:text-gray-400">
+                        {isBulkDelete
+                            ? `Voulez-vous vraiment supprimer ces ${deleteCount} clients ?`
+                            : 'Voulez-vous vraiment supprimer ce client ?'
+                        }
+                    </DialogDescription>
+                </DialogHeader>
+
+                {/* Avertissement simple */}
+                <div className="rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800/40 p-3">
+                    <div className="flex items-center">
+                        <AlertTriangle className="h-4 w-4 text-rose-500 dark:text-rose-400 mr-2 flex-shrink-0" />
+                        <span className="text-sm text-rose-700 dark:text-rose-300">
+                            Cette action est irréversible. Toutes les données seront définitivement supprimées.
+                        </span>
+                    </div>
+                </div>
+
+                {/* Warning pour les gros lots */}
+                {isBulkDelete && deleteCount > 10 && (
+                    <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 p-3">
+                        <div className="flex items-center">
+                            <AlertTriangle className="h-4 w-4 text-amber-500 dark:text-amber-400 mr-2 flex-shrink-0" />
+                            <span className="text-sm text-amber-700 dark:text-amber-300">
+                                Suppression de {deleteCount} clients. Cela peut prendre un moment.
+                            </span>
+                        </div>
+                    </div>
+                )}
+
+                <DialogFooter className="mt-6">
+                    <Button
+                        variant="outline"
+                        onClick={handleClose}
+                        disabled={isDeleting}
+                        className="border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
+                    >
+                        Annuler
+                    </Button>
+                    <Button
+                        variant="destructive"
+                        onClick={handleDeleteConfirm}
+                        disabled={isDeleting}
+                        className="bg-rose-600 text-white hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700 focus:ring-rose-500 min-w-[120px]"
+                    >
+                        {isDeleting ? (
+                            <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                {isBulkDelete ? 'Suppression...' : 'Suppression...'}
+                            </>
+                        ) : (
+                            <>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {isBulkDelete ? `Supprimer ${deleteCount}` : 'Supprimer'}
+                            </>
+                        )}
+                    </Button>
+                </DialogFooter>
+
+                {/* Indicateur de progression pour bulk */}
+                {isDeleting && isBulkDelete && (
+                    <div className="mt-4 space-y-2">
+                        <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
+                            <span>Suppression en cours...</span>
+                            <span>{deleteCount} clients</span>
+                        </div>
+                        <div className="w-full bg-gray-200 dark:bg-slate-600 rounded-full h-2">
+                            <div className="bg-rose-500 h-2 rounded-full animate-pulse" style={{ width: '100%' }} />
+                        </div>
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}

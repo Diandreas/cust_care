@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n';
 import { Button } from '@/Components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/Components/ui/card';
 import { Input } from '@/Components/ui/input';
@@ -157,8 +157,8 @@ export default function TemplatesIndex({
                                                 <Label htmlFor="is_global">{t('templates.isGlobal')}</Label>
                                             </div>
                                             <p className="text-sm text-muted-foreground">
-                                                {isAdmin 
-                                                    ? t('templates.globalDescription') 
+                                                {isAdmin
+                                                    ? t('templates.globalDescription')
                                                     : t('templates.globalDescriptionAdminOnly', 'Seul un administrateur peut rendre un modèle disponible pour tous les utilisateurs')}
                                             </p>
                                         </div>
@@ -236,8 +236,8 @@ export default function TemplatesIndex({
                                                                     <Label htmlFor={`edit-is_global-${template.id}`}>{t('templates.isGlobal')}</Label>
                                                                 </div>
                                                                 <p className="text-sm text-muted-foreground">
-                                                                    {isAdmin 
-                                                                        ? t('templates.globalDescription') 
+                                                                    {isAdmin
+                                                                        ? t('templates.globalDescription')
                                                                         : t('templates.globalDescriptionAdminOnly', 'Seul un administrateur peut rendre un modèle disponible pour tous les utilisateurs')}
                                                                 </p>
                                                             </div>

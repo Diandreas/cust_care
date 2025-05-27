@@ -1,61 +1,37 @@
-// resources/js/app.tsx
-import '../css/app.css';
-import '../css/calendar.css'; // Import des styles du calendrier
 import './bootstrap';
-import './i18n'; // Import i18n configuration
-// Importer les styles de Sonner
+import '../css/app.css';
+// import '../css/mobile-app.css';
+import './Config/i18n';
 import 'sonner/dist/styles.css';
-
+import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { createRoot } from 'react-dom/client';
-import { Toaster } from './Components/Toaster';
-import axios from 'axios';
+import { ThemeProvider } from "next-themes";
+import { Suspense } from 'react';
+import { Toaster } from '@/Components/ui/toaster';
 
-// Configure Axios globally for CSRF protection
-axios.defaults.withCredentials = true;
-axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
-
-// Get CSRF token from meta tag
-const token = document.head.querySelector('meta[name="csrf-token"]');
-if (token) {
-    axios.defaults.headers.common['X-CSRF-TOKEN'] = token.getAttribute('content');
-} else {
-    console.error('CSRF token not found');
-}
-
-// Script d'initialisation du thème qui s'exécute immédiatement
-(function initializeTheme() {
-    const STORAGE_KEY = "elitesms-theme";
-
-    // Récupérer le thème depuis localStorage
-    const storedTheme = localStorage.getItem(STORAGE_KEY);
-    if (storedTheme === "dark" || (storedTheme === "system" && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-    }
-})();
-
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = import.meta.env.VITE_APP_NAME || 'GUIDY';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
-    resolve: (name) =>
-        resolvePageComponent(
-            `./Pages/${name}.tsx`,
-            import.meta.glob('./Pages/**/*.tsx'),
-        ),
+    resolve: async (name) => {
+        const pages = import.meta.glob('./Pages/**/*.tsx');
+        const page = await resolvePageComponent(`./Pages/${name}.tsx`, pages);
+        return page;
+    },
     setup({ el, App, props }) {
         const root = createRoot(el);
+
         root.render(
-            <>
-                <App {...props} />
-                <Toaster />
-            </>
+            <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div></div>}>
+                <ThemeProvider defaultTheme="system" storageKey="guidy-theme">
+                    <App {...props} />
+                    <Toaster />
+                </ThemeProvider>
+            </Suspense>
         );
     },
     progress: {
-        color: '#8A2BE2',
+        color: '#4B5563',
     },
 });

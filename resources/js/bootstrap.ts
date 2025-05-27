@@ -1,4 +1,2 @@
-import axios from 'axios';
-window.axios = axios;
-
-window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+// Ce fichier est désactivé
+// La configuration d'Axios a été déplacée dans app.tsx

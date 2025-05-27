@@ -1,6 +1,6 @@
 import { Link, Head } from '@inertiajs/react';
 import { PageProps } from '@/types';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/i18n';
 import { useState, useEffect } from 'react';
 
 export default function Welcome({

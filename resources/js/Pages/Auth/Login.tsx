@@ -5,7 +5,8 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
+import axios from 'axios';
 
 export default function Login({
     status,
@@ -20,12 +21,32 @@ export default function Login({
         remember: false as boolean,
     });
 
-    const submit: FormEventHandler = (e) => {
-        e.preventDefault();
+    const [loginError, setLoginError] = useState<string | null>(null);
 
-        post(route('login'), {
-            onFinish: () => reset('password'),
-        });
+    const submit: FormEventHandler = async (e) => {
+        e.preventDefault();
+        setLoginError(null);
+
+        try {
+            // Tenter de récupérer un nouveau token CSRF d'abord
+            await axios.get('/sanctum/csrf-cookie', { withCredentials: true });
+
+            // Ensuite, soumettre le formulaire avec Inertia
+            post(route('login'), {
+                onFinish: () => reset('password'),
+                onError: (errors) => {
+                    if (errors.email || errors.password) {
+                        // Afficher les erreurs normales
+                        return;
+                    }
+                    // Si nous avons une erreur générale (peut-être CSRF), l'afficher
+                    setLoginError("Erreur de connexion. Veuillez réessayer.");
+                }
+            });
+        } catch (error) {
+            console.error("Erreur lors de la connexion:", error);
+            setLoginError("Erreur de connexion. Veuillez réessayer.");
+        }
     };
 
     return (
@@ -35,6 +56,12 @@ export default function Login({
             {status && (
                 <div className="mb-4 text-sm font-medium text-green-600">
                     {status}
+                </div>
+            )}
+
+            {loginError && (
+                <div className="mb-4 text-sm font-medium text-red-600">
+                    {loginError}
                 </div>
             )}
 

@@ -1,0 +1,498 @@
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { Link } from '@inertiajs/react';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import {
+    Home, Users, Zap, FileText, CreditCard, Settings,
+    LogOut, Menu, X, ChevronLeft, Moon, Sun, Globe,
+    Layers, ArrowRight, Sparkles
+} from 'lucide-react';
+
+gsap.registerPlugin(ScrollTrigger);
+
+const AuthenticatedLayout = ({ user, children, header }) => {
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [darkMode, setDarkMode] = useState(false);
+    const [activeNav, setActiveNav] = useState('dashboard');
+
+    // Refs pour les animations
+    const sidebarRef = useRef(null);
+    const mainRef = useRef(null);
+    const headerRef = useRef(null);
+    const navItemsRef = useRef([]);
+    const logoRef = useRef(null);
+    const contentRef = useRef(null);
+    const mobileMenuRef = useRef(null);
+    const overlayRef = useRef(null);
+
+    // Timeline refs
+    const sidebarTl = useRef(null);
+    const navTl = useRef(null);
+
+    const navigation = [
+        { id: 'dashboard', name: 'Dashboard', icon: Home, href: '/dashboard' },
+        { id: 'clients', name: 'Clients', icon: Users, href: '/clients' },
+        { id: 'campaigns', name: 'Campaigns', icon: Zap, href: '/campaigns' },
+        { id: 'templates', name: 'Templates', icon: FileText, href: '/templates' },
+        { id: 'subscription', name: 'Subscription', icon: CreditCard, href: '/subscription' },
+    ];
+
+    // Animation initiale
+    useLayoutEffect(() => {
+        const ctx = gsap.context(() => {
+            // Animation d'entrée
+            gsap.set([sidebarRef.current, mainRef.current, headerRef.current], {
+                opacity: 0
+            });
+
+            const tl = gsap.timeline();
+
+            tl.to(sidebarRef.current, {
+                opacity: 1,
+                x: 0,
+                duration: 0.8,
+                ease: "power4.out"
+            })
+                .to(headerRef.current, {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.6,
+                    ease: "power3.out"
+                }, "-=0.4")
+                .to(mainRef.current, {
+                    opacity: 1,
+                    duration: 0.5,
+                    ease: "power2.out"
+                }, "-=0.3")
+                .from(navItemsRef.current, {
+                    x: -30,
+                    opacity: 0,
+                    duration: 0.4,
+                    stagger: 0.1,
+                    ease: "power2.out"
+                }, "-=0.3");
+
+            // Hover effects sur les nav items
+            navItemsRef.current.forEach((item) => {
+                if (!item) return;
+
+                const hoverTl = gsap.timeline({ paused: true });
+                const icon = item.querySelector('.nav-icon');
+                const text = item.querySelector('.nav-text');
+                const bg = item.querySelector('.nav-bg');
+
+                hoverTl
+                    .to(bg, {
+                        scale: 1,
+                        opacity: 1,
+                        duration: 0.3,
+                        ease: "power2.out"
+                    })
+                    .to(icon, {
+                        scale: 1.1,
+                        rotation: 5,
+                        duration: 0.2,
+                        ease: "power2.out"
+                    }, 0)
+                    .to(text, {
+                        x: 5,
+                        duration: 0.2,
+                        ease: "power2.out"
+                    }, 0);
+
+                item.addEventListener('mouseenter', () => hoverTl.play());
+                item.addEventListener('mouseleave', () => hoverTl.reverse());
+            });
+        });
+
+        return () => ctx.revert();
+    }, []);
+
+    // Animation sidebar toggle
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            if (sidebarTl.current) sidebarTl.current.kill();
+
+            sidebarTl.current = gsap.timeline();
+
+            if (sidebarOpen) {
+                sidebarTl.current
+                    .to(sidebarRef.current, {
+                        width: 280,
+                        duration: 0.5,
+                        ease: "power3.inOut"
+                    })
+                    .to(mainRef.current, {
+                        marginLeft: window.innerWidth >= 1024 ? 280 : 0,
+                        duration: 0.5,
+                        ease: "power3.inOut"
+                    }, 0)
+                    .to('.nav-text', {
+                        opacity: 1,
+                        x: 0,
+                        duration: 0.3,
+                        stagger: 0.05,
+                        ease: "power2.out"
+                    }, "-=0.2")
+                    .to('.sidebar-footer', {
+                        opacity: 1,
+                        y: 0,
+                        duration: 0.3,
+                        ease: "power2.out"
+                    }, "-=0.2");
+            } else {
+                sidebarTl.current
+                    .to('.nav-text', {
+                        opacity: 0,
+                        x: -20,
+                        duration: 0.2,
+                        stagger: 0.03,
+                        ease: "power2.in"
+                    })
+                    .to('.sidebar-footer', {
+                        opacity: 0,
+                        y: 10,
+                        duration: 0.2,
+                        ease: "power2.in"
+                    }, 0)
+                    .to(sidebarRef.current, {
+                        width: 80,
+                        duration: 0.5,
+                        ease: "power3.inOut"
+                    }, "-=0.1")
+                    .to(mainRef.current, {
+                        marginLeft: window.innerWidth >= 1024 ? 80 : 0,
+                        duration: 0.5,
+                        ease: "power3.inOut"
+                    }, "-=0.5");
+            }
+        });
+
+        return () => ctx.revert();
+    }, [sidebarOpen]);
+
+    // Animation mobile menu
+    useEffect(() => {
+        const ctx = gsap.context(() => {
+            if (mobileMenuOpen) {
+                gsap.set(mobileMenuRef.current, { x: '100%', display: 'block' });
+                gsap.set(overlayRef.current, { display: 'block', opacity: 0 });
+
+                gsap.to(overlayRef.current, {
+                    opacity: 1,
+                    duration: 0.3,
+                    ease: "power2.out"
+                });
+
+                gsap.to(mobileMenuRef.current, {
+                    x: 0,
+                    duration: 0.5,
+                    ease: "power3.out"
+                });
+
+                gsap.from('.mobile-nav-item', {
+                    x: 50,
+                    opacity: 0,
+                    duration: 0.4,
+                    stagger: 0.08,
+                    delay: 0.2,
+                    ease: "power2.out"
+                });
+            } else {
+                gsap.to(mobileMenuRef.current, {
+                    x: '100%',
+                    duration: 0.4,
+                    ease: "power3.in",
+                    onComplete: () => {
+                        gsap.set(mobileMenuRef.current, { display: 'none' });
+                    }
+                });
+
+                gsap.to(overlayRef.current, {
+                    opacity: 0,
+                    duration: 0.3,
+                    ease: "power2.in",
+                    onComplete: () => {
+                        gsap.set(overlayRef.current, { display: 'none' });
+                    }
+                });
+            }
+        });
+
+        return () => ctx.revert();
+    }, [mobileMenuOpen]);
+
+    // Animation sur navigation active
+    const handleNavClick = (navId, index) => {
+        setActiveNav(navId);
+
+        const clickedItem = navItemsRef.current[index];
+        if (!clickedItem) return;
+
+        // Pulse animation
+        gsap.to(clickedItem, {
+            scale: 0.95,
+            duration: 0.1,
+            yoyo: true,
+            repeat: 1,
+            ease: "power2.inOut"
+        });
+
+        // Ripple effect
+        const ripple = clickedItem.querySelector('.ripple');
+        if (ripple) {
+            gsap.fromTo(ripple,
+                { scale: 0, opacity: 0.6 },
+                {
+                    scale: 3,
+                    opacity: 0,
+                    duration: 0.6,
+                    ease: "power2.out"
+                }
+            );
+        }
+    };
+
+    // Toggle sidebar avec animation du bouton
+    const toggleSidebar = () => {
+        const button = document.querySelector('.toggle-btn');
+        gsap.to(button, {
+            rotation: sidebarOpen ? 180 : 0,
+            duration: 0.5,
+            ease: "power2.inOut"
+        });
+        setSidebarOpen(!sidebarOpen);
+    };
+
+    // Animation du logo au hover
+    useEffect(() => {
+        if (!logoRef.current) return;
+
+        const logoHover = gsap.timeline({ paused: true });
+        logoHover
+            .to(logoRef.current.querySelector('.logo-icon'), {
+                rotation: 360,
+                scale: 1.1,
+                duration: 0.6,
+                ease: "power2.inOut"
+            })
+            .to(logoRef.current.querySelector('.logo-text'), {
+                letterSpacing: '0.1em',
+                duration: 0.3,
+                ease: "power2.out"
+            }, 0);
+
+        logoRef.current.addEventListener('mouseenter', () => logoHover.play());
+        logoRef.current.addEventListener('mouseleave', () => logoHover.reverse());
+
+        return () => {
+            logoRef.current?.removeEventListener('mouseenter', () => logoHover.play());
+            logoRef.current?.removeEventListener('mouseleave', () => logoHover.reverse());
+        };
+    }, []);
+
+    // ScrollTrigger pour le contenu
+    useLayoutEffect(() => {
+        const ctx = gsap.context(() => {
+            gsap.from('.content-section', {
+                y: 30,
+                opacity: 0,
+                duration: 0.8,
+                stagger: 0.2,
+                ease: "power3.out",
+                scrollTrigger: {
+                    trigger: contentRef.current,
+                    start: "top 80%",
+                    end: "bottom 20%",
+                    toggleActions: "play none none reverse"
+                }
+            });
+        });
+
+        return () => ctx.revert();
+    }, [children]);
+
+    return (
+        <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'dark' : ''}`}>
+            <div className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen">
+                {/* Overlay pour mobile */}
+                <div
+                    ref={overlayRef}
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden hidden"
+                    onClick={() => setMobileMenuOpen(false)}
+                />
+
+                {/* Sidebar Desktop */}
+                <aside
+                    ref={sidebarRef}
+                    className="fixed left-0 top-0 h-full bg-white dark:bg-gray-800 shadow-2xl z-30 hidden lg:block overflow-hidden"
+                    style={{ width: 280 }}
+                >
+                    {/* Logo */}
+                    <div ref={logoRef} className="p-6 border-b border-gray-200 dark:border-gray-700">
+                        <Link href="/dashboard" className="flex items-center space-x-3 group">
+                            <div className="logo-icon relative w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                                <Layers className="w-6 h-6 text-white" />
+                                <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <span className="logo-text text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                EliteSMS
+              </span>
+                        </Link>
+                    </div>
+
+                    {/* Navigation */}
+                    <nav className="p-4 space-y-2">
+                        {navigation.map((item, index) => (
+                            <div
+                                key={item.id}
+                                ref={el => navItemsRef.current[index] = el}
+                                onClick={() => handleNavClick(item.id, index)}
+                                className="relative"
+                            >
+                                <Link
+                                    href={item.href}
+                                    className={`relative flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 group ${
+                                        activeNav === item.id
+                                            ? 'text-white'
+                                            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                                    }`}
+                                >
+                                    {/* Background animé */}
+                                    <div className={`nav-bg absolute inset-0 rounded-xl transition-all duration-300 ${
+                                        activeNav === item.id
+                                            ? 'bg-gradient-to-r from-blue-600 to-purple-600 opacity-100 scale-100'
+                                            : 'bg-gray-100 dark:bg-gray-700 opacity-0 scale-95'
+                                    }`} />
+
+                                    {/* Ripple effect container */}
+                                    <div className="ripple absolute inset-0 rounded-xl overflow-hidden pointer-events-none">
+                                        <div className="absolute inset-0 bg-white/30" />
+                                    </div>
+
+                                    {/* Contenu */}
+                                    <div className="relative z-10 flex items-center space-x-3 w-full">
+                                        <item.icon className="nav-icon w-5 h-5 flex-shrink-0" />
+                                        <span className={`nav-text font-medium ${!sidebarOpen ? 'opacity-0' : ''}`}>
+                      {item.name}
+                    </span>
+                                        {activeNav === item.id && sidebarOpen && (
+                                            <ArrowRight className="w-4 h-4 ml-auto" />
+                                        )}
+                                    </div>
+                                </Link>
+                            </div>
+                        ))}
+                    </nav>
+
+                    {/* Footer Sidebar */}
+                    <div className={`sidebar-footer absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 ${!sidebarOpen ? 'opacity-0' : ''}`}>
+                        <div className="flex items-center justify-between mb-4">
+                            <button
+                                onClick={() => setDarkMode(!darkMode)}
+                                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                            </button>
+                            <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <Globe className="w-5 h-5" />
+                            </button>
+                            <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                <Settings className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex items-center space-x-3 p-3 rounded-xl bg-gray-100 dark:bg-gray-700">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-semibold">
+                                {user?.name?.charAt(0) || 'U'}
+                            </div>
+                            <div className="flex-1">
+                                <p className="font-medium text-sm">{user?.name || 'User'}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>
+                            </div>
+                            <button className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                <LogOut className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Toggle button */}
+                    <button
+                        onClick={toggleSidebar}
+                        className="toggle-btn absolute -right-4 top-20 w-8 h-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                </aside>
+
+                {/* Mobile Menu */}
+                <aside
+                    ref={mobileMenuRef}
+                    className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 shadow-2xl z-50 lg:hidden hidden"
+                >
+                    <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                        <span className="text-xl font-bold">Menu</span>
+                        <button
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <nav className="p-4 space-y-2">
+                        {navigation.map((item) => (
+                            <Link
+                                key={item.id}
+                                href={item.href}
+                                className="mobile-nav-item flex items-center space-x-3 px-4 py-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                onClick={() => setMobileMenuOpen(false)}
+                            >
+                                <item.icon className="w-5 h-5" />
+                                <span className="font-medium">{item.name}</span>
+                            </Link>
+                        ))}
+                    </nav>
+                </aside>
+
+                {/* Main Content */}
+                <div ref={mainRef} className="transition-all duration-500" style={{ marginLeft: 280 }}>
+                    {/* Header */}
+                    <header
+                        ref={headerRef}
+                        className="sticky top-0 z-20 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-700"
+                    >
+                        <div className="px-6 py-4 flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <button
+                                    onClick={() => setMobileMenuOpen(true)}
+                                    className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                >
+                                    <Menu className="w-5 h-5" />
+                                </button>
+                                {header && <h1 className="text-2xl font-bold">{header}</h1>}
+                            </div>
+
+                            <div className="flex items-center space-x-4">
+                                <button className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                                    <Sparkles className="w-5 h-5" />
+                                    <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Content */}
+                    <main ref={contentRef} className="p-6 min-h-[calc(100vh-4rem)]">
+                        <div className="content-section">
+                            {children}
+                        </div>
+                    </main>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default AuthenticatedLayout;

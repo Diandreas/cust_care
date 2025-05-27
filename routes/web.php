@@ -39,7 +39,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Routes nécessitant une authentification
-Route::middleware(['auth', 'verified', 'web'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     // Tableau de bord
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/campaigns/{campaign}/retry', [CampaignController::class, 'retry'])->name('campaigns.retry');

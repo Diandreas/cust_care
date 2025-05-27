@@ -263,8 +263,8 @@ export default function QuickAddModal({ isOpen, onClose, tags, onSuccess }: Quic
                                 value={form.phone}
                                 onChange={(e) => handlePhoneChange(e.target.value)}
                                 className={`pr-10 border-border/60 dark:bg-slate-700 dark:border-slate-600 ${form.phone && !phoneValidation.isValid
-                                        ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500'
-                                        : ''
+                                    ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500'
+                                    : ''
                                     }`}
                                 placeholder="+237 6XX XXX XXX ou 6XX XXX XXX"
                                 required
@@ -337,8 +337,8 @@ export default function QuickAddModal({ isOpen, onClose, tags, onSuccess }: Quic
                                         onClick={() => toggleTag(tag.id)}
                                         disabled={isSubmitting}
                                         className={`px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors duration-200 ${form.tagIds.includes(tag.id)
-                                                ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300'
-                                                : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700'
+                                            ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300'
+                                            : 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-700'
                                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                                     >
                                         {tag.name}
