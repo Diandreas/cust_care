@@ -11,10 +11,9 @@ interface BulkActionBarProps {
     selectedCount: number;
     onBulkAction: (action: string) => void;
     onCancel: () => void;
-    onExport: () => void;
 }
 
-export default function BulkActionBar({ selectedCount, onBulkAction, onCancel, onExport }: BulkActionBarProps) {
+export default function BulkActionBar({ selectedCount, onBulkAction, onCancel }: BulkActionBarProps) {
     const { t } = useTranslation();
 
     return (
@@ -44,7 +43,7 @@ export default function BulkActionBar({ selectedCount, onBulkAction, onCancel, o
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="dark:bg-slate-800 dark:border-slate-700/60">
-                            <DropdownMenuItem onSelect={onExport} className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
+                            <DropdownMenuItem onSelect={() => onBulkAction('export')} className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
                                 {t('clients.exportSelected')}
                             </DropdownMenuItem>
                             <DropdownMenuItem

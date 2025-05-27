@@ -255,7 +255,11 @@
         "deleteConfirmation": "Confirm Deletion",
         "bulkDeleteConfirmation": "Confirm Multiple Deletion",
         "deleteWarning": "This action cannot be undone. All client data will be permanently deleted.",
-        "bulkDeleteWarning": "This action cannot be undone. Data for {count} clients will be permanently deleted."
+        "bulkDeleteWarning": "This action cannot be undone. Data for {count} clients will be permanently deleted.",
+        "importExport": "Import / Export",
+        "possibleDuplicates": "possible duplicates detected",
+        "manageDuplicates": "Manage Duplicates",
+        "noClientsSelected": "No clients selected"
     },
     "import": {
         "title": "Import Clients",

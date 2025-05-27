@@ -255,7 +255,11 @@
         "deleteConfirmation": "Confirmer la suppression",
         "bulkDeleteConfirmation": "Confirmer la suppression multiple",
         "deleteWarning": "Cette action ne peut pas être annulée. Toutes les données du client seront définitivement supprimées.",
-        "bulkDeleteWarning": "Cette action ne peut pas être annulée. Les données de {count} clients seront définitivement supprimées."
+        "bulkDeleteWarning": "Cette action ne peut pas être annulée. Les données de {count} clients seront définitivement supprimées.",
+        "importExport": "Importer / Exporter",
+        "possibleDuplicates": "doublons potentiels détectés",
+        "manageDuplicates": "Gérer les doublons",
+        "noClientsSelected": "Aucun client sélectionné"
     },
     "import": {
         "title": "Importer des Clients",

@@ -4,7 +4,7 @@ import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { FileExport, FileImport, FileUp, FileDown } from 'lucide-react';
+import { FileUp, FileDown } from 'lucide-react';
 
 // Partial Components
 import StatsCards from './partials/StatsCards';
@@ -12,8 +12,6 @@ import FiltersPanel from './partials/FiltersPanel';
 import BulkActionBar from './partials/BulkActionBar';
 import ClientTable from './partials/ClientTable';
 import ClientGrid from './partials/ClientGrid';
-import ImportModal from './partials/ImportModal';
-import ExportModal from './partials/ExportModal';
 import QuickAddModal from './partials/QuickAddModal';
 import BulkSmsModal from './partials/BulkSmsModal';
 import DeleteConfirmModal from './partials/DeleteConfirmModal';
@@ -36,8 +34,7 @@ import {
 // Icons
 import {
     Search, SlidersHorizontal, LayoutGrid, List, PlusCircle,
-    MoreHorizontal, Check, X, Download, Import, UserPlus,
-    AlertCircle, Users2, RefreshCw
+    AlertCircle, UserPlus, RefreshCw
 } from 'lucide-react';
 
 // État initial pour la suppression
@@ -112,9 +109,7 @@ export default function ClientsIndex({
     const [duplicateClients, setDuplicateClients] = useState<any[]>([]);
     const [deleteState, setDeleteState] = useState(INITIAL_DELETE_STATE);
 
-    // États des modals - EXACTEMENT comme l'original
-    const [showImportModal, setShowImportModal] = useState(false);
-    const [showExportModal, setShowExportModal] = useState(false);
+    // États des modals
     const [showBulkSmsModal, setShowBulkSmsModal] = useState(false);
     const [showQuickAddModal, setShowQuickAddModal] = useState(false);
     const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
@@ -209,7 +204,7 @@ export default function ClientsIndex({
         });
     }, []);
 
-    // Handle bulk actions - EXACTEMENT comme l'original
+    // Handle bulk actions
     const handleBulkAction = useCallback((action: string) => {
         if (action === 'delete') {
             if (selectedClients.length === 0) {
@@ -224,10 +219,12 @@ export default function ClientsIndex({
                 return;
             }
             setShowBulkSmsModal(true);
+        } else if (action === 'export') {
+            router.visit(route('clients.import-export', { tab: 'export', selected: selectedClients }));
         }
-    }, [selectedClients, t]);
+    }, [selectedClients, t, router]);
 
-    // Handle single client deletion - EXACTEMENT comme l'original
+    // Handle single client deletion
     const handleDeleteClient = useCallback((clientId: number) => {
         setClientToDelete(clientId);
         setShowDeleteConfirmModal(true);
@@ -253,7 +250,7 @@ export default function ClientsIndex({
         }, 0);
     }, [setData, get]);
 
-    // Refresh client list - EXACTEMENT comme l'original
+    // Refresh client list
     const refreshClients = useCallback(() => {
         get(route('clients.index'), {
             preserveState: true,
@@ -261,7 +258,7 @@ export default function ClientsIndex({
         });
     }, [get]);
 
-    // Handle delete success - EXACTEMENT comme l'original
+    // Handle delete success
     const handleDeleteSuccess = useCallback(() => {
         setSelectedClients([]);
         refreshClients();
@@ -406,44 +403,14 @@ export default function ClientsIndex({
                                     {t('common.addDetailed')}
                                 </Link>
 
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button
-                                            variant="outline"
-                                            className="flex items-center justify-center gap-2 border-border/60 bg-white shadow-sm hover:bg-gray-50 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200 dark:hover:bg-slate-700/90"
-                                        >
-                                            <Import className="h-4 w-4" />
-                                            {t('common.import')}
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent className="dark:bg-slate-800 dark:border-slate-700/60">
-                                        <DropdownMenuItem
-                                            onSelect={() => setShowImportModal(true)}
-                                            className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90"
-                                        >
-                                            {t('import.fromCSV')}
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-
-                                <Button
-                                    variant="outline"
-                                    className="flex items-center justify-center gap-2 border-border/60 bg-white shadow-sm hover:bg-gray-50 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200 dark:hover:bg-slate-700/90"
-                                    onClick={() => setShowExportModal(true)}
-                                >
-                                    <Download className="h-4 w-4" />
-                                    {t('common.export')}
-                                </Button>
-
                                 <Button
                                     onClick={() => router.visit(route('clients.import-export'))}
                                     variant="outline"
-                                    size="sm"
-                                    className="flex items-center gap-2 border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
+                                    className="flex items-center gap-2 border-border/60 bg-white shadow-sm hover:bg-gray-50 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200 dark:hover:bg-slate-700/90"
                                 >
                                     <FileUp className="h-4 w-4" />
                                     <FileDown className="h-4 w-4" />
-                                    {t('clients.importExport') || 'Importer / Exporter'}
+                                    {t('clients.importExport')}
                                 </Button>
                             </div>
                         </div>
@@ -461,7 +428,14 @@ export default function ClientsIndex({
                             <FiltersPanel
                                 tags={tags}
                                 data={data}
-                                setData={setData}
+                                setData={(newData) => {
+                                    if (typeof newData === 'function') {
+                                        const updatedData = newData(data);
+                                        setData(updatedData);
+                                    } else {
+                                        setData({ ...data, ...newData });
+                                    }
+                                }}
                                 onApplyFilters={() => get(route('clients.index'), { preserveState: true, replace: true })}
                                 onResetFilters={() => {
                                     setData({
@@ -483,7 +457,6 @@ export default function ClientsIndex({
                                 selectedCount={selectedClients.length}
                                 onBulkAction={handleBulkAction}
                                 onCancel={clearSelections}
-                                onExport={() => setShowExportModal(true)}
                             />
                         )}
                     </div>
@@ -511,24 +484,7 @@ export default function ClientsIndex({
                 </div>
             </div>
 
-            {/* Modals - Séparés pour éviter les conflits d'état */}
-
-            {/* Import Modal */}
-            <ImportModal
-                isOpen={showImportModal}
-                onClose={() => setShowImportModal(false)}
-                onSuccess={refreshClients}
-            />
-
-            {/* Export Modal */}
-            <ExportModal
-                isOpen={showExportModal}
-                onClose={() => setShowExportModal(false)}
-                selectedClients={selectedClients}
-                filters={data}
-            />
-
-            {/* Quick Add Modal */}
+            {/* Modals */}
             <QuickAddModal
                 isOpen={showQuickAddModal}
                 onClose={handleQuickAddClose}
@@ -544,7 +500,7 @@ export default function ClientsIndex({
                 onSuccess={clearSelections}
             />
 
-            {/* Delete Confirm Modal - EXACTEMENT comme l'original */}
+            {/* Delete Confirm Modal */}
             <DeleteConfirmModal
                 isOpen={showDeleteConfirmModal}
                 onClose={() => {

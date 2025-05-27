@@ -4,7 +4,7 @@ import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
-import { useToast } from '@/Utils/toast';
+import { useToast } from '@/Components/ui/use-toast';
 import { Link } from '@inertiajs/react';
 import axios from 'axios';
 import TextInput from '@/Components/TextInput';
