@@ -62,6 +62,14 @@ Route::middleware(['auth'])->group(function () {
     // Route d'importation des clients
     Route::middleware(CheckClientLimit::class)->post('/clients/import', [App\Http\Controllers\ImportExportController::class, 'import'])->name('clients.import');
 
+    // Route pour la page d'importation/exportation
+    Route::get('/clients/import-export', function () {
+        return Inertia::render('Clients/ImportExport');
+    })->name('clients.import-export');
+
+    // Route pour l'importation simple
+    Route::middleware(CheckClientLimit::class)->post('/clients/import/simple', [App\Http\Controllers\ClientImportController::class, 'store'])->name('clients.import.simple');
+
     // Route de suppression en masse des clients
     Route::delete('/api/clients/bulk-delete', [ClientController::class, 'bulkDelete'])->name('clients.bulkDelete');
 
@@ -227,8 +235,6 @@ Route::put('/campaigns/{campaign}/reschedule', [CampaignController::class, 'resc
 
 
     Route::resource('clients', ClientController::class);
-    Route::get('clients/export', [ClientController::class, 'export'])->name('clients.export');
-    Route::post('clients/import', [ClientController::class, 'import'])->name('clients.import');
     Route::post('clients/import/simple', [ClientImportController::class, 'store'])->name('clients.import.simple');
     Route::delete('api/clients/bulk-delete', [ClientController::class, 'bulkDelete']);
 });

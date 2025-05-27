@@ -169,6 +169,11 @@ class ClientImportController extends Controller
     public function store(Request $request)
     {
         try {
+            Log::info('Début de l\'importation simple de clients', [
+                'user_id' => Auth::id(),
+                'ip' => $request->ip()
+            ]);
+            
             $request->validate([
                 'contacts' => 'required|json',
             ]);
@@ -179,18 +184,40 @@ class ClientImportController extends Controller
             $subscription = $this->getUserSubscription($user);
             $currentClientCount = $subscription['clientsCount'];
             $clientLimit = $subscription['clientsLimit'];
+            
+            Log::info('Validation de l\'importation simple', [
+                'user_id' => $user->id,
+                'plan' => $subscription['plan'],
+                'clientsCount' => $currentClientCount,
+                'clientsLimit' => $clientLimit
+            ]);
 
             $contacts = json_decode($request->contacts, true);
 
             if (!is_array($contacts)) {
+                Log::error('Format de contacts invalide', [
+                    'user_id' => $user->id,
+                    'contacts_raw' => $request->contacts,
+                    'json_error' => json_last_error_msg()
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Format de contacts invalide'
                 ], 422);
             }
+            
+            Log::info('Contacts à importer', [
+                'contacts_count' => count($contacts)
+            ]);
 
             // Vérifier si l'importation dépasserait la limite
             if ($currentClientCount + count($contacts) > $clientLimit) {
+                Log::warning('Limite de clients dépassée pour importation simple', [
+                    'user_id' => $user->id,
+                    'current_count' => $currentClientCount,
+                    'to_import' => count($contacts),
+                    'limit' => $clientLimit
+                ]);
                 return response()->json([
                     'success' => false,
                     'message' => "L'importation dépasserait la limite de clients pour votre plan (" . $clientLimit . ")."
@@ -201,21 +228,26 @@ class ClientImportController extends Controller
             $updated = 0;
             $errors = [];
 
-            foreach ($contacts as $contact) {
+            foreach ($contacts as $index => $contact) {
                 try {
-                    // Valider chaque contact
-                    $validator = Validator::make($contact, [
-                        'name' => 'required|string|max:255',
-                        'phone' => 'required|string|max:20',
-                    ]);
-
-                    if ($validator->fails()) {
-                        $errors[] = "Contact invalide: " . json_encode($validator->errors()->all());
+                    // Validation de base de chaque contact
+                    if (empty($contact['name']) || empty($contact['phone'])) {
+                        Log::warning('Contact invalide dans l\'importation simple', [
+                            'index' => $index,
+                            'contact' => $contact
+                        ]);
+                        $errors[] = "Contact #" . ($index + 1) . ": Nom ou téléphone manquant";
                         continue;
                     }
 
                     // Nettoyer le numéro de téléphone
                     $phone = $this->normalizePhoneNumber($contact['phone']);
+                    
+                    Log::debug('Traitement du contact', [
+                        'index' => $index,
+                        'name' => $contact['name'],
+                        'phone' => $phone
+                    ]);
 
                     // Vérifier si le client existe déjà
                     $existingClient = Client::where('phone', $phone)
@@ -223,28 +255,55 @@ class ClientImportController extends Controller
                         ->first();
 
                     if ($existingClient) {
-                        // Mettre à jour le nom si nécessaire
+                        // Mise à jour du nom si nécessaire
                         if ($existingClient->name !== $contact['name']) {
                             $existingClient->name = $contact['name'];
                             $existingClient->save();
                             $updated++;
+                            Log::info('Client existant mis à jour', [
+                                'client_id' => $existingClient->id,
+                                'name' => $existingClient->name,
+                                'phone' => $existingClient->phone
+                            ]);
+                        } else {
+                            Log::info('Client existant sans modification', [
+                                'client_id' => $existingClient->id,
+                                'phone' => $existingClient->phone
+                            ]);
                         }
                     } else {
                         // Créer un nouveau client
-                        Client::create([
-                            'name' => $contact['name'],
-                            'phone' => $phone,
+                        $client = new Client([
                             'user_id' => $user->id,
+                            'name' => $contact['name'],
+                            'phone' => $phone
                         ]);
+                        $client->save();
                         $imported++;
+                        Log::info('Nouveau client créé', [
+                            'client_id' => $client->id,
+                            'name' => $client->name,
+                            'phone' => $client->phone
+                        ]);
                     }
                 } catch (\Exception $e) {
-                    Log::error('Erreur lors de l\'importation d\'un contact: ' . $e->getMessage(), [
-                        'contact' => json_encode($contact)
+                    Log::error('Erreur lors du traitement d\'un contact simple', [
+                        'index' => $index,
+                        'contact' => $contact,
+                        'error' => $e->getMessage(),
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
                     ]);
-                    $errors[] = "Erreur lors de l'importation de " . ($contact['name'] ?? 'contact') . ": " . $e->getMessage();
+                    $errors[] = "Contact #" . ($index + 1) . ": " . $e->getMessage();
                 }
             }
+            
+            Log::info('Résumé de l\'importation simple', [
+                'user_id' => $user->id,
+                'imported' => $imported,
+                'updated' => $updated,
+                'errors' => count($errors)
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -253,8 +312,16 @@ class ClientImportController extends Controller
                 'updated' => $updated,
                 'errors' => $errors
             ]);
+
         } catch (\Exception $e) {
-            Log::error('Erreur lors de l\'importation: ' . $e->getMessage());
+            Log::error('Erreur générale lors de l\'importation simple', [
+                'user_id' => Auth::id() ?? 'non authentifié',
+                'error' => $e->getMessage(),
+                'exception' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Une erreur est survenue: ' . $e->getMessage()

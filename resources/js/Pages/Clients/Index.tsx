@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { FileExport, FileImport, FileUp, FileDown } from 'lucide-react';
 
 // Partial Components
 import StatsCards from './partials/StatsCards';
@@ -38,6 +39,13 @@ import {
     MoreHorizontal, Check, X, Download, Import, UserPlus,
     AlertCircle, Users2, RefreshCw
 } from 'lucide-react';
+
+// État initial pour la suppression
+const INITIAL_DELETE_STATE = {
+    isDeleting: false,
+    itemToDelete: null,
+    itemsToDelete: []
+};
 
 interface Client {
     id: number;
@@ -102,6 +110,7 @@ export default function ClientsIndex({
     const [showFiltersPanel, setShowFiltersPanel] = useState(false);
     const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
     const [duplicateClients, setDuplicateClients] = useState<any[]>([]);
+    const [deleteState, setDeleteState] = useState(INITIAL_DELETE_STATE);
 
     // États des modals - EXACTEMENT comme l'original
     const [showImportModal, setShowImportModal] = useState(false);
@@ -424,6 +433,17 @@ export default function ClientsIndex({
                                 >
                                     <Download className="h-4 w-4" />
                                     {t('common.export')}
+                                </Button>
+
+                                <Button
+                                    onClick={() => router.visit(route('clients.import-export'))}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center gap-2 border-border/60 dark:border-slate-700/60 dark:bg-slate-700 dark:text-gray-200 dark:hover:bg-slate-600"
+                                >
+                                    <FileUp className="h-4 w-4" />
+                                    <FileDown className="h-4 w-4" />
+                                    {t('clients.importExport') || 'Importer / Exporter'}
                                 </Button>
                             </div>
                         </div>
