@@ -105,7 +105,7 @@ export default function ClientGrid({
         <div className="space-y-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {clients.data.map((client) => (
-                    <Card key={client.id} className="relative overflow-hidden border-border/60 transition-all hover:shadow-md dark:border-slate-700/60 dark:bg-slate-800/90 group">
+                    <Card key={client.id} className="relative overflow-hidden border-border/60 transition-all hover:shadow-md dark:border-slate-700/60 dark:bg-slate-800/90 group hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
                         {/* Header with checkbox and actions */}
                         <div className="relative p-4">
                             <div className="absolute left-3 top-3 z-10">
@@ -156,7 +156,7 @@ export default function ClientGrid({
                                 </Avatar>
                                 <Link
                                     href={route('clients.show', client.id)}
-                                    className="text-center text-lg font-medium text-gray-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400 transition-colors duration-200"
+                                    className="text-center text-lg font-medium text-gray-900 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-indigo-500 hover:via-purple-500 hover:to-pink-500 dark:text-white dark:hover:text-transparent transition-colors duration-200"
                                 >
                                     {client.name}
                                 </Link>
@@ -168,7 +168,7 @@ export default function ClientGrid({
                                             <Badge
                                                 key={tag.id}
                                                 variant="secondary"
-                                                className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 text-xs"
+                                                className="bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 text-indigo-700 dark:from-indigo-500/30 dark:via-purple-500/30 dark:to-pink-500/30 dark:text-indigo-300 text-xs"
                                             >
                                                 {tag.name}
                                             </Badge>
@@ -184,7 +184,7 @@ export default function ClientGrid({
                         </div>
 
                         {/* Contact info */}
-                        <Separator className="dark:bg-slate-700/60" />
+                        <Separator className="bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 dark:from-indigo-900/30 dark:via-purple-900/30 dark:to-pink-900/30 h-[2px]" />
                         <CardContent className="p-4">
                             <div className="space-y-2">
                                 <div className="flex items-center text-gray-600 dark:text-gray-400">
@@ -265,8 +265,8 @@ export default function ClientGrid({
                                         key={i}
                                         href={link.url}
                                         className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
-                                                ? 'z-10 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm focus:z-20'
-                                                : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700/90'
+                                            ? 'z-10 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm focus:z-20'
+                                            : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700/90'
                                             } border border-border/60 dark:border-slate-700/60 rounded-md transition-colors duration-200`}
                                     >
                                         {link.label.replace('&laquo;', '←').replace('&raquo;', '→')}

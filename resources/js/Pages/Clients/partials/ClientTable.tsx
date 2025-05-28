@@ -91,7 +91,7 @@ export default function ClientTable({
         <Card className="overflow-hidden border-border/60 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/90">
             <div className="overflow-x-auto">
                 <Table>
-                    <TableHeader className="bg-gray-50/80 dark:bg-slate-700/80">
+                    <TableHeader className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 dark:from-indigo-900/30 dark:via-purple-900/30 dark:to-pink-900/30">
                         <TableRow>
                             <TableHead className="w-10 px-6">
                                 <Checkbox
@@ -107,7 +107,7 @@ export default function ClientTable({
                                 <div className="flex items-center">
                                     {t('common.name')}
                                     {sortBy === 'name' && (
-                                        <span className="ml-1 text-indigo-600 dark:text-indigo-400">
+                                        <span className="ml-1 text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
                                             {sortDirection === 'asc' ? '↑' : '↓'}
                                         </span>
                                     )}
@@ -123,7 +123,7 @@ export default function ClientTable({
                                 <div className="flex items-center">
                                     {t('common.birthday')}
                                     {sortBy === 'birthday' && (
-                                        <span className="ml-1 text-indigo-600 dark:text-indigo-400">
+                                        <span className="ml-1 text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
                                             {sortDirection === 'asc' ? '↑' : '↓'}
                                         </span>
                                     )}
@@ -136,7 +136,7 @@ export default function ClientTable({
                                 <div className="flex items-center">
                                     {t('common.lastContact')}
                                     {sortBy === 'last_contact' && (
-                                        <span className="ml-1 text-indigo-600 dark:text-indigo-400">
+                                        <span className="ml-1 text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
                                             {sortDirection === 'asc' ? '↑' : '↓'}
                                         </span>
                                     )}
@@ -183,7 +183,7 @@ export default function ClientTable({
                                             <Avatar className={`${getAvatarColor(client.name)} text-white h-9 w-9 mr-3`}>
                                                 <AvatarFallback>{getInitials(client.name)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="font-medium text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors duration-200">
+                                            <span className="font-medium text-gray-900 dark:text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-indigo-500 group-hover:via-purple-500 group-hover:to-pink-500 transition-colors duration-200">
                                                 {client.name}
                                             </span>
                                         </Link>
@@ -253,33 +253,23 @@ export default function ClientTable({
                                     </TableCell>
                                     <TableCell className="px-6">
                                         <div className="flex space-x-1 justify-end">
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30"
-                                                asChild
-                                            >
+                                            <Button variant="outline" size="sm" asChild className="mr-1">
                                                 <Link href={route('clients.show', client.id)}>
-                                                    <Eye className="h-4 w-4" />
+                                                    <Eye className="h-3.5 w-3.5" />
                                                 </Link>
                                             </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/30"
-                                                asChild
-                                            >
+                                            <Button variant="outline" size="sm" asChild className="mr-1">
                                                 <Link href={route('clients.edit', client.id)}>
-                                                    <Edit className="h-4 w-4" />
+                                                    <Edit className="h-3.5 w-3.5" />
                                                 </Link>
                                             </Button>
                                             <Button
+                                                variant="outline"
                                                 size="sm"
-                                                variant="ghost"
-                                                className="h-8 w-8 p-0 text-rose-600 hover:text-rose-800 hover:bg-rose-50 dark:text-rose-400 dark:hover:text-rose-300 dark:hover:bg-rose-900/30"
                                                 onClick={() => onDeleteClient(client.id)}
+                                                className="text-rose-500 border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:text-rose-400 dark:border-rose-900/40 dark:hover:bg-rose-900/20"
                                             >
-                                                <Trash2 className="h-4 w-4" />
+                                                <Trash2 className="h-3.5 w-3.5" />
                                             </Button>
                                         </div>
                                     </TableCell>
@@ -312,8 +302,8 @@ export default function ClientTable({
                                             key={i}
                                             href={link.url}
                                             className={`relative inline-flex items-center px-4 py-2 text-sm font-medium ${link.active
-                                                    ? 'z-10 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm focus:z-20'
-                                                    : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700/90'
+                                                ? 'z-10 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm focus:z-20'
+                                                : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-slate-800 dark:text-gray-300 dark:hover:bg-slate-700/90'
                                                 } border border-border/60 dark:border-slate-700/60 rounded-md transition-colors duration-200`}
                                         >
                                             {link.label.replace('&laquo;', '←').replace('&raquo;', '→')}

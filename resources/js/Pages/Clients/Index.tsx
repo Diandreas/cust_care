@@ -346,70 +346,84 @@ export default function ClientsIndex({
                                         variant="outline"
                                         type="button"
                                         onClick={() => setShowFiltersPanel(!showFiltersPanel)}
-                                        className="flex items-center justify-center gap-2 border-border/60 shadow-sm transition-colors duration-200 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200"
+                                        className={`flex items-center justify-center gap-2 border-border/60 shadow-sm transition-colors duration-200 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200 ${showFiltersPanel || activeFiltersCount > 0
+                                                ? 'bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-indigo-300 dark:from-indigo-900/30 dark:via-purple-900/30 dark:to-pink-900/30 dark:border-indigo-800/60'
+                                                : ''
+                                            }`}
                                     >
                                         <SlidersHorizontal className="h-4 w-4" />
                                         {t('common.filters')}
                                         {activeFiltersCount > 0 && (
-                                            <Badge className="ml-1 h-5 w-5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 p-0 text-center text-xs">
+                                            <Badge className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white">
                                                 {activeFiltersCount}
                                             </Badge>
                                         )}
                                     </Button>
                                 </form>
 
-                                <div className="flex gap-2">
+                                <div className="flex flex-row gap-2 sm:justify-end">
                                     <Tabs
                                         value={viewMode}
-                                        onValueChange={(val) => setViewMode(val as 'table' | 'grid')}
-                                        className="w-auto"
+                                        onValueChange={(value) => setViewMode(value as 'table' | 'grid')}
+                                        className="sm:w-auto"
                                     >
-                                        <TabsList className="grid w-full grid-cols-2 bg-muted/60 dark:bg-slate-800/80 dark:border dark:border-slate-700/60 p-0.5">
+                                        <TabsList className="border-border/60 bg-white dark:border-slate-700/60 dark:bg-slate-800/80">
                                             <TabsTrigger
                                                 value="table"
-                                                className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-slate-700"
+                                                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400"
                                             >
-                                                <List className="h-4 w-4" />
-                                                {t('common.tableView')}
+                                                <List className="mr-2 h-4 w-4" />
+                                                {t('common.list')}
                                             </TabsTrigger>
                                             <TabsTrigger
                                                 value="grid"
-                                                className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-slate-700"
+                                                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400"
                                             >
-                                                <LayoutGrid className="h-4 w-4" />
-                                                {t('common.gridView')}
+                                                <LayoutGrid className="mr-2 h-4 w-4" />
+                                                {t('common.grid')}
                                             </TabsTrigger>
                                         </TabsList>
                                     </Tabs>
+
+                                    <Button
+                                        onClick={() => setShowQuickAddModal(true)}
+                                        className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                                    >
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        {t('common.quickAdd')}
+                                    </Button>
+
+                                    {/* Actions dropdown */}
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                className="border-border/60 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200"
+                                            >
+                                                <FileDown className="mr-2 h-4 w-4" />
+                                                {t('common.export')}
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent className="dark:bg-slate-800 dark:border-slate-700/60">
+                                            <DropdownMenuItem className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
+                                                <Link
+                                                    href={route('clients.export', { format: 'csv' })}
+                                                    className="w-full flex items-center"
+                                                >
+                                                    CSV
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="dark:hover:bg-slate-700/90 dark:focus:bg-slate-700/90">
+                                                <Link
+                                                    href={route('clients.export', { format: 'xlsx' })}
+                                                    className="w-full flex items-center"
+                                                >
+                                                    Excel
+                                                </Link>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                                <Button
-                                    onClick={handleQuickAddOpen}
-                                    className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
-                                >
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    {t('clients.quickAdd')}
-                                </Button>
-
-                                <Link
-                                    href={route('clients.create')}
-                                    className="inline-flex items-center justify-center rounded-lg border border-indigo-500 bg-white px-4 py-2 text-sm font-medium text-indigo-600 shadow-sm transition-all hover:bg-indigo-50 hover:shadow-md dark:border-indigo-600 dark:bg-slate-800/80 dark:text-indigo-400 dark:hover:bg-slate-700/90"
-                                >
-                                    <UserPlus className="mr-2 h-4 w-4" />
-                                    {t('common.addDetailed')}
-                                </Link>
-
-                                <Button
-                                    onClick={() => router.visit(route('clients.import-export'))}
-                                    variant="outline"
-                                    className="flex items-center gap-2 border-border/60 bg-white shadow-sm hover:bg-gray-50 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200 dark:hover:bg-slate-700/90"
-                                >
-                                    <FileUp className="h-4 w-4" />
-                                    <FileDown className="h-4 w-4" />
-                                    {t('clients.importExport')}
-                                </Button>
                             </div>
                         </div>
 

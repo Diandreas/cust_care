@@ -955,7 +955,68 @@ export default function CampaignsIndex({
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={null}
+            header={
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+                            {t('campaigns.title')}
+                        </h1>
+                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            {t('campaigns.subtitle')}
+                        </p>
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-0">
+                        <Button
+                            onClick={() => setShowCreateModal(true)}
+                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-all duration-200"
+                        >
+                            <Plus className="mr-2 h-4 w-4" />
+                            {t('campaigns.create')}
+                        </Button>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="ml-2 border-gray-200 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
+                                    <Menu className="mr-2 h-4 w-4" />
+                                    {t('common.actions')}
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-56 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                                <DropdownMenuItem onClick={() => router.visit(route('campaigns.create'))} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    {t('campaigns.createAdvanced')}
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={toggleSelectionMode} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    <CheckSquare className="mr-2 h-4 w-4" />
+                                    {selectionMode ? t('common.cancelSelection') : t('common.selectMultiple')}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        <div className="ml-auto flex items-center">
+                            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'calendar' | 'grid')} className="hidden sm:block">
+                                <TabsList className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+                                    <TabsTrigger
+                                        value="calendar"
+                                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400"
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {t('campaigns.calendarView')}
+                                    </TabsTrigger>
+                                    <TabsTrigger
+                                        value="grid"
+                                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400"
+                                    >
+                                        <Grid className="mr-2 h-4 w-4" />
+                                        {t('campaigns.gridView')}
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
+                        </div>
+                    </div>
+                </div>
+            }
         >
             <Head title={t('common.campaigns')} />
 

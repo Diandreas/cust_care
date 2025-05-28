@@ -42,7 +42,7 @@ const FiltersPanel = React.forwardRef<HTMLDivElement, FiltersPanelProps>(({ tags
                             id="tag_filter"
                             value={data.tag_id}
                             onChange={(e) => setData({ ...data, tag_id: e.target.value })}
-                            className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white"
+                            className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white focus:bg-gradient-to-r focus:from-indigo-500/5 focus:via-purple-500/5 focus:to-pink-500/5 dark:focus:from-indigo-900/30 dark:focus:via-purple-900/30 dark:focus:to-pink-900/30"
                         >
                             <option value="">{t('common.all')}</option>
                             {tags.map((tag) => (
@@ -61,7 +61,7 @@ const FiltersPanel = React.forwardRef<HTMLDivElement, FiltersPanelProps>(({ tags
                             id="date_range"
                             value={data.date_range}
                             onChange={(e) => setData({ ...data, date_range: e.target.value })}
-                            className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white"
+                            className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white focus:bg-gradient-to-r focus:from-indigo-500/5 focus:via-purple-500/5 focus:to-pink-500/5 dark:focus:from-indigo-900/30 dark:focus:via-purple-900/30 dark:focus:to-pink-900/30"
                         >
                             <option value="">{t('common.all')}</option>
                             <option value="today">{t('filters.today')}</option>
@@ -80,7 +80,7 @@ const FiltersPanel = React.forwardRef<HTMLDivElement, FiltersPanelProps>(({ tags
                             id="birthday_month"
                             value={data.birthday_month}
                             onChange={(e) => setData({ ...data, birthday_month: e.target.value })}
-                            className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white"
+                            className="mt-1 block w-full rounded-lg border border-border/60 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 dark:border-slate-700/60 dark:bg-slate-800 dark:text-white focus:bg-gradient-to-r focus:from-indigo-500/5 focus:via-purple-500/5 focus:to-pink-500/5 dark:focus:from-indigo-900/30 dark:focus:via-purple-900/30 dark:focus:to-pink-900/30"
                         >
                             <option value="">{t('common.all')}</option>
                             <option value="1">{t('months.january')}</option>
@@ -140,7 +140,7 @@ const FiltersPanel = React.forwardRef<HTMLDivElement, FiltersPanelProps>(({ tags
                     </Button>
                     <Button
                         onClick={onApplyFilters}
-                        className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                        className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
                     >
                         {t('common.applyFilters')}
                     </Button>

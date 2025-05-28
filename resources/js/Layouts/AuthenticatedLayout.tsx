@@ -65,11 +65,11 @@ interface AuthenticatedLayoutProps {
 const Logo = ({ expanded = true }) => (
     <Link href={route('dashboard')} className="flex items-center justify-center group">
         <motion.div
-            className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-slate-900 to-slate-700 dark:from-white dark:to-slate-100 shadow-lg transition-all duration-300 group-hover:shadow-xl"
+            className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-lg transition-all duration-300 group-hover:shadow-xl"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
         >
-            <span className="text-lg font-bold text-white dark:text-slate-900">E</span>
+            <span className="text-lg font-bold text-white">H</span>
             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </motion.div>
         <AnimatePresence>
@@ -81,8 +81,8 @@ const Logo = ({ expanded = true }) => (
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="ml-3 overflow-hidden"
                 >
-                    <span className="text-xl font-bold text-slate-900 dark:text-white">
-                        Elite<span className="text-slate-600 dark:text-slate-300">SMS</span>
+                    <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:text-white">
+                        Hello<span className="text-slate-600 dark:text-slate-300">Boost</span>
                     </span>
                 </motion.div>
             )}
@@ -97,14 +97,14 @@ const NavItem = ({ item, expanded }) => {
     const itemClasses = cn(
         "relative flex items-center rounded-xl transition-all duration-300 group",
         item.current
-            ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg"
+            ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg"
             : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800/50",
         expanded ? "px-3 py-3 gap-3" : "justify-center h-11 w-11 mx-auto"
     );
 
     const iconClasses = cn(
         "transition-all duration-300",
-        item.current ? "text-white dark:text-slate-900" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200",
+        item.current ? "text-white" : "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200",
         "h-5 w-5"
     );
 
@@ -123,7 +123,7 @@ const NavItem = ({ item, expanded }) => {
                 {item.current && (
                     <motion.div
                         layoutId="activeIndicator"
-                        className="absolute right-2 h-1.5 w-1.5 rounded-full bg-white dark:bg-slate-900"
+                        className="absolute right-2 h-1.5 w-1.5 rounded-full bg-white"
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                 )}
@@ -148,7 +148,7 @@ const NavItem = ({ item, expanded }) => {
                 </TooltipTrigger>
                 <TooltipContent
                     side="right"
-                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-0 shadow-xl rounded-lg px-3 py-2"
+                    className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white border-0 shadow-xl rounded-lg px-3 py-2"
                 >
                     <span className="font-medium text-sm">{item.name}</span>
                 </TooltipContent>

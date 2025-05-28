@@ -86,14 +86,15 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
 
   // HelloBoost theme colors
   const helloBoostColors = {
-    primary: '#3B82F6',    // Bleu HelloBoost
-    secondary: '#F97316',   // Orange HelloBoost
-    success: '#10B981',
-    warning: '#F59E0B',
-    danger: '#EF4444',
-    neutral: '#6B7280',
-    light: '#F8FAFC',
-    dark: '#1E293B',
+    primary: '#6366F1',    // Indigo HelloBoost
+    secondary: '#D946EF',  // Fuchsia HelloBoost
+    tertiary: '#EC4899',   // Pink HelloBoost
+    success: '#10B981',    // Emerald
+    warning: '#F59E0B',    // Amber
+    danger: '#EF4444',     // Red
+    neutral: '#6B7280',    // Gray
+    light: '#F8FAFC',      // Slate 50
+    dark: '#1E293B',       // Slate 800
   };
 
   // Prepare chart data
@@ -120,7 +121,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
       header={
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
               Tableau de bord
             </h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -129,16 +130,16 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
           </div>
           <div className="flex items-center gap-3">
             <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-40 border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
                 <SelectValue placeholder="Période" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
                 <SelectItem value="week">7 derniers jours</SelectItem>
                 <SelectItem value="month">30 derniers jours</SelectItem>
                 <SelectItem value="year">12 derniers mois</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" onClick={refreshData} disabled={isRefreshing}>
+            <Button variant="outline" onClick={refreshData} disabled={isRefreshing} className="border-gray-200 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Actualiser
             </Button>
@@ -153,14 +154,14 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
         {(stats.subscription?.sms_quota_low || stats.subscription?.sms_quota_exhausted) && (
           <div className="space-y-4">
             {stats.subscription?.sms_quota_low && !stats.subscription?.sms_quota_exhausted && (
-              <Alert className="border-l-4 border-l-orange-500 bg-orange-50 dark:bg-orange-900/20">
-                <AlertTriangle className="h-4 w-4 text-orange-600" />
-                <AlertTitle className="text-orange-800 dark:text-orange-200">
+              <Alert className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/20">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <AlertTitle className="text-amber-800 dark:text-amber-200">
                   Quota SMS faible
                 </AlertTitle>
-                <AlertDescription className="text-orange-700 dark:text-orange-300">
+                <AlertDescription className="text-amber-700 dark:text-amber-300">
                   Votre quota SMS est presque épuisé.
-                  <Link href={route('subscription.addons.index')} className="ml-2 font-medium underline hover:no-underline">
+                  <Link href={route('subscription.addons.index')} className="ml-2 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
                     Acheter des SMS supplémentaires
                   </Link>
                 </AlertDescription>
@@ -168,12 +169,12 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
             )}
 
             {stats.subscription?.sms_quota_exhausted && (
-              <Alert variant="destructive" className="border-l-4 border-l-red-500">
+              <Alert variant="destructive" className="border-l-4 border-l-rose-500 bg-rose-50 dark:bg-rose-900/20">
                 <XCircle className="h-4 w-4" />
                 <AlertTitle>Quota SMS épuisé</AlertTitle>
                 <AlertDescription>
                   Votre quota SMS est épuisé. Vous ne pouvez plus envoyer de messages.
-                  <Link href={route('subscription.addons.index')} className="ml-2 font-medium underline hover:no-underline">
+                  <Link href={route('subscription.addons.index')} className="ml-2 font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
                     Acheter maintenant
                   </Link>
                 </AlertDescription>
@@ -185,12 +186,12 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
         {/* Métriques principales */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Clients */}
-          <Card className="relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-bl-full"></div>
+          <Card className="relative overflow-hidden border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 rounded-bl-full"></div>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <div className="p-2 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 rounded-lg">
+                  <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <Badge variant="outline" className="text-xs">
                   {stats.trends?.active_clients.rate_formatted || "0%"} actifs
