@@ -347,8 +347,8 @@ export default function ClientsIndex({
                                         type="button"
                                         onClick={() => setShowFiltersPanel(!showFiltersPanel)}
                                         className={`flex items-center justify-center gap-2 border-border/60 shadow-sm transition-colors duration-200 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200 ${showFiltersPanel || activeFiltersCount > 0
-                                                ? 'bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-indigo-300 dark:from-indigo-900/30 dark:via-purple-900/30 dark:to-pink-900/30 dark:border-indigo-800/60'
-                                                : ''
+                                            ? 'bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 border-indigo-300 dark:from-indigo-900/30 dark:via-purple-900/30 dark:to-pink-900/30 dark:border-indigo-800/60'
+                                            : ''
                                             }`}
                                     >
                                         <SlidersHorizontal className="h-4 w-4" />

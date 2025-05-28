@@ -1121,7 +1121,7 @@ export default function CampaignsIndex({
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30 dark:hover:bg-blue-900/30"
+                                                    className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 text-indigo-700 border-indigo-200 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20 hover:text-indigo-800 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 dark:text-indigo-400 dark:border-indigo-800/30 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30"
                                                 >
                                                     <Zap className="h-4 w-4 mr-2" />
                                                     <span>{t('campaigns.quickActions')}</span>
@@ -1147,14 +1147,14 @@ export default function CampaignsIndex({
                                             variant="outline"
                                             size="sm"
                                             onClick={() => setShowQuickAddModal(true)}
-                                            className="bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800"
+                                            className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 border-green-200 hover:from-green-500/20 hover:to-emerald-500/20 hover:text-green-800"
                                         >
                                             <Plus className="h-4 w-4 mr-2" />
                                             <span>{t('campaigns.quickAdd')}</span>
                                         </Button>
 
                                         <Link href={route('campaigns.create')}>
-                                            <Button>
+                                            <Button className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-md transition-all duration-200">
                                                 <CalendarAdd className="h-4 w-4 mr-2" />
                                                 <span>{t('campaigns.create')}</span>
                                             </Button>
@@ -1226,6 +1226,7 @@ export default function CampaignsIndex({
                                         variant="outline"
                                         size="sm"
                                         onClick={() => navigateCalendar('TODAY')}
+                                        className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20"
                                     >
                                         {t('campaigns.today')}
                                     </Button>
@@ -1260,6 +1261,8 @@ export default function CampaignsIndex({
                                         className="w-auto"
                                     >
                                         <TabsList className="grid grid-cols-3">
+                                            <TabsTrigger value={Views.MONTH} className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400">{t('campaigns.month')}</TabsTrigger>
+                                            <TabsTrigger value={Views.WEEK} className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400">{t('campaigns.week')}</TabsTrigger>
                                             <TabsTrigger value={Views.MONTH}>{t('campaigns.month')}</TabsTrigger>
                                             <TabsTrigger value={Views.WEEK}>{t('campaigns.week')}</TabsTrigger>
                                             <TabsTrigger value={Views.DAY}>{t('campaigns.day')}</TabsTrigger>
@@ -2035,7 +2038,7 @@ export default function CampaignsIndex({
 
                 {/* Floating Action Button for mobile */}
                 <div className="md:hidden fixed right-4 bottom-4">
-                    <Button size="icon" className="h-14 w-14 rounded-full shadow-lg" onClick={() => setShowQuickAddModal(true)}>
+                    <Button size="icon" className="h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-xl transition-all duration-200" onClick={() => setShowQuickAddModal(true)}>
                         <Plus className="h-6 w-6" />
                     </Button>
                 </div>

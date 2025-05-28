@@ -45,7 +45,66 @@ interface DashboardProps {
   stats: {
     subscription?: {
       isFreePlan: boolean;
+      sms_quota_low?: boolean;
+      sms_quota_exhausted?: boolean;
+      plan?: string;
+      sms_used?: number;
+      personal_sms_quota?: number;
+      sms_usage_percent?: number;
+      clientsCount?: number;
+      clients_limit?: number;
     };
+    message_stats?: {
+      status_counts: {
+        sent: number;
+        failed: number;
+        pending: number;
+      };
+      delivery_rate_formatted?: string;
+      by_day?: Array<{
+        date: string;
+        count: number;
+      }>;
+    };
+    visit_stats?: {
+      by_day?: Array<{
+        date: string;
+        count: number;
+      }>;
+    };
+    total_clients?: number;
+    total_messages?: number;
+    total_campaigns?: number;
+    trends?: {
+      active_clients: {
+        rate_formatted: string;
+      };
+      engagement: {
+        rate_formatted: string;
+        engaged_clients: number;
+      };
+    };
+    client_stats?: {
+      growth_is_positive: boolean;
+      growth_rate_formatted: string;
+    };
+    campaign_stats?: {
+      success_rate_formatted: string;
+      status_counts: {
+        draft: number;
+        sent: number;
+      };
+    };
+    recent_messages?: Array<{
+      id: string | number;
+      client: {
+        name: string;
+      };
+      content: string;
+      sent_at: string;
+      created_at: string;
+      status: 'sent' | 'delivered' | 'failed';
+    }>;
   };
   recentMessages: Array<{
     id: string | number;
@@ -99,18 +158,18 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
 
   // Prepare chart data
   const pieData = [
-    { name: 'Envoyés', value: stats.message_stats?.status_counts.sent || 0, color: helloBoostColors.success },
-    { name: 'Échoués', value: stats.message_stats?.status_counts.failed || 0, color: helloBoostColors.danger },
-    { name: 'En attente', value: stats.message_stats?.status_counts.pending || 0, color: helloBoostColors.warning },
+    { name: 'Envoyés', value: stats.message_stats?.status_counts?.sent || 0, color: helloBoostColors.success },
+    { name: 'Échoués', value: stats.message_stats?.status_counts?.failed || 0, color: helloBoostColors.danger },
+    { name: 'En attente', value: stats.message_stats?.status_counts?.pending || 0, color: helloBoostColors.warning },
   ];
 
   // Format data for charts
-  const visitData = stats.visit_stats?.by_day?.map((item) => ({
+  const visitData = stats.visit_stats?.by_day?.map((item: { date: string; count: number }) => ({
     date: item.date.split(' ')[0],
     visits: item.count,
   })) || [];
 
-  const messageData = stats.message_stats?.by_day?.map((item) => ({
+  const messageData = stats.message_stats?.by_day?.map((item: { date: string; count: number }) => ({
     date: item.date.split(' ')[0],
     messages: item.count,
   })) || [];
@@ -154,7 +213,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
         {(stats.subscription?.sms_quota_low || stats.subscription?.sms_quota_exhausted) && (
           <div className="space-y-4">
             {stats.subscription?.sms_quota_low && !stats.subscription?.sms_quota_exhausted && (
-              <Alert className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/20">
+              <Alert className="border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-900/20 bg-gradient-to-r from-amber-50 to-white dark:from-amber-900/20 dark:to-gray-900/5 hover:shadow-md transition-all duration-200">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 <AlertTitle className="text-amber-800 dark:text-amber-200">
                   Quota SMS faible
@@ -169,7 +228,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
             )}
 
             {stats.subscription?.sms_quota_exhausted && (
-              <Alert variant="destructive" className="border-l-4 border-l-rose-500 bg-rose-50 dark:bg-rose-900/20">
+              <Alert variant="destructive" className="border-l-4 border-l-rose-500 bg-rose-50 dark:bg-rose-900/20 bg-gradient-to-r from-rose-50 to-white dark:from-rose-900/20 dark:to-gray-900/5 hover:shadow-md transition-all duration-200">
                 <XCircle className="h-4 w-4" />
                 <AlertTitle>Quota SMS épuisé</AlertTitle>
                 <AlertDescription>
@@ -221,7 +280,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
           </Card>
 
           {/* Messages */}
-          <Card className="relative overflow-hidden">
+          <Card className="relative overflow-hidden border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-bl-full"></div>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -252,7 +311,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
           </Card>
 
           {/* Campagnes */}
-          <Card className="relative overflow-hidden">
+          <Card className="relative overflow-hidden border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-bl-full"></div>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -283,7 +342,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
           </Card>
 
           {/* Engagement */}
-          <Card className="relative overflow-hidden">
+          <Card className="relative overflow-hidden border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
             <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-bl-full"></div>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -316,7 +375,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
           {/* Graphique d'activité */}
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Activité récente</CardTitle>
+              <CardTitle className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Activité récente</CardTitle>
               <CardDescription>Messages et visites au fil du temps</CardDescription>
             </CardHeader>
             <CardContent>
@@ -364,7 +423,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
           {/* Statut des messages */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg font-semibold">Statut des messages</CardTitle>
+              <CardTitle className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Statut des messages</CardTitle>
               <CardDescription>Répartition par statut</CardDescription>
             </CardHeader>
             <CardContent>
@@ -414,7 +473,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
               <CardHeader>
                 <CardTitle className="text-lg font-semibold flex items-center gap-2">
                   <Zap className="h-5 w-5 text-orange-500" />
-                  Quota SMS
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Quota SMS</span>
                 </CardTitle>
                 <CardDescription>
                   Plan: {stats.subscription.plan || 'Gratuit'}
@@ -428,7 +487,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
                   <div className="flex justify-between text-sm">
                     <span>SMS utilisés</span>
                     <span className="font-medium">
-                      {stats.subscription.sms_used} / {stats.subscription.personal_sms_quota}
+                      {stats.subscription.sms_used || 0} / {stats.subscription.personal_sms_quota || 0}
                     </span>
                   </div>
                   <Progress
@@ -444,11 +503,12 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
                   <div className="flex justify-between text-sm">
                     <span>Clients</span>
                     <span className="font-medium">
-                      {stats.subscription.clientsCount} / {stats.subscription.clients_limit}
+                      {stats.subscription.clientsCount || 0} / {stats.subscription.clients_limit || 0}
                     </span>
                   </div>
                   <Progress
-                    value={(stats.subscription.clientsCount / stats.subscription.clients_limit) * 100}
+                    value={(stats.subscription.clientsCount && stats.subscription.clients_limit) ?
+                      (stats.subscription.clientsCount / stats.subscription.clients_limit) * 100 : 0}
                     className="h-2"
                   />
                 </div>
@@ -456,7 +516,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
                 <div className="pt-2">
                   <Button
                     asChild
-                    className="w-full bg-gradient-to-r from-blue-500 to-orange-500 hover:from-blue-600 hover:to-orange-600"
+                    className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 shadow-sm hover:shadow-lg transition-all duration-200"
                   >
                     <Link href={stats.subscription.isFreePlan ? route('subscription.plans') : route('subscription.index')}>
                       {stats.subscription.isFreePlan ? 'Passer au premium' : 'Gérer l\'abonnement'}
@@ -472,33 +532,33 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
             <CardHeader>
               <CardTitle className="text-lg font-semibold flex items-center gap-2">
                 <Target className="h-5 w-5 text-blue-500" />
-                Actions rapides
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Actions rapides</span>
               </CardTitle>
               <CardDescription>Accès rapide aux fonctionnalités principales</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button asChild className="w-full justify-start h-12 bg-blue-500 hover:bg-blue-600">
+              <Button asChild className="w-full justify-start h-12 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:shadow-md transition-all">
                 <Link href={route('campaigns.create')}>
                   <Plus className="h-4 w-4 mr-2" />
                   Créer une nouvelle campagne
                 </Link>
               </Button>
 
-              <Button asChild variant="outline" className="w-full justify-start h-12">
+              <Button asChild variant="outline" className="w-full justify-start h-12 hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
                 <Link href={route('clients.index')}>
                   <Users className="h-4 w-4 mr-2" />
                   Gérer les clients
                 </Link>
               </Button>
 
-              <Button asChild variant="outline" className="w-full justify-start h-12">
+              <Button asChild variant="outline" className="w-full justify-start h-12 hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/10 hover:via-purple-500/10 hover:to-pink-500/10 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
                 <Link href={route('messages.index')}>
                   <MessageSquare className="h-4 w-4 mr-2" />
                   Voir tous les messages
                 </Link>
               </Button>
 
-              <Button asChild variant="outline" className="w-full justify-start h-12">
+              <Button asChild variant="outline" className="w-full justify-start h-12 hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/10 hover:via-purple-500/10 hover:to-pink-500/10 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
                 <Link href={route('templates.index')}>
                   <Globe className="h-4 w-4 mr-2" />
                   Modèles de messages
@@ -514,7 +574,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg font-semibold">Messages récents</CardTitle>
+                  <CardTitle className="text-lg font-semibold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">Messages récents</CardTitle>
                   <CardDescription>Derniers messages envoyés</CardDescription>
                 </div>
                 <Button variant="outline" asChild>
@@ -528,7 +588,7 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
             <CardContent>
               <div className="space-y-4">
                 {stats.recent_messages.slice(0, 5).map((message) => (
-                  <div key={message.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                  <div key={message.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30 transition-all duration-200 hover:shadow-md">
                     <div className="flex items-center space-x-3">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="bg-blue-100 text-blue-600 text-xs">
