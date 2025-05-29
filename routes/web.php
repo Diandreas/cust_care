@@ -238,4 +238,63 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('api/clients/bulk-delete', [ClientController::class, 'bulkDelete']);
 });
 
+// Routes pour les paramètres et la configuration Twilio
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Page des paramètres
+    Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])
+        ->name('settings.index');
+        
+    // Paramètres généraux
+    Route::post('/settings/general', [App\Http\Controllers\SettingsController::class, 'updateGeneral'])
+        ->name(config('twilio.routes.settings.update_general'));
+    
+    // Paramètres Twilio
+    Route::post('/settings/twilio', [App\Http\Controllers\SettingsController::class, 'updateTwilio'])
+        ->name(config('twilio.routes.settings.update_twilio'));
+    
+    // Paramètres IA
+    Route::post('/settings/ai', [App\Http\Controllers\SettingsController::class, 'updateAI'])
+        ->name(config('twilio.routes.settings.update_ai'));
+    
+    // Gestion des numéros de téléphone
+    Route::post('/settings/phone/purchase', [App\Http\Controllers\SettingsController::class, 'purchasePhoneNumber'])
+        ->name(config('twilio.routes.settings.purchase_number'));
+    
+    Route::delete('/settings/phone/{sid}', [App\Http\Controllers\SettingsController::class, 'releasePhoneNumber'])
+        ->name(config('twilio.routes.settings.release_number'));
+});
+
+// Routes pour les webhooks Twilio (ne nécessitent pas d'authentification)
+Route::prefix('api/twilio/webhook')->group(function () {
+    // SMS
+    Route::post('/sms', [App\Http\Controllers\TwilioController::class, 'receiveSMS'])
+        ->name(config('twilio.routes.sms.webhook'));
+    
+    // WhatsApp
+    Route::post('/whatsapp', [App\Http\Controllers\TwilioController::class, 'receiveWhatsApp'])
+        ->name(config('twilio.routes.whatsapp.webhook'));
+    
+    // Voix
+    Route::post('/voice', [App\Http\Controllers\TwilioController::class, 'receiveCall'])
+        ->name(config('twilio.routes.voice.webhook'));
+    
+    Route::post('/voice/menu', [App\Http\Controllers\TwilioController::class, 'handleVoiceMenu'])
+        ->name(config('twilio.routes.voice.menu'));
+    
+    Route::post('/voice/agent', [App\Http\Controllers\TwilioController::class, 'connectToAgent'])
+        ->name(config('twilio.routes.voice.agent'));
+    
+    Route::post('/voice/recording', [App\Http\Controllers\TwilioController::class, 'handleRecording'])
+        ->name(config('twilio.routes.voice.recording'));
+    
+    Route::post('/voice/transcription', [App\Http\Controllers\TwilioController::class, 'handleTranscription'])
+        ->name(config('twilio.routes.voice.transcription'));
+    
+    Route::post('/voice/outbound', [App\Http\Controllers\TwilioController::class, 'handleOutboundCall'])
+        ->name(config('twilio.routes.voice.outbound'));
+    
+    Route::post('/voice/outbound/action', [App\Http\Controllers\TwilioController::class, 'handleOutboundCallAction'])
+        ->name(config('twilio.routes.voice.outbound_action'));
+});
+
 require __DIR__.'/auth.php';

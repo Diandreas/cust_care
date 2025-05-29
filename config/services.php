@@ -14,6 +14,13 @@ return [
     |
     */
 
+    'mailgun' => [
+        'domain' => env('MAILGUN_DOMAIN'),
+        'secret' => env('MAILGUN_SECRET'),
+        'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        'scheme' => 'https',
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
@@ -53,13 +60,32 @@ return [
 
     'twilio' => [
         'sid' => env('TWILIO_SID'),
-        'token' => env('TWILIO_AUTH_TOKEN'),
-        'number' => env('TWILIO_NUMBER'),
-        'whatsapp_number' => env('TWILIO_WHATSAPP_NUMBER'),
+        'token' => env('TWILIO_TOKEN'),
+        'default_sms_number' => env('TWILIO_DEFAULT_SMS_NUMBER'),
+        'default_whatsapp_number' => env('TWILIO_DEFAULT_WHATSAPP_NUMBER'),
+        'default_voice_number' => env('TWILIO_DEFAULT_VOICE_NUMBER'),
+        'support_number' => env('TWILIO_SUPPORT_NUMBER'),
+        'agent_number' => env('TWILIO_AGENT_NUMBER'),
+        'caller_id' => env('TWILIO_CALLER_ID'),
     ],
     
     'sendgrid' => [
-        'key' => env('SENDGRID_API_KEY'),
+        'api_key' => env('SENDGRID_API_KEY'),
+        'from_email' => env('SENDGRID_FROM_EMAIL', 'contact@helloboost.fr'),
+        'from_name' => env('SENDGRID_FROM_NAME', 'HelloBoost'),
+    ],
+
+    'ai' => [
+        'enabled' => env('AI_ENABLED', false),
+        'api_key' => env('AI_API_KEY'),
+        'endpoint' => env('AI_ENDPOINT'),
+        'model' => env('AI_MODEL', 'gpt-3.5-turbo'),
+    ],
+
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => 'http://localhost:8000/auth/google/callback',
     ],
 
 ];
