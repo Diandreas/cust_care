@@ -2,285 +2,694 @@ import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 
-interface Settings {
-    date_format: string;
-    time_format: string;
-    language: string;
-    theme: 'light' | 'dark' | 'system';
-    notifications: {
-        email: boolean;
-        sms: boolean;
-        push: boolean;
+// Import shadcn components
+import { Button } from '@/Components/ui/button';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import { Switch } from '@/Components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Badge } from '@/Components/ui/badge';
+import { Separator } from '@/Components/ui/separator';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+
+// Lucide icons
+import {
+    Settings,
+    Phone,
+    MessageSquare,
+    Brain,
+    CreditCard,
+    Shield,
+    Zap,
+    Globe,
+    Volume2,
+    Mail,
+    Smartphone,
+    CheckCircle,
+    AlertTriangle,
+    Plus,
+    Trash2,
+    Eye,
+    EyeOff
+} from 'lucide-react';
+
+interface SettingsProps {
+    user: any;
+    twilioConfig: {
+        sms_enabled: boolean;
+        whatsapp_enabled: boolean;
+        voice_enabled: boolean;
+        email_enabled: boolean;
+        ai_enabled: boolean;
+        account_sid?: string;
+        phone_numbers: any[];
+        available_numbers: any[];
     };
-    data_export: {
-        format: 'csv' | 'excel';
-        include_archived: boolean;
+    subscription: {
+        plan: string;
+        features: string[];
+        phone_numbers_included: number;
+        phone_numbers_used: number;
+        can_request_numbers: boolean;
     };
 }
 
-interface SettingsIndexProps {
-    settings: Settings;
-    available_languages: { code: string; name: string }[];
-    available_date_formats: { value: string; label: string }[];
-    available_time_formats: { value: string; label: string }[];
-}
+export default function SettingsIndex({ auth, user, twilioConfig, subscription }: PageProps<SettingsProps>) {
+    const [activeTab, setActiveTab] = useState('general');
+    const [showApiKeys, setShowApiKeys] = useState(false);
 
-export default function SettingsIndex({
-    auth,
-    settings,
-    available_languages,
-    available_date_formats,
-    available_time_formats,
-}: PageProps<SettingsIndexProps>) {
-    const { t } = useTranslation();
-    const [activeTab, setActiveTab] = useState<'general' | 'notifications' | 'data'>('general');
-
-    const { data, setData, post, processing, errors, reset } = useForm({
-        date_format: settings.date_format,
-        time_format: settings.time_format,
-        language: settings.language,
-        theme: settings.theme,
-        notifications: settings.notifications,
-        data_export: settings.data_export,
+    // Formulaire pour les paramètres généraux
+    const { data: generalData, setData: setGeneralData, post: postGeneral, processing: processingGeneral } = useForm({
+        company_name: user.company_name || '',
+        timezone: user.timezone || 'Europe/Paris',
+        language: user.language || 'fr',
+        notifications_enabled: user.notifications_enabled || true,
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Formulaire pour la configuration Twilio
+    const { data: twilioData, setData: setTwilioData, post: postTwilio, processing: processingTwilio } = useForm({
+        account_sid: twilioConfig.account_sid || '',
+        auth_token: '',
+        sms_enabled: twilioConfig.sms_enabled || false,
+        whatsapp_enabled: twilioConfig.whatsapp_enabled || false,
+        voice_enabled: twilioConfig.voice_enabled || false,
+        email_enabled: twilioConfig.email_enabled || false,
+    });
+
+    // Formulaire pour l'IA
+    const { data: aiData, setData: setAiData, post: postAi, processing: processingAi } = useForm({
+        ai_enabled: twilioConfig.ai_enabled || false,
+        auto_response: user.ai_settings?.auto_response || false,
+        sentiment_analysis: user.ai_settings?.sentiment_analysis || true,
+        smart_routing: user.ai_settings?.smart_routing || false,
+        campaign_optimization: user.ai_settings?.campaign_optimization || true,
+    });
+
+    const handleGeneralSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('settings.update'), {
-            onSuccess: () => {
-                reset();
-            },
+        postGeneral(route('settings.general.update'), {
+            onSuccess: () => toast.success('Paramètres généraux mis à jour'),
+            onError: () => toast.error('Erreur lors de la mise à jour')
         });
+    };
+
+    const handleTwilioSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        postTwilio(route('settings.twilio.update'), {
+            onSuccess: () => toast.success('Configuration Twilio mise à jour'),
+            onError: () => toast.error('Erreur lors de la configuration Twilio')
+        });
+    };
+
+    const handleAiSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        postAi(route('settings.ai.update'), {
+            onSuccess: () => toast.success('Paramètres IA mis à jour'),
+            onError: () => toast.error('Erreur lors de la mise à jour IA')
+        });
+    };
+
+    const handlePurchaseNumber = (phoneNumber: string) => {
+        // Logic to purchase phone number
+        toast.success(`Numéro ${phoneNumber} acheté avec succès !`);
+    };
+
+    const handleRequestNumber = () => {
+        // Logic to request additional phone number
+        toast.info('Demande de numéro supplémentaire envoyée');
     };
 
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">{t('settings.title')}</h2>}
-        >
-            <Head title={t('settings.title')} />
-
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    {/* Navigation des onglets */}
-                    <div className="mb-8 border-b border-gray-200 dark:border-gray-700">
-                        <nav className="-mb-px flex space-x-8">
-                            {[
-                                { id: 'general', label: t('settings.tabs.general') },
-                                { id: 'notifications', label: t('settings.tabs.notifications') },
-                                { id: 'data', label: t('settings.tabs.data') },
-                            ].map((tab) => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                                    className={`whitespace-nowrap border-b-2 px-1 py-4 text-sm font-medium ${activeTab === tab.id
-                                            ? 'border-indigo-500 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400'
-                                            : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-300'
-                                        }`}
-                                >
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
-
-                    {/* Contenu des onglets */}
-                    <div className="overflow-hidden bg-white shadow-sm dark:bg-gray-800 sm:rounded-lg">
-                        <div className="p-6">
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                {activeTab === 'general' && (
-                                    <>
-                                        <div>
-                                            <label htmlFor="language" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                {t('settings.language')}
-                                            </label>
-                                            <select
-                                                id="language"
-                                                value={data.language}
-                                                onChange={(e) => setData('language', e.target.value)}
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                            >
-                                                {available_languages.map((lang) => (
-                                                    <option key={lang.code} value={lang.code}>
-                                                        {lang.name}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {errors.language && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.language}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label htmlFor="theme" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                {t('settings.theme')}
-                                            </label>
-                                            <select
-                                                id="theme"
-                                                value={data.theme}
-                                                onChange={(e) => setData('theme', e.target.value as Settings['theme'])}
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                            >
-                                                <option value="light">{t('settings.themes.light')}</option>
-                                                <option value="dark">{t('settings.themes.dark')}</option>
-                                                <option value="system">{t('settings.themes.system')}</option>
-                                            </select>
-                                            {errors.theme && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.theme}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label htmlFor="date_format" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                {t('settings.dateFormat')}
-                                            </label>
-                                            <select
-                                                id="date_format"
-                                                value={data.date_format}
-                                                onChange={(e) => setData('date_format', e.target.value)}
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                            >
-                                                {available_date_formats.map((format) => (
-                                                    <option key={format.value} value={format.value}>
-                                                        {format.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {errors.date_format && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.date_format}</p>}
-                                        </div>
-
-                                        <div>
-                                            <label htmlFor="time_format" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                {t('settings.timeFormat')}
-                                            </label>
-                                            <select
-                                                id="time_format"
-                                                value={data.time_format}
-                                                onChange={(e) => setData('time_format', e.target.value)}
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                            >
-                                                {available_time_formats.map((format) => (
-                                                    <option key={format.value} value={format.value}>
-                                                        {format.label}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {errors.time_format && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.time_format}</p>}
-                                        </div>
-                                    </>
-                                )}
-
-                                {activeTab === 'notifications' && (
-                                    <>
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('settings.notifications.email')}</h3>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.notifications.emailDescription')}</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setData('notifications', { ...data.notifications, email: !data.notifications.email })}
-                                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${data.notifications.email ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
-                                                    }`}
-                                            >
-                                                <span
-                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${data.notifications.email ? 'translate-x-5' : 'translate-x-0'
-                                                        }`}
-                                                />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('settings.notifications.sms')}</h3>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.notifications.smsDescription')}</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setData('notifications', { ...data.notifications, sms: !data.notifications.sms })}
-                                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${data.notifications.sms ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
-                                                    }`}
-                                            >
-                                                <span
-                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${data.notifications.sms ? 'translate-x-5' : 'translate-x-0'
-                                                        }`}
-                                                />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <h3 className="text-lg font-medium text-gray-900 dark:text-white">{t('settings.notifications.push')}</h3>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">{t('settings.notifications.pushDescription')}</p>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => setData('notifications', { ...data.notifications, push: !data.notifications.push })}
-                                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${data.notifications.push ? 'bg-indigo-600' : 'bg-gray-200 dark:bg-gray-700'
-                                                    }`}
-                                            >
-                                                <span
-                                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${data.notifications.push ? 'translate-x-5' : 'translate-x-0'
-                                                        }`}
-                                                />
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-
-                                {activeTab === 'data' && (
-                                    <>
-                                        <div>
-                                            <label htmlFor="export_format" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                {t('settings.exportFormat')}
-                                            </label>
-                                            <select
-                                                id="export_format"
-                                                value={data.data_export.format}
-                                                onChange={(e) => setData('data_export', { ...data.data_export, format: e.target.value as Settings['data_export']['format'] })}
-                                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                                            >
-                                                <option value="csv">CSV</option>
-                                                <option value="excel">Excel</option>
-                                            </select>
-                                            {errors['data_export.format'] && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors['data_export.format']}</p>}
-                                        </div>
-
-                                        <div className="flex items-center">
-                                            <input
-                                                id="include_archived"
-                                                type="checkbox"
-                                                checked={data.data_export.include_archived}
-                                                onChange={(e) => setData('data_export', { ...data.data_export, include_archived: e.target.checked })}
-                                                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
-                                            />
-                                            <label htmlFor="include_archived" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                                                {t('settings.includeArchived')}
-                                            </label>
-                                        </div>
-
-                                        <div className="flex justify-end">
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
-                                            >
-                                                {t('settings.exportData')}
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-
-                                <div className="flex justify-end">
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:bg-indigo-700 dark:hover:bg-indigo-600"
-                                    >
-                                        {t('common.save')}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+            header={
+                <div className="flex items-center space-x-4">
+                    <Settings className="h-8 w-8 text-gray-600 dark:text-gray-400" />
+                    <div>
+                        <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+                            Paramètres
+                        </h1>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Gérez vos paramètres et configurations
+                        </p>
                     </div>
                 </div>
+            }
+        >
+            <Head title="Paramètres" />
+
+            <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-5">
+                        <TabsTrigger value="general" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10">
+                            <Settings className="h-4 w-4 mr-2" />
+                            Général
+                        </TabsTrigger>
+                        <TabsTrigger value="twilio" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10">
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Twilio
+                        </TabsTrigger>
+                        <TabsTrigger value="phone-numbers" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10">
+                            <Phone className="h-4 w-4 mr-2" />
+                            Numéros
+                        </TabsTrigger>
+                        <TabsTrigger value="ai" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10">
+                            <Brain className="h-4 w-4 mr-2" />
+                            IA
+                        </TabsTrigger>
+                        <TabsTrigger value="subscription" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10">
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Abonnement
+                        </TabsTrigger>
+                    </TabsList>
+
+                    {/* Onglet Général */}
+                    <TabsContent value="general" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-xl">Paramètres généraux</CardTitle>
+                                <CardDescription>
+                                    Configurez les paramètres de base de votre compte
+                                </CardDescription>
+                            </CardHeader>
+                            <form onSubmit={handleGeneralSubmit}>
+                                <CardContent className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="company_name">Nom de l'entreprise</Label>
+                                            <Input
+                                                id="company_name"
+                                                value={generalData.company_name}
+                                                onChange={(e) => setGeneralData('company_name', e.target.value)}
+                                                placeholder="Votre entreprise"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="timezone">Fuseau horaire</Label>
+                                            <Select value={generalData.timezone} onValueChange={(value) => setGeneralData('timezone', value)}>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Europe/Paris">Europe/Paris</SelectItem>
+                                                    <SelectItem value="Europe/London">Europe/London</SelectItem>
+                                                    <SelectItem value="America/New_York">America/New_York</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="language">Langue</Label>
+                                            <Select value={generalData.language} onValueChange={(value) => setGeneralData('language', value)}>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="fr">Français</SelectItem>
+                                                    <SelectItem value="en">English</SelectItem>
+                                                    <SelectItem value="es">Español</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                id="notifications"
+                                                checked={generalData.notifications_enabled}
+                                                onCheckedChange={(checked) => setGeneralData('notifications_enabled', checked)}
+                                            />
+                                            <Label htmlFor="notifications">Notifications activées</Label>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button
+                                        type="submit"
+                                        disabled={processingGeneral}
+                                        className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white"
+                                    >
+                                        {processingGeneral ? 'Enregistrement...' : 'Enregistrer'}
+                                    </Button>
+                                </CardFooter>
+                            </form>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Onglet Twilio */}
+                    <TabsContent value="twilio" className="mt-6">
+                        <div className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-xl">Configuration Twilio</CardTitle>
+                                    <CardDescription>
+                                        Configurez vos identifiants Twilio et activez les services
+                                    </CardDescription>
+                                </CardHeader>
+                                <form onSubmit={handleTwilioSubmit}>
+                                    <CardContent className="space-y-6">
+                                        <Alert>
+                                            <Shield className="h-4 w-4" />
+                                            <AlertDescription>
+                                                Vos identifiants Twilio sont stockés de manière sécurisée et chiffrée.
+                                            </AlertDescription>
+                                        </Alert>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="account_sid">Account SID</Label>
+                                                <div className="relative">
+                                                    <Input
+                                                        id="account_sid"
+                                                        type={showApiKeys ? "text" : "password"}
+                                                        value={twilioData.account_sid}
+                                                        onChange={(e) => setTwilioData('account_sid', e.target.value)}
+                                                        placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                                                        onClick={() => setShowApiKeys(!showApiKeys)}
+                                                    >
+                                                        {showApiKeys ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    </Button>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label htmlFor="auth_token">Auth Token</Label>
+                                                <Input
+                                                    id="auth_token"
+                                                    type={showApiKeys ? "text" : "password"}
+                                                    value={twilioData.auth_token}
+                                                    onChange={(e) => setTwilioData('auth_token', e.target.value)}
+                                                    placeholder="••••••••••••••••••••••••••••••••"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <Separator />
+
+                                        <div className="space-y-4">
+                                            <h3 className="text-lg font-medium">Services disponibles</h3>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="flex items-center justify-between p-4 border rounded-lg">
+                                                    <div className="flex items-center space-x-3">
+                                                        <MessageSquare className="h-5 w-5 text-blue-500" />
+                                                        <div>
+                                                            <div className="font-medium">SMS</div>
+                                                            <div className="text-sm text-gray-500">Envoyer des SMS</div>
+                                                        </div>
+                                                    </div>
+                                                    <Switch
+                                                        checked={twilioData.sms_enabled}
+                                                        onCheckedChange={(checked) => setTwilioData('sms_enabled', checked)}
+                                                    />
+                                                </div>
+
+                                                <div className="flex items-center justify-between p-4 border rounded-lg">
+                                                    <div className="flex items-center space-x-3">
+                                                        <Smartphone className="h-5 w-5 text-green-500" />
+                                                        <div>
+                                                            <div className="font-medium">WhatsApp</div>
+                                                            <div className="text-sm text-gray-500">Messages WhatsApp</div>
+                                                        </div>
+                                                    </div>
+                                                    <Switch
+                                                        checked={twilioData.whatsapp_enabled}
+                                                        onCheckedChange={(checked) => setTwilioData('whatsapp_enabled', checked)}
+                                                    />
+                                                </div>
+
+                                                <div className="flex items-center justify-between p-4 border rounded-lg">
+                                                    <div className="flex items-center space-x-3">
+                                                        <Volume2 className="h-5 w-5 text-purple-500" />
+                                                        <div>
+                                                            <div className="font-medium">Appels vocaux</div>
+                                                            <div className="text-sm text-gray-500">Appels téléphoniques</div>
+                                                        </div>
+                                                    </div>
+                                                    <Switch
+                                                        checked={twilioData.voice_enabled}
+                                                        onCheckedChange={(checked) => setTwilioData('voice_enabled', checked)}
+                                                    />
+                                                </div>
+
+                                                <div className="flex items-center justify-between p-4 border rounded-lg">
+                                                    <div className="flex items-center space-x-3">
+                                                        <Mail className="h-5 w-5 text-red-500" />
+                                                        <div>
+                                                            <div className="font-medium">Email</div>
+                                                            <div className="text-sm text-gray-500">Emails via SendGrid</div>
+                                                        </div>
+                                                    </div>
+                                                    <Switch
+                                                        checked={twilioData.email_enabled}
+                                                        onCheckedChange={(checked) => setTwilioData('email_enabled', checked)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter>
+                                        <Button
+                                            type="submit"
+                                            disabled={processingTwilio}
+                                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white"
+                                        >
+                                            {processingTwilio ? 'Enregistrement...' : 'Enregistrer la configuration'}
+                                        </Button>
+                                    </CardFooter>
+                                </form>
+                            </Card>
+                        </div>
+                    </TabsContent>
+
+                    {/* Onglet Numéros de téléphone */}
+                    <TabsContent value="phone-numbers" className="mt-6">
+                        <div className="space-y-6">
+                            {/* Informations sur l'abonnement */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-xl">Vos numéros de téléphone</CardTitle>
+                                    <CardDescription>
+                                        Gérez vos numéros de téléphone selon votre plan d'abonnement
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <div className="text-sm text-gray-500">Plan actuel</div>
+                                            <div className="font-medium text-lg">
+                                                {subscription.plan === 'basic' && 'Pack de base'}
+                                                {subscription.plan === 'pro' && 'Pack Pro'}
+                                                {subscription.plan === 'premium' && 'Pack Premium'}
+                                            </div>
+                                        </div>
+                                        <Badge variant="outline">
+                                            {subscription.phone_numbers_used} / {subscription.phone_numbers_included} numéros utilisés
+                                        </Badge>
+                                    </div>
+
+                                    {subscription.plan === 'basic' && (
+                                        <Alert>
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <AlertDescription>
+                                                Avec le pack de base, vous utilisez notre numéro collectif partagé.
+                                            </AlertDescription>
+                                        </Alert>
+                                    )}
+
+                                    {/* Numéros actuels */}
+                                    {twilioConfig.phone_numbers.length > 0 && (
+                                        <div className="space-y-4">
+                                            <h3 className="font-medium">Vos numéros actifs</h3>
+                                            <div className="grid gap-4">
+                                                {twilioConfig.phone_numbers.map((number: any, index: number) => (
+                                                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                                                        <div className="flex items-center space-x-3">
+                                                            <Phone className="h-5 w-5 text-blue-500" />
+                                                            <div>
+                                                                <div className="font-medium">{number.phone_number}</div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    {number.type === 'shared' ? 'Numéro partagé' : 'Numéro dédié'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <Badge variant={number.type === 'shared' ? 'secondary' : 'default'}>
+                                                                {number.monthly_cost}€/mois
+                                                            </Badge>
+                                                            {number.type !== 'shared' && (
+                                                                <Button variant="outline" size="sm">
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Numéros disponibles à l'achat */}
+                                    {subscription.plan !== 'basic' && twilioConfig.available_numbers.length > 0 && (
+                                        <div className="space-y-4">
+                                            <h3 className="font-medium">Numéros disponibles</h3>
+                                            <div className="grid gap-4">
+                                                {twilioConfig.available_numbers.slice(0, 5).map((number: any, index: number) => (
+                                                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                                                        <div className="flex items-center space-x-3">
+                                                            <Phone className="h-5 w-5 text-green-500" />
+                                                            <div>
+                                                                <div className="font-medium">{number.phone_number}</div>
+                                                                <div className="text-sm text-gray-500">{number.friendly_name}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            <Badge variant="outline">
+                                                                {number.monthly_cost}€/mois
+                                                            </Badge>
+                                                            <Button
+                                                                onClick={() => handlePurchaseNumber(number.phone_number)}
+                                                                className="bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                                                            >
+                                                                <Plus className="h-4 w-4 mr-2" />
+                                                                Acheter
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Demande de numéros supplémentaires */}
+                                    {subscription.can_request_numbers && (
+                                        <div className="pt-6">
+                                            <Button
+                                                onClick={handleRequestNumber}
+                                                variant="outline"
+                                                className="w-full"
+                                            >
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Demander un numéro supplémentaire
+                                            </Button>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+
+                    {/* Onglet IA */}
+                    <TabsContent value="ai" className="mt-6">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-xl">Intelligence Artificielle</CardTitle>
+                                <CardDescription>
+                                    Configurez les fonctionnalités d'IA pour automatiser vos campagnes
+                                </CardDescription>
+                            </CardHeader>
+                            <form onSubmit={handleAiSubmit}>
+                                <CardContent className="space-y-6">
+                                    <div className="flex items-center justify-between p-4 border rounded-lg">
+                                        <div className="flex items-center space-x-3">
+                                            <Brain className="h-5 w-5 text-blue-500" />
+                                            <div>
+                                                <div className="font-medium">IA activée</div>
+                                                <div className="text-sm text-gray-500">Activer toutes les fonctionnalités IA</div>
+                                            </div>
+                                        </div>
+                                        <Switch
+                                            checked={aiData.ai_enabled}
+                                            onCheckedChange={(checked) => setAiData('ai_enabled', checked)}
+                                        />
+                                    </div>
+
+                                    {aiData.ai_enabled && (
+                                        <div className="space-y-4 pl-6">
+                                            <div className="flex items-center justify-between p-4 border rounded-lg">
+                                                <div>
+                                                    <div className="font-medium">Réponses automatiques</div>
+                                                    <div className="text-sm text-gray-500">Répondre automatiquement aux messages entrants</div>
+                                                </div>
+                                                <Switch
+                                                    checked={aiData.auto_response}
+                                                    onCheckedChange={(checked) => setAiData('auto_response', checked)}
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-4 border rounded-lg">
+                                                <div>
+                                                    <div className="font-medium">Analyse de sentiment</div>
+                                                    <div className="text-sm text-gray-500">Analyser le sentiment des messages reçus</div>
+                                                </div>
+                                                <Switch
+                                                    checked={aiData.sentiment_analysis}
+                                                    onCheckedChange={(checked) => setAiData('sentiment_analysis', checked)}
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-4 border rounded-lg">
+                                                <div>
+                                                    <div className="font-medium">Routage intelligent</div>
+                                                    <div className="text-sm text-gray-500">Rediriger automatiquement vers les bons conseillers</div>
+                                                </div>
+                                                <Switch
+                                                    checked={aiData.smart_routing}
+                                                    onCheckedChange={(checked) => setAiData('smart_routing', checked)}
+                                                />
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-4 border rounded-lg">
+                                                <div>
+                                                    <div className="font-medium">Optimisation des campagnes</div>
+                                                    <div className="text-sm text-gray-500">Optimiser automatiquement le timing et le contenu</div>
+                                                </div>
+                                                <Switch
+                                                    checked={aiData.campaign_optimization}
+                                                    onCheckedChange={(checked) => setAiData('campaign_optimization', checked)}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </CardContent>
+                                <CardFooter>
+                                    <Button
+                                        type="submit"
+                                        disabled={processingAi}
+                                        className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white"
+                                    >
+                                        {processingAi ? 'Enregistrement...' : 'Enregistrer les paramètres IA'}
+                                    </Button>
+                                </CardFooter>
+                            </form>
+                        </Card>
+                    </TabsContent>
+
+                    {/* Onglet Abonnement */}
+                    <TabsContent value="subscription" className="mt-6">
+                        <div className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-xl">Votre abonnement</CardTitle>
+                                    <CardDescription>
+                                        Gérez votre plan et vos options d'abonnement
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {/* Pack de base */}
+                                        <Card className={`relative ${subscription.plan === 'basic' ? 'ring-2 ring-blue-500' : ''}`}>
+                                            <CardHeader>
+                                                <CardTitle className="text-lg">Pack de base</CardTitle>
+                                                <div className="text-2xl font-bold">29€<span className="text-sm font-normal">/mois</span></div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-3">
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">Numéro collectif partagé</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">1000 SMS/mois</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">Support standard</span>
+                                                </div>
+                                            </CardContent>
+                                            {subscription.plan === 'basic' && (
+                                                <div className="absolute top-4 right-4">
+                                                    <Badge>Actuel</Badge>
+                                                </div>
+                                            )}
+                                        </Card>
+
+                                        {/* Pack Pro */}
+                                        <Card className={`relative ${subscription.plan === 'pro' ? 'ring-2 ring-purple-500' : ''}`}>
+                                            <CardHeader>
+                                                <CardTitle className="text-lg">Pack Pro</CardTitle>
+                                                <div className="text-2xl font-bold">99€<span className="text-sm font-normal">/mois</span></div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-3">
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">1 numéro dédié inclus</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">5000 SMS/mois</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">IA avancée</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">Support prioritaire</span>
+                                                </div>
+                                            </CardContent>
+                                            {subscription.plan === 'pro' && (
+                                                <div className="absolute top-4 right-4">
+                                                    <Badge>Actuel</Badge>
+                                                </div>
+                                            )}
+                                        </Card>
+
+                                        {/* Pack Premium */}
+                                        <Card className={`relative ${subscription.plan === 'premium' ? 'ring-2 ring-gold-500' : ''}`}>
+                                            <CardHeader>
+                                                <CardTitle className="text-lg">Pack Premium</CardTitle>
+                                                <div className="text-2xl font-bold">299€<span className="text-sm font-normal">/mois</span></div>
+                                            </CardHeader>
+                                            <CardContent className="space-y-3">
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">Numéros illimités sur demande</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">SMS illimités</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">IA complète + personnalisée</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                                                    <span className="text-sm">Support 24/7 dédié</span>
+                                                </div>
+                                            </CardContent>
+                                            {subscription.plan === 'premium' && (
+                                                <div className="absolute top-4 right-4">
+                                                    <Badge>Actuel</Badge>
+                                                </div>
+                                            )}
+                                        </Card>
+                                    </div>
+
+                                    {subscription.plan !== 'premium' && (
+                                        <div className="pt-6">
+                                            <Button className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white">
+                                                <Zap className="h-4 w-4 mr-2" />
+                                                Mettre à niveau
+                                            </Button>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </div>
         </AuthenticatedLayout>
     );

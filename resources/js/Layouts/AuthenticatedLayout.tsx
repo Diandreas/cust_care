@@ -205,7 +205,7 @@ const UserMenu = ({ user }) => {
                         </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="rounded-lg cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800/50">
-                        <Link href={route('dashboard')} className="flex items-center py-2 px-3">
+                        <Link href={route('settings.index')} className="flex items-center py-2 px-3">
                             <Settings className="mr-3 h-4 w-4 text-slate-500 dark:text-slate-400" />
                             <span className="font-medium text-slate-700 dark:text-slate-300">{t('navigation.settings')}</span>
                         </Link>
@@ -287,6 +287,7 @@ export default function AuthenticatedLayout({
         { name: t('navigation.campaigns'), href: route('campaigns.index'), icon: Sparkles, current: url.startsWith('/campaigns') },
         { name: t('navigation.templates'), href: route('templates.index'), icon: FileText, current: url.startsWith('/templates') },
         { name: t('navigation.subscription'), href: route('subscription.index'), icon: CreditCard, current: url.startsWith('/subscription') },
+        { name: t('navigation.settings'), href: route('settings.index'), icon: Settings, current: url.startsWith('/settings') },
     ];
 
     // Animation variants
