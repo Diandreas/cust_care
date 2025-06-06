@@ -82,8 +82,8 @@ return [
 
         // Heures autorisées pour envoi (conformité France)
         'allowed_hours' => [
-            'start' => '00:00',
-            'end' => '23:00',
+            'start' => '10:00',
+            'end' => '20:00',
             'pause_start' => '13:00',
             'pause_end' => '14:00'
         ]

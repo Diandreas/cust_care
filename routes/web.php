@@ -13,6 +13,7 @@ use App\Http\Controllers\TagController;
 use App\Http\Controllers\CampaignRetryController;
 use App\Http\Controllers\EventCalendarController;
 use App\Http\Controllers\ClientImportController;
+use App\Http\Controllers\TwilioController;
 use App\Http\Middleware\CheckClientLimit;
 use App\Http\Middleware\EnsureUserHasActiveSubscription;
 use Illuminate\Foundation\Application;
@@ -32,7 +33,7 @@ Route::middleware(['auth'])->group(function () {
     // Route pour analyser les fichiers Excel
     Route::post('/parse-excel', [App\Http\Controllers\ClientController::class, 'parseExcel'])
         ->name('api.parse-excel');
-        
+
     // Route pour obtenir le statut d'une importation en cours
     Route::get('/import-status/{jobId}', [App\Http\Controllers\ClientController::class, 'getImportStatus'])
         ->name('api.import-status');
@@ -43,17 +44,17 @@ Route::middleware(['auth'])->group(function () {
     // Tableau de bord
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/campaigns/{campaign}/retry', [CampaignController::class, 'retry'])->name('campaigns.retry');
-    
+
     // API Routes
     Route::prefix('api')->group(function () {
         // API pour les visites clients
         Route::post('/clients/{client}/visit', [ClientController::class, 'recordVisit']);
         Route::get('/clients/{client}/visits', [ClientController::class, 'getVisitHistory']);
-        
+
         // Nouvelle route pour l'envoi de messages directs
         Route::post('/clients/{client}/message', [ClientController::class, 'sendMessage']);
     });
-    
+
 
     // IMPORTANT: Les routes spécifiques doivent être placées AVANT la route resource
     // Route d'exportation des clients
@@ -85,26 +86,26 @@ Route::middleware(['auth'])->group(function () {
 
         $primaryId = $request->input('primary_id');
         $secondaryId = $request->input('secondary_id');
-        
+
         // Récupérer les clients
         $primaryClient = \App\Models\Client::findOrFail($primaryId);
         $secondaryClient = \App\Models\Client::findOrFail($secondaryId);
-        
+
         // Vérifier que les deux clients appartiennent à l'utilisateur connecté
         if ($primaryClient->user_id !== auth()->id() || $secondaryClient->user_id !== auth()->id()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
-        
+
         // Fusionner les messages
         \App\Models\Message::where('client_id', $secondaryId)
             ->update(['client_id' => $primaryId]);
-        
+
         // Fusionner les tags
         $primaryTags = $primaryClient->tags()->pluck('tags.id')->toArray();
         $secondaryTags = $secondaryClient->tags()->pluck('tags.id')->toArray();
         $mergedTags = array_unique(array_merge($primaryTags, $secondaryTags));
         $primaryClient->tags()->sync($mergedTags);
-        
+
         // Copier les champs non vides du client secondaire vers le client primaire
         $fieldsToCopy = ['email', 'birthday', 'address', 'notes'];
         foreach ($fieldsToCopy as $field) {
@@ -113,10 +114,10 @@ Route::middleware(['auth'])->group(function () {
             }
         }
         $primaryClient->save();
-        
+
         // Supprimer le client secondaire
         $secondaryClient->delete();
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Clients fusionnés avec succès',
@@ -127,7 +128,7 @@ Route::middleware(['auth'])->group(function () {
     // Routes pour les visites clients
     Route::post('/clients/{client}/visit', [ClientController::class, 'recordVisit'])->name('clients.recordVisit');
     Route::get('/clients/{client}/visits', [ClientController::class, 'getVisitHistory'])->name('clients.visits');
-    
+
     // Nouvelle route pour l'envoi de messages directs
     Route::post('/clients/{client}/message', [ClientController::class, 'sendMessage'])->name('clients.message');
 
@@ -191,39 +192,39 @@ Route::middleware(['auth'])->group(function () {
         // Campagnes
         Route::resource('campaigns', CampaignController::class);
         Route::put('campaigns/{campaign}/status', [CampaignController::class, 'changeStatus'])->name('campaigns.status');
-        
+
         // Bulk actions pour les campagnes
         Route::post('/campaigns/bulk-disable', [CampaignController::class, 'bulkDisable'])->name('campaigns.bulk-disable');
         Route::post('/campaigns/bulk-enable', [CampaignController::class, 'bulkEnable'])->name('campaigns.bulk-enable');
         Route::post('/campaigns/bulk-delete', [CampaignController::class, 'bulkDelete'])->name('campaigns.bulk-delete');
-        
+
         // Quick add campaign route
         Route::post('/campaigns/quick-add', [CampaignController::class, 'quickAdd'])->name('campaigns.quick-add');
-        
+
         // Reschedule campaign via drag-drop
         Route::put('/campaigns/{campaign}/reschedule', [CampaignController::class, 'reschedule'])->name('campaigns.reschedule');
-        
+
         // Messages et templates
         Route::resource('messages', MessageController::class);
         Route::resource('templates', TemplateController::class);
-        
+
         // Événements automatiques
-       
+
         // Importation de clients
         Route::get('client-import', [ClientImportController::class, 'index'])->name('client-import');
         Route::post('client-import/upload', [ClientImportController::class, 'upload'])->name('client-import.upload');
         Route::post('client-import/process', [ClientImportController::class, 'process'])->name('client-import.process');
         Route::get('client-import/template', [ClientImportController::class, 'downloadTemplate'])->name('client-import.template');
     });
-    
+
     // Pour le développement seulement - Activation directe d'abonnement
     Route::match(['get', 'post'], 'payment/direct-activation/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
         ->name('payment.direct.activation');
-        
+
     // Route d'activation directe pour les tests
     Route::match(['get', 'post'], '/direct-activate-plan/{plan}/{duration?}', [PaymentController::class, 'directActivation'])
         ->name('direct.activate.plan');
-        
+
     // Profil
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -239,62 +240,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Routes pour les paramètres et la configuration Twilio
-Route::middleware(['auth', 'verified'])->group(function () {
-    // Page des paramètres
-    Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])
-        ->name('settings.index');
-        
-    // Paramètres généraux
-    Route::post('/settings/general', [App\Http\Controllers\SettingsController::class, 'updateGeneral'])
-        ->name(config('twilio.routes.settings.update_general'));
-    
-    // Paramètres Twilio
-    Route::post('/settings/twilio', [App\Http\Controllers\SettingsController::class, 'updateTwilio'])
-        ->name(config('twilio.routes.settings.update_twilio'));
-    
-    // Paramètres IA
-    Route::post('/settings/ai', [App\Http\Controllers\SettingsController::class, 'updateAI'])
-        ->name(config('twilio.routes.settings.update_ai'));
-    
-    // Gestion des numéros de téléphone
-    Route::post('/settings/phone/purchase', [App\Http\Controllers\SettingsController::class, 'purchasePhoneNumber'])
-        ->name(config('twilio.routes.settings.purchase_number'));
-    
-    Route::delete('/settings/phone/{sid}', [App\Http\Controllers\SettingsController::class, 'releasePhoneNumber'])
-        ->name(config('twilio.routes.settings.release_number'));
+Route::prefix('webhooks/twilio')->group(function () {
+    Route::post('/sms', [TwilioController::class, 'receiveSMS'])->name('twilio.sms.receive');
+    Route::post('/voice', [TwilioController::class, 'receiveCall'])->name('twilio.voice.receive');
+    Route::post('/status', [TwilioController::class, 'statusCallback'])->name('twilio.status.callback');
 });
-
-// Routes pour les webhooks Twilio (ne nécessitent pas d'authentification)
-Route::prefix('api/twilio/webhook')->group(function () {
-    // SMS
-    Route::post('/sms', [App\Http\Controllers\TwilioController::class, 'receiveSMS'])
-        ->name(config('twilio.routes.sms.webhook'));
-    
-    // WhatsApp
-    Route::post('/whatsapp', [App\Http\Controllers\TwilioController::class, 'receiveWhatsApp'])
-        ->name(config('twilio.routes.whatsapp.webhook'));
-    
-    // Voix
-    Route::post('/voice', [App\Http\Controllers\TwilioController::class, 'receiveCall'])
-        ->name(config('twilio.routes.voice.webhook'));
-    
-    Route::post('/voice/menu', [App\Http\Controllers\TwilioController::class, 'handleVoiceMenu'])
-        ->name(config('twilio.routes.voice.menu'));
-    
-    Route::post('/voice/agent', [App\Http\Controllers\TwilioController::class, 'connectToAgent'])
-        ->name(config('twilio.routes.voice.agent'));
-    
-    Route::post('/voice/recording', [App\Http\Controllers\TwilioController::class, 'handleRecording'])
-        ->name(config('twilio.routes.voice.recording'));
-    
-    Route::post('/voice/transcription', [App\Http\Controllers\TwilioController::class, 'handleTranscription'])
-        ->name(config('twilio.routes.voice.transcription'));
-    
-    Route::post('/voice/outbound', [App\Http\Controllers\TwilioController::class, 'handleOutboundCall'])
-        ->name(config('twilio.routes.voice.outbound'));
-    
-    Route::post('/voice/outbound/action', [App\Http\Controllers\TwilioController::class, 'handleOutboundCallAction'])
-        ->name(config('twilio.routes.voice.outbound_action'));
+Route::middleware(['auth'])->prefix('admin/twilio')->group(function () {
+    Route::get('/dashboard', [TwilioController::class, 'getDashboard'])->name('twilio.dashboard');
+    Route::post('/campaigns', [TwilioController::class, 'createCampaign'])->name('twilio.campaigns.create');
+    Route::post('/sms/send', [TwilioController::class, 'sendQuickSms'])->name('twilio.sms.send');
 });
-
 require __DIR__.'/auth.php';

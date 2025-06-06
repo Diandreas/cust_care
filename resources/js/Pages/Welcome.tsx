@@ -1,13 +1,13 @@
 import { Link, Head } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import { useTranslation } from '@/i18n';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function Welcome({
-    auth,
-    laravelVersion,
-    phpVersion,
-}: PageProps<{ laravelVersion: string; phpVersion: string }>) {
+                                    auth,
+                                    laravelVersion,
+                                    phpVersion,
+                                }: PageProps<{ laravelVersion: string; phpVersion: string }>) {
     const { t, i18n } = useTranslation();
     const [isScrolled, setIsScrolled] = useState(false);
     const [animatedStats, setAnimatedStats] = useState({
@@ -15,49 +15,83 @@ export default function Welcome({
         messages: 0,
         satisfaction: 0
     });
+    const [visibleSections, setVisibleSections] = useState(new Set());
+    const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
-    // Effet pour détecter le défilement
+    // Détection des préférences de mouvement
+    useEffect(() => {
+        const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        setPrefersReducedMotion(mediaQuery.matches);
+
+        const handleChange = (e) => setPrefersReducedMotion(e.matches);
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+    }, []);
+
+    // Gestion du scroll
     useEffect(() => {
         const handleScroll = () => {
-            setIsScrolled(window.scrollY > 10);
+            setIsScrolled(window.scrollY > 20);
         };
-        window.addEventListener('scroll', handleScroll);
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Intersection Observer pour les animations
+    useEffect(() => {
+        if (prefersReducedMotion) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        setVisibleSections(prev => new Set([...prev, entry.target.id]));
+                    }
+                });
+            },
+            { threshold: 0.2 }
+        );
+
+        document.querySelectorAll('[data-section]').forEach(el => {
+            observer.observe(el);
+        });
+
+        return () => observer.disconnect();
+    }, [prefersReducedMotion]);
+
     // Animation des statistiques
     useEffect(() => {
+        if (prefersReducedMotion || !visibleSections.has('stats')) return;
+
         const animateStats = () => {
-            const duration = 2000;
-            const steps = 60;
-            const stepDuration = duration / steps;
+            const duration = 1500;
+            const targets = { clients: 8500, messages: 500000, satisfaction: 99 };
+            const startTime = Date.now();
 
-            const targets = {
-                clients: 8500,
-                messages: 500000,
-                satisfaction: 99
-            };
+            const easeOutQuart = (t) => 1 - Math.pow(1 - t, 4);
 
-            let currentStep = 0;
-            const interval = setInterval(() => {
-                currentStep++;
-                const progress = currentStep / steps;
+            const updateStats = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easedProgress = easeOutQuart(progress);
 
                 setAnimatedStats({
-                    clients: Math.floor(targets.clients * progress),
-                    messages: Math.floor(targets.messages * progress),
-                    satisfaction: Math.floor(targets.satisfaction * progress)
+                    clients: Math.floor(targets.clients * easedProgress),
+                    messages: Math.floor(targets.messages * easedProgress),
+                    satisfaction: Math.floor(targets.satisfaction * easedProgress)
                 });
 
-                if (currentStep >= steps) {
-                    clearInterval(interval);
+                if (progress < 1) {
+                    requestAnimationFrame(updateStats);
                 }
-            }, stepDuration);
+            };
+
+            requestAnimationFrame(updateStats);
         };
 
-        const timer = setTimeout(animateStats, 1000);
-        return () => clearTimeout(timer);
-    }, []);
+        animateStats();
+    }, [visibleSections, prefersReducedMotion]);
 
     const changeLanguage = (lng: string) => {
         i18n.changeLanguage(lng);
@@ -66,73 +100,84 @@ export default function Welcome({
 
     return (
         <>
-            <Head title="HelloBoost - Plateforme SMS Nouvelle Génération" />
-            <div className="relative min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-indigo-900 text-white overflow-hidden">
-                {/* Animated background elements - Enhanced */}
-                <div className="absolute inset-0 overflow-hidden">
-                    <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 opacity-20 animate-pulse blur-xl"></div>
-                    <div className="absolute top-1/3 -left-40 w-80 h-80 rounded-full bg-gradient-to-r from-violet-400 to-purple-500 opacity-15 animate-bounce blur-2xl" style={{ animationDuration: '4s' }}></div>
-                    <div className="absolute bottom-1/4 right-1/3 w-72 h-72 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 opacity-10 animate-pulse blur-xl" style={{ animationDelay: '2s' }}></div>
-                    <div className="absolute top-1/2 left-1/2 w-64 h-64 rounded-full bg-gradient-to-r from-pink-400 to-rose-500 opacity-5 animate-spin" style={{ animationDuration: '20s' }}></div>
+            <Head title="HelloBoost - Plateforme SMS Intelligente" />
 
-                    {/* Floating particles */}
-                    <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-white rounded-full opacity-30 animate-ping" style={{ animationDelay: '1s' }}></div>
-                    <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-cyan-300 rounded-full opacity-40 animate-ping" style={{ animationDelay: '3s' }}></div>
-                    <div className="absolute top-1/2 left-3/4 w-1.5 h-1.5 bg-violet-300 rounded-full opacity-50 animate-ping" style={{ animationDelay: '2s' }}></div>
-                </div>
-
-                {/* Header - Enhanced */}
-                <header className={`fixed w-full transition-all duration-500 z-50 ${isScrolled ? 'bg-slate-900/90 backdrop-blur-lg shadow-2xl py-3 border-b border-white/10' : 'bg-transparent py-6'}`}>
-                    <div className="container mx-auto px-6">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center group">
-                                <div className="relative">
-                                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-cyan-400 via-blue-500 to-violet-600 flex items-center justify-center shadow-xl group-hover:scale-110 transition-all duration-300">
-                                        <span className="text-xl font-bold">🚀</span>
-                                    </div>
-                                    <div className="absolute -inset-1 bg-gradient-to-tr from-cyan-400 via-blue-500 to-violet-600 rounded-2xl blur opacity-30 group-hover:opacity-60 transition-opacity duration-300"></div>
+            <div className="min-h-screen bg-white text-gray-900">
+                {/* Header Modern & Clean */}
+                <header className={`fixed w-full top-0 z-50 transition-all duration-300 ${
+                    isScrolled
+                        ? 'bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm'
+                        : 'bg-transparent'
+                }`}>
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="flex items-center justify-between h-16">
+                            {/* Logo */}
+                            <div className="flex items-center">
+                                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                                    <span className="text-white text-sm font-bold">H</span>
                                 </div>
-                                <span className="ml-4 text-2xl font-bold bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent">
-                                    HelloBoost
-                                </span>
+                                <span className="text-xl font-semibold text-gray-900">HelloBoost</span>
                             </div>
-                            <div className="flex items-center space-x-6">
-                                <div className="flex space-x-2">
+
+                            {/* Navigation */}
+                            <nav className="hidden md:flex items-center space-x-8">
+                                <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">
+                                    Fonctionnalités
+                                </a>
+                                <a href="#pricing" className="text-gray-600 hover:text-gray-900 transition-colors">
+                                    Tarifs
+                                </a>
+                                <a href="#testimonials" className="text-gray-600 hover:text-gray-900 transition-colors">
+                                    Témoignages
+                                </a>
+                            </nav>
+
+                            {/* Actions */}
+                            <div className="flex items-center space-x-4">
+                                {/* Language Switcher */}
+                                <div className="flex items-center space-x-1 bg-gray-100 rounded-lg p-1">
                                     <button
                                         onClick={() => changeLanguage('fr')}
-                                        className={`px-4 py-2 rounded-xl transition-all duration-300 ${i18n.language === 'fr' ? 'bg-white text-slate-900 shadow-lg transform scale-105' : 'text-white border border-white/20 hover:bg-white/10 hover:border-white/40'}`}
+                                        className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                            i18n.language === 'fr'
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                        }`}
                                     >
                                         FR
                                     </button>
                                     <button
                                         onClick={() => changeLanguage('en')}
-                                        className={`px-4 py-2 rounded-xl transition-all duration-300 ${i18n.language === 'en' ? 'bg-white text-slate-900 shadow-lg transform scale-105' : 'text-white border border-white/20 hover:bg-white/10 hover:border-white/40'}`}
+                                        className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                                            i18n.language === 'en'
+                                                ? 'bg-white text-gray-900 shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                        }`}
                                     >
                                         EN
                                     </button>
                                 </div>
+
                                 {auth.user ? (
                                     <Link
                                         href={route('dashboard')}
-                                        className="group relative rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 px-6 py-3 text-sm font-semibold text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
+                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                                     >
-                                        <span className="relative z-10">Tableau de bord</span>
-                                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                        Dashboard
                                     </Link>
                                 ) : (
                                     <>
                                         <Link
                                             href={route('login')}
-                                            className="rounded-2xl border border-white/20 backdrop-blur-sm px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 hover:border-white/40 transition-all duration-300"
+                                            className="text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium transition-colors"
                                         >
                                             Connexion
                                         </Link>
                                         <Link
                                             href={route('register')}
-                                            className="group relative rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 px-6 py-3 text-sm font-semibold text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden"
+                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
                                         >
-                                            <span className="relative z-10">Inscription</span>
-                                            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                            Commencer
                                         </Link>
                                     </>
                                 )}
@@ -141,327 +186,187 @@ export default function Welcome({
                     </div>
                 </header>
 
-                {/* Hero Section - Dramatically Enhanced */}
-                <div className="pt-32 pb-24 relative z-10">
-                    <div className="container mx-auto px-6">
-                        <div className="flex flex-col lg:flex-row items-center">
-                            {/* Left side - Text Content */}
-                            <div className="lg:w-1/2 lg:pr-16 space-y-8">
-                                <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 backdrop-blur-sm border border-cyan-400/30 shadow-lg">
-                                    <span className="w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full mr-3 animate-pulse shadow-lg"></span>
-                                    <span className="text-sm font-semibold bg-gradient-to-r from-cyan-200 to-blue-200 bg-clip-text text-transparent">🚀 Plateforme SMS N°1 en Afrique de l'Ouest</span>
-                                </div>
-
-                                <h1 className="font-bold leading-tight">
-                                    <span className="block text-6xl lg:text-7xl bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent mb-4">
-                                        Boostez
-                                    </span>
-                                    <span className="block text-5xl lg:text-6xl bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent mb-4">
-                                        votre business
-                                    </span>
-                                    <span className="block text-4xl lg:text-5xl text-gray-200">
-                                        avec des SMS intelligents
-                                    </span>
-                                </h1>
-
-                                <p className="text-xl text-gray-300 leading-relaxed max-w-2xl">
-                                    Transformez votre communication client avec notre plateforme SMS nouvelle génération.
-                                    <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent font-semibold"> Automatisation intelligente</span>,
-                                    <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent font-semibold"> analyses en temps réel</span> et
-                                    <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent font-semibold"> fidélisation maximale</span>.
-                                </p>
-
-                                {/* Enhanced Features highlights */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    {[
-                                        { icon: "⚡", text: "Activation instantanée", color: "from-yellow-400 to-orange-400" },
-                                        { icon: "🎯", text: "Ciblage intelligent", color: "from-cyan-400 to-blue-400" },
-                                        { icon: "📊", text: "Analytics avancées", color: "from-violet-400 to-purple-400" },
-                                        { icon: "💎", text: "Prix imbattables", color: "from-emerald-400 to-teal-400" }
-                                    ].map((feature, index) => (
-                                        <div key={index} className="flex items-center group">
-                                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-r ${feature.color} bg-opacity-20 backdrop-blur-sm flex items-center justify-center mr-3 group-hover:scale-110 transition-transform duration-300 shadow-lg border border-white/10`}>
-                                                <span className="text-lg">{feature.icon}</span>
-                                            </div>
-                                            <span className="text-sm font-medium text-gray-200 group-hover:text-white transition-colors duration-300">{feature.text}</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <Link
-                                        href={route('register')}
-                                        className="group relative rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-600 px-8 py-4 text-lg font-bold text-white shadow-2xl hover:shadow-cyan-500/25 transform hover:scale-105 transition-all duration-300 overflow-hidden"
-                                    >
-                                        <span className="relative z-10 flex items-center justify-center">
-                                            Démarrer gratuitement
-                                            <span className="ml-2 text-xl">🚀</span>
-                                        </span>
-                                        <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-600 to-violet-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                        <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 animate-pulse"></div>
-                                    </Link>
-                                    <a
-                                        href="#features"
-                                        className="group rounded-2xl border border-white/20 backdrop-blur-sm px-8 py-4 text-lg font-semibold text-white hover:bg-white/10 hover:border-white/40 transition-all duration-300 text-center"
-                                    >
-                                        <span className="flex items-center justify-center">
-                                            Découvrir les fonctionnalités
-                                            <span className="ml-2 group-hover:translate-x-1 transition-transform duration-300">→</span>
-                                        </span>
-                                    </a>
-                                </div>
+                {/* Hero Section - Clean & Modern */}
+                <section className="pt-24 pb-16 lg:pt-32 lg:pb-24" data-section id="hero">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="text-center max-w-4xl mx-auto">
+                            {/* Badge */}
+                            <div className={`inline-flex items-center px-4 py-2 bg-blue-50 rounded-full text-blue-700 text-sm font-medium mb-8 ${
+                                visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in' : ''
+                            }`}>
+                                <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                                Plateforme SMS N°1 en Afrique de l'Ouest
                             </div>
 
-                            {/* Right side - Enhanced mockup */}
-                            <div className="lg:w-1/2 mt-16 lg:mt-0 flex justify-center">
-                                <div className="relative">
-                                    {/* Main phone mockup */}
-                                    <div className="relative w-80 h-auto border-8 border-slate-800 rounded-[3rem] shadow-2xl overflow-hidden transform hover:scale-105 transition-all duration-500 bg-gradient-to-br from-slate-900 to-slate-800">
-                                        <div className="bg-gradient-to-br from-slate-800 via-purple-900 to-indigo-900 aspect-[9/16] relative overflow-hidden">
-                                            {/* Enhanced status bar */}
-                                            <div className="absolute top-0 left-0 right-0 h-10 bg-black/30 backdrop-blur-sm flex items-center justify-between px-6">
-                                                <div className="flex space-x-1">
-                                                    <div className="w-1 h-1 bg-white rounded-full animate-pulse"></div>
-                                                    <div className="w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '0.5s' }}></div>
-                                                    <div className="w-1 h-1 bg-white rounded-full animate-pulse" style={{ animationDelay: '1s' }}></div>
-                                                </div>
-                                                <div className="text-white text-sm font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">HelloBoost</div>
-                                                <div className="flex items-center space-x-1">
-                                                    <div className="w-6 h-3 border-2 border-white rounded-sm">
-                                                        <div className="w-4 h-1 bg-green-400 rounded-sm"></div>
-                                                    </div>
-                                                </div>
+                            {/* Main Headline */}
+                            <h1 className={`text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight ${
+                                visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`} style={{ animationDelay: '0.1s' }}>
+                                SMS intelligent.
+                                <br />
+                                <span className="text-blue-600">Business boosté.</span>
+                            </h1>
+
+                            {/* Subtitle */}
+                            <p className={`text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed ${
+                                visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`} style={{ animationDelay: '0.2s' }}>
+                                Transformez votre communication client avec l'IA.
+                                Automatisation intelligente, résultats garantis.
+                            </p>
+
+                            {/* CTA Buttons */}
+                            <div className={`flex flex-col sm:flex-row gap-4 justify-center mb-16 ${
+                                visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`} style={{ animationDelay: '0.3s' }}>
+                                <Link
+                                    href={route('register')}
+                                    className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-all duration-200 transform hover:scale-105"
+                                >
+                                    Démarrer gratuitement
+                                </Link>
+                                <button className="border-2 border-gray-300 text-gray-700 px-8 py-4 rounded-lg text-lg font-semibold hover:border-gray-400 hover:bg-gray-50 transition-all duration-200">
+                                    Voir la démo
+                                </button>
+                            </div>
+
+                            {/* Trust Indicators */}
+                            <div className={`flex flex-col sm:flex-row items-center justify-center gap-8 text-sm text-gray-500 ${
+                                visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`} style={{ animationDelay: '0.4s' }}>
+                                <div className="flex items-center">
+                                    <span className="text-yellow-500 mr-1">★★★★★</span>
+                                    <span>4.9/5 sur 2,847 avis</span>
+                                </div>
+                                <div className="flex items-center">
+                                    <svg className="w-4 h-4 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                                    </svg>
+                                    <span>Essai gratuit - Sans engagement</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Product Preview */}
+                        <div className={`mt-16 max-w-4xl mx-auto ${
+                            visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                        }`} style={{ animationDelay: '0.5s' }}>
+                            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+                                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                                    <div className="flex items-center space-x-2">
+                                        <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+                                        <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                                        <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                                        <span className="ml-4 text-sm text-gray-500 font-medium">HelloBoost Dashboard</span>
+                                    </div>
+                                </div>
+                                <div className="p-8">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        {/* Campagne Active */}
+                                        <div className="bg-blue-50 rounded-lg p-6">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h3 className="font-semibold text-gray-900">Campagne Active</h3>
+                                                <span className="text-green-600 text-sm font-medium">En cours</span>
                                             </div>
-
-                                            {/* Enhanced app content */}
-                                            <div className="absolute inset-0 flex flex-col p-6 pt-16">
-                                                {/* Header card */}
-                                                <div className="bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-lg rounded-2xl p-5 mb-6 flex items-center border border-white/20 shadow-xl">
-                                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 mr-4 flex items-center justify-center shadow-lg">
-                                                        <span className="text-white font-bold">🚀</span>
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="w-28 h-3 bg-gradient-to-r from-white/40 to-transparent rounded mb-2"></div>
-                                                        <div className="w-20 h-2 bg-gradient-to-r from-white/30 to-transparent rounded"></div>
-                                                    </div>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Taux d'ouverture</span>
+                                                    <span className="font-semibold text-blue-600">98%</span>
                                                 </div>
-
-                                                {/* Enhanced message cards with real SMS examples */}
-                                                <div className="space-y-4 flex-1">
-                                                    {/* Message 1 - Cabinet dentaire anniversaire */}
-                                                    <div className="bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-lg rounded-2xl p-4 border border-white/10 shadow-lg">
-                                                        <div className="flex items-center mb-2">
-                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center justify-center mr-2 text-xs">
-                                                                🦷
-                                                            </div>
-                                                            <span className="text-white/70 text-xs font-medium">Cabinet Dr Diallo</span>
-                                                        </div>
-                                                        <p className="text-white text-sm leading-relaxed">
-                                                            Le cabinet dentaire Dr Diallo vous souhaite un joyeux anniversaire ! 🎉 Profitez de 20% sur votre prochain rdv avec le code ANNIV20
-                                                        </p>
-                                                        <span className="text-white/50 text-xs">Il y a 2min</span>
-                                                    </div>
-
-                                                    {/* Message 2 - Boutique promotion */}
-                                                    <div className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 backdrop-blur-lg rounded-2xl p-4 ml-auto w-4/5 border border-emerald-400/30 shadow-lg">
-                                                        <div className="flex items-center mb-2">
-                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 flex items-center justify-center mr-2 text-xs">
-                                                                👗
-                                                            </div>
-                                                            <span className="text-white/70 text-xs font-medium">Boutique Fatou</span>
-                                                        </div>
-                                                        <p className="text-white text-sm leading-relaxed">
-                                                            🔥 FLASH SALE ! Jusqu'à 50% sur toute la collection. Valable jusqu'à demain 18h. Venez vite !
-                                                        </p>
-                                                        <span className="text-white/50 text-xs">Il y a 1h</span>
-                                                    </div>
-
-                                                    {/* Message 3 - Restaurant fidélisation */}
-                                                    <div className="bg-gradient-to-r from-violet-500/20 to-purple-500/20 backdrop-blur-lg rounded-2xl p-4 border border-violet-400/30 shadow-lg">
-                                                        <div className="flex items-center mb-2">
-                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-violet-400 to-purple-400 flex items-center justify-center mr-2 text-xs">
-                                                                🍽️
-                                                            </div>
-                                                            <span className="text-white/70 text-xs font-medium">Restaurant Le Baobab</span>
-                                                        </div>
-                                                        <p className="text-white text-sm leading-relaxed">
-                                                            Bonjour Aminata ! Cela fait un moment... Revenez cette semaine et obtenez votre plat préféré GRATUIT ! 💝
-                                                        </p>
-                                                        <span className="text-white/50 text-xs">Il y a 3h</span>
-                                                    </div>
-
-                                                    {/* Message 4 - Pharmacie rappel */}
-                                                    <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 backdrop-blur-lg rounded-2xl p-4 ml-auto w-4/5 border border-orange-400/30 shadow-lg">
-                                                        <div className="flex items-center mb-2">
-                                                            <div className="w-6 h-6 rounded-full bg-gradient-to-r from-orange-400 to-red-400 flex items-center justify-center mr-2 text-xs">
-                                                                💊
-                                                            </div>
-                                                            <span className="text-white/70 text-xs font-medium">Pharmacie Centrale</span>
-                                                        </div>
-                                                        <p className="text-white text-sm leading-relaxed">
-                                                            ⏰ Rappel : Votre ordonnance expire demain. Passez nous voir avant 17h pour renouveler vos médicaments.
-                                                        </p>
-                                                        <span className="text-white/50 text-xs">Il y a 4h</span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Enhanced bottom action */}
-                                                <div className="bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-lg rounded-2xl p-4 flex items-center border border-white/20 shadow-xl">
-                                                    <div className="flex-1 h-10 bg-gradient-to-r from-white/20 to-white/10 rounded-xl mr-3"></div>
-                                                    <div className="w-10 h-10 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-xl shadow-lg"></div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Messages envoyés</span>
+                                                    <span className="font-semibold">2,847</span>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {/* Enhanced floating elements */}
-                                    <div className="absolute -top-8 -right-8 w-20 h-20 rounded-3xl bg-gradient-to-r from-emerald-400 to-teal-500 shadow-2xl flex items-center justify-center animate-bounce">
-                                        <span className="text-3xl">📊</span>
-                                    </div>
-                                    <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-3xl bg-gradient-to-r from-violet-400 to-purple-500 shadow-2xl flex items-center justify-center animate-pulse">
-                                        <span className="text-3xl">🎯</span>
-                                    </div>
-                                    <div className="absolute top-1/2 -right-10 w-16 h-16 rounded-3xl bg-gradient-to-r from-pink-400 to-rose-500 shadow-xl flex items-center justify-center animate-ping">
-                                        <span className="text-2xl">💬</span>
-                                    </div>
-                                    <div className="absolute top-1/4 -left-6 w-14 h-14 rounded-3xl bg-gradient-to-r from-yellow-400 to-orange-500 shadow-xl flex items-center justify-center animate-bounce" style={{ animationDelay: '1s' }}>
-                                        <span className="text-xl">⚡</span>
+                                        {/* Analytics */}
+                                        <div className="bg-green-50 rounded-lg p-6">
+                                            <h3 className="font-semibold text-gray-900 mb-4">Performance</h3>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">ROI</span>
+                                                    <span className="font-semibold text-green-600">+247%</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Conversions</span>
+                                                    <span className="font-semibold">1,245</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Automation */}
+                                        <div className="bg-purple-50 rounded-lg p-6">
+                                            <h3 className="font-semibold text-gray-900 mb-4">Automatisation</h3>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Workflows actifs</span>
+                                                    <span className="font-semibold">12</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="text-gray-600">Temps économisé</span>
+                                                    <span className="font-semibold text-purple-600">85%</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                {/* Enhanced Statistics Section */}
-                <div className="bg-gradient-to-r from-white/5 to-white/10 backdrop-blur-xl py-20 relative z-10 border-y border-white/10">
-                    <div className="container mx-auto px-6">
+                {/* Stats Section */}
+                <section className="py-16 bg-gray-50" data-section id="stats">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
                             {[
                                 {
                                     value: animatedStats.clients,
                                     suffix: "+",
-                                    label: "Clients conquis",
-                                    sublabel: "dans toute l'Afrique de l'Ouest",
-                                    color: "from-cyan-400 to-blue-500",
-                                    icon: "👥"
+                                    label: "Clients actifs",
+                                    sublabel: "dans toute l'Afrique de l'Ouest"
                                 },
                                 {
                                     value: animatedStats.messages,
                                     suffix: "+",
                                     label: "Messages envoyés",
-                                    sublabel: "chaque mois",
-                                    color: "from-violet-400 to-purple-500",
-                                    icon: "📱"
+                                    sublabel: "chaque mois"
                                 },
                                 {
                                     value: animatedStats.satisfaction,
                                     suffix: "%",
                                     label: "Taux de satisfaction",
-                                    sublabel: "de nos utilisateurs",
-                                    color: "from-emerald-400 to-teal-500",
-                                    icon: "⭐"
+                                    sublabel: "de nos utilisateurs"
                                 }
                             ].map((stat, index) => (
-                                <div key={index} className="group">
-                                    <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-500">
-                                        <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r ${stat.color} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                                            {stat.icon}
-                                        </div>
-                                        <div className={`text-5xl md:text-6xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent mb-3 group-hover:scale-110 transition-transform duration-300`}>
-                                            {stat.value.toLocaleString()}{stat.suffix}
-                                        </div>
-                                        <div className="text-xl text-white font-semibold mb-2">{stat.label}</div>
-                                        <div className="text-gray-300">{stat.sublabel}</div>
+                                <div key={index} className={`${
+                                    visibleSections.has('stats') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                                }`} style={{ animationDelay: `${index * 0.1}s` }}>
+                                    <div className="text-4xl md:text-5xl font-bold text-blue-600 mb-2">
+                                        {stat.value.toLocaleString()}{stat.suffix}
                                     </div>
+                                    <div className="text-xl font-semibold text-gray-900 mb-1">{stat.label}</div>
+                                    <div className="text-gray-600">{stat.sublabel}</div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                </div>
+                </section>
 
-                {/* Enhanced Testimonial section */}
-                <div className="bg-gradient-to-b from-slate-800 to-slate-900 py-24 relative overflow-hidden">
-                    <div className="absolute inset-0">
-                        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-gradient-to-r from-cyan-400/10 to-blue-500/10 blur-3xl"></div>
-                        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-gradient-to-r from-violet-400/10 to-purple-500/10 blur-3xl"></div>
-                    </div>
-
-                    <div className="container mx-auto px-6 relative z-10">
-                        <div className="mb-20 text-center">
-                            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-emerald-500/20 to-teal-500/20 backdrop-blur-sm border border-emerald-400/30 mb-8">
-                                <span className="text-sm font-semibold bg-gradient-to-r from-emerald-200 to-teal-200 bg-clip-text text-transparent">💬 Témoignages clients</span>
-                            </div>
-                            <h2 className="mb-6 text-5xl font-bold">
-                                <span className="bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent">Ils ont boosté leur business</span>
+                {/* Features Section */}
+                <section className="py-24" data-section id="features">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="text-center mb-16">
+                            <h2 className={`text-3xl md:text-4xl font-bold text-gray-900 mb-4 ${
+                                visibleSections.has('features') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`}>
+                                Tout ce dont vous avez besoin
                             </h2>
-                            <p className="mx-auto text-xl text-gray-300 md:w-2/3 leading-relaxed">
-                                Découvrez comment nos clients transforment leur communication et développent leur activité grâce à HelloBoost
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                            {[
-                                {
-                                    quote: "Grâce à HelloBoost, nous avons augmenté notre chiffre d'affaires de 45% en seulement 4 mois. L'automatisation des campagnes SMS est révolutionnaire !",
-                                    author: "Amadou Mbaye",
-                                    role: "CEO Boutique Mode Dakar",
-                                    avatar: "AM",
-                                    color: "from-cyan-400 to-blue-500"
-                                },
-                                {
-                                    quote: "L'intelligence artificielle de HelloBoost a transformé notre relation client. Nos messages sont maintenant ultra-personnalisés et nos clients adorent !",
-                                    author: "Fatou Touré",
-                                    role: "Directrice Marketing Restaurant Le Baobab",
-                                    avatar: "FT",
-                                    color: "from-violet-400 to-purple-500"
-                                },
-                                {
-                                    quote: "Le ROI est incroyable ! En 6 mois, nous gérons efficacement plus de 2000 clients avec HelloBoost. Interface intuitive et résultats garantis.",
-                                    author: "Ousmane Sow",
-                                    role: "Pharmacien Pharmacie Centrale",
-                                    avatar: "OS",
-                                    color: "from-emerald-400 to-teal-500"
-                                }
-                            ].map((testimonial, index) => (
-                                <div key={index} className="group bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/20 hover:border-white/40 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-500">
-                                    <div className="mb-6">
-                                        <div className="flex mb-4">
-                                            {[...Array(5)].map((_, i) => (
-                                                <span key={i} className="text-yellow-400 text-xl">⭐</span>
-                                            ))}
-                                        </div>
-                                        <p className="text-gray-200 text-lg leading-relaxed italic">
-                                            "{testimonial.quote}"
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-r ${testimonial.color} flex items-center justify-center mr-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                                            <span className="text-white font-bold text-lg">{testimonial.avatar}</span>
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-white text-lg">{testimonial.author}</p>
-                                            <p className="text-gray-400">{testimonial.role}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Enhanced Features Section */}
-                <div id="features" className="py-24 bg-gradient-to-b from-transparent to-slate-900/30 relative z-10">
-                    <div className="container mx-auto px-6">
-                        <div className="text-center mb-20">
-                            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 backdrop-blur-sm border border-cyan-400/30 mb-8">
-                                <span className="text-sm font-semibold bg-gradient-to-r from-cyan-200 to-blue-200 bg-clip-text text-transparent">✨ Fonctionnalités nouvelle génération</span>
-                            </div>
-                            <h2 className="text-5xl md:text-6xl font-bold mb-6">
-                                <span className="bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent">Tout ce dont vous avez besoin</span>
-                            </h2>
-                            <p className="text-xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
-                                Des outils puissants et une intelligence artificielle avancée pour transformer votre communication client en machine à succès
+                            <p className={`text-xl text-gray-600 max-w-2xl mx-auto ${
+                                visibleSections.has('features') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`} style={{ animationDelay: '0.1s' }}>
+                                Des outils puissants pour transformer votre communication client
                             </p>
                         </div>
 
@@ -470,637 +375,334 @@ export default function Welcome({
                                 {
                                     icon: "🚀",
                                     title: "Envoi Ultra-Rapide",
-                                    description: "Livraison instantanée avec notre infrastructure mondiale optimisée",
-                                    color: "from-cyan-400 to-blue-500",
-                                    feature: "Livraison en <1s"
-                                },
-                                {
-                                    icon: "🎯",
-                                    title: "Ciblage Intelligent",
-                                    description: "IA avancée pour segmenter et personnaliser automatiquement",
-                                    color: "from-violet-400 to-purple-500",
-                                    feature: "Segmentation IA"
-                                },
-                                {
-                                    icon: "📊",
-                                    title: "Analytics Prédictives",
-                                    description: "Insights en temps réel avec prédictions comportementales",
-                                    color: "from-emerald-400 to-teal-500",
-                                    feature: "Prédictions IA"
+                                    description: "Livraison instantanée avec notre infrastructure optimisée"
                                 },
                                 {
                                     icon: "🤖",
-                                    title: "Automatisation Smart",
-                                    description: "Workflows intelligents qui s'adaptent au comportement client",
-                                    color: "from-pink-400 to-rose-500",
-                                    feature: "AutoPilot IA"
+                                    title: "IA Intelligente",
+                                    description: "Personnalisation automatique et segmentation avancée"
+                                },
+                                {
+                                    icon: "📊",
+                                    title: "Analytics Avancées",
+                                    description: "Insights en temps réel et rapports détaillés"
+                                },
+                                {
+                                    icon: "🔄",
+                                    title: "Automatisation",
+                                    description: "Workflows intelligents et déclencheurs personnalisés"
                                 },
                                 {
                                     icon: "🔒",
-                                    title: "Sécurité Militaire",
-                                    description: "Chiffrement quantique et protection données bancaire",
-                                    color: "from-orange-400 to-red-500",
-                                    feature: "Chiffrement AES-256"
+                                    title: "Sécurité Maximum",
+                                    description: "Chiffrement de niveau bancaire et conformité RGPD"
                                 },
                                 {
                                     icon: "🌐",
-                                    title: "Intégrations Universelles",
-                                    description: "Plus de 500 intégrations natives et API GraphQL moderne",
-                                    color: "from-yellow-400 to-orange-500",
-                                    feature: "500+ intégrations"
+                                    title: "Intégrations",
+                                    description: "Connectez vos outils existants en quelques clics"
                                 }
                             ].map((feature, index) => (
-                                <div key={index} className="group bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/20 hover:border-white/40 transition-all duration-500 hover:scale-105 hover:shadow-2xl">
-                                    <div className={`w-20 h-20 rounded-3xl bg-gradient-to-r ${feature.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-xl text-3xl`}>
-                                        {feature.icon}
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-cyan-300 transition-colors duration-300">
-                                        {feature.title}
-                                    </h3>
-                                    <p className="text-gray-300 leading-relaxed mb-4">
-                                        {feature.description}
-                                    </p>
-                                    <div className={`inline-flex items-center text-sm font-semibold bg-gradient-to-r ${feature.color} bg-clip-text text-transparent`}>
-                                        <span className="w-2 h-2 bg-current rounded-full mr-2 animate-pulse"></span>
-                                        {feature.feature}
-                                    </div>
+                                <div key={index} className={`bg-white p-8 rounded-xl border border-gray-200 hover:shadow-lg transition-all duration-300 ${
+                                    visibleSections.has('features') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                                }`} style={{ animationDelay: `${index * 0.1}s` }}>
+                                    <div className="text-3xl mb-4">{feature.icon}</div>
+                                    <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
+                                    <p className="text-gray-600 leading-relaxed">{feature.description}</p>
                                 </div>
                             ))}
                         </div>
-
-                        {/* Enhanced CTA in features */}
-                        <div className="text-center mt-16">
-                            <div className="inline-flex items-center space-x-6">
-                                <Link
-                                    href={route('register')}
-                                    className="group relative rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-600 px-10 py-5 text-xl font-bold text-white shadow-2xl hover:shadow-cyan-500/25 transform hover:scale-105 transition-all duration-300 overflow-hidden"
-                                >
-                                    <span className="relative z-10">Démarrer l'expérience gratuite</span>
-                                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-600 to-violet-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                </Link>
-                                <span className="text-gray-300 text-lg">ou</span>
-                                <a
-                                    href="#pricing"
-                                    className="text-white hover:text-cyan-300 font-semibold text-lg transition-colors duration-200 underline decoration-cyan-400 underline-offset-4 hover:decoration-cyan-300"
-                                >
-                                    Découvrir les tarifs →
-                                </a>
-                            </div>
-                        </div>
                     </div>
-                </div>
+                </section>
 
-                {/* New Use Cases Section with Real SMS Examples */}
-                <div className="bg-gradient-to-b from-slate-900/50 to-slate-800/50 backdrop-blur-sm py-24 relative overflow-hidden border-y border-white/10">
-                    <div className="absolute inset-0">
-                        <div className="absolute top-1/3 left-1/4 w-80 h-80 rounded-full bg-gradient-to-r from-indigo-400/10 to-purple-500/10 blur-3xl"></div>
-                        <div className="absolute bottom-1/3 right-1/4 w-72 h-72 rounded-full bg-gradient-to-r from-emerald-400/10 to-teal-500/10 blur-3xl"></div>
-                    </div>
-
-                    <div className="container mx-auto px-6 relative z-10">
-                        <div className="text-center mb-20">
-                            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500/20 to-purple-500/20 backdrop-blur-sm border border-indigo-400/30 mb-8">
-                                <span className="text-sm font-semibold bg-gradient-to-r from-indigo-200 to-purple-200 bg-clip-text text-transparent">💼 Cas d'usage concrets</span>
-                            </div>
-                            <h2 className="text-5xl md:text-6xl font-bold mb-6">
-                                <span className="bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent">HelloBoost pour votre secteur</span>
+                {/* Testimonials Section */}
+                <section className="py-24 bg-gray-50" data-section id="testimonials">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="text-center mb-16">
+                            <h2 className={`text-3xl md:text-4xl font-bold text-gray-900 mb-4 ${
+                                visibleSections.has('testimonials') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`}>
+                                Ils nous font confiance
                             </h2>
-                            <p className="text-xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
-                                Découvrez comment des milliers d'entrepreneurs utilisent HelloBoost pour développer leur activité
-                            </p>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {[
                                 {
-                                    sector: "🏥 Secteur Médical",
-                                    description: "Rappels de rendez-vous, anniversaires patients, promotions",
-                                    color: "from-blue-400 to-cyan-500",
-                                    messages: [
-                                        {
-                                            business: "Cabinet Dr Diallo",
-                                            message: "Bonjour Mme Kone ! RDV demain 14h pour contrôle. Merci de confirmer en répondant OUI. Cabinet Dr Diallo 📞 77-123-4567",
-                                            type: "Rappel RDV"
-                                        },
-                                        {
-                                            business: "Pharmacie Centrale",
-                                            message: "🎉 Joyeux anniversaire Aminata ! Profitez de 15% sur tous vos achats aujourd'hui avec le code ANNIV15. Pharmacie Centrale",
-                                            type: "Fidélisation"
-                                        }
-                                    ]
+                                    quote: "HelloBoost a révolutionné ma communication avec mes patients. Plus de rendez-vous manqués !",
+                                    author: "Dr. Aminata Diallo",
+                                    role: "Chirurgien-Dentiste",
+                                    metric: "+73% présence aux RDV"
                                 },
                                 {
-                                    sector: "🛍️ Commerce & Retail",
-                                    description: "Promotions, nouveautés, fidélisation client",
-                                    color: "from-emerald-400 to-teal-500",
-                                    messages: [
-                                        {
-                                            business: "Boutique Fatou",
-                                            message: "🔥 MEGA PROMO ! Robes -50%, Chaussures -40% jusqu'à Dimanche seulement ! Venez vite nous voir. Boutique Fatou - Marché Sandaga",
-                                            type: "Promotion Flash"
-                                        },
-                                        {
-                                            business: "Superette Moderne",
-                                            message: "Nouveau stock arrivé ! Riz parfumé, huile de qualité et produits frais disponibles. Livraison gratuite > 15.000F 🚚",
-                                            type: "Nouveautés"
-                                        }
-                                    ]
+                                    quote: "Mes ventes ont explosé grâce à la personnalisation intelligente des messages.",
+                                    author: "Fatou Touré",
+                                    role: "Propriétaire Boutique",
+                                    metric: "+180% chiffre d'affaires"
                                 },
                                 {
-                                    sector: "🍽️ Restauration",
-                                    description: "Menu du jour, événements spéciaux, fidélisation",
-                                    color: "from-orange-400 to-red-500",
-                                    messages: [
-                                        {
-                                            business: "Restaurant Le Baobab",
-                                            message: "Menu spécial Vendredi : Thiebou dien + boisson 3.500F seulement ! Réservation conseillée 📞 78-456-7890. Restaurant Le Baobab",
-                                            type: "Menu spécial"
-                                        },
-                                        {
-                                            business: "Café Teranga",
-                                            message: "Bonsoir Omar ! Votre table préférée vous attend demain soir 19h pour votre anniversaire 🎂 Surprise garantie ! Café Teranga",
-                                            type: "Personnalisé"
-                                        }
-                                    ]
-                                },
-                                {
-                                    sector: "🎓 Éducation & Formation",
-                                    description: "Rappels cours, résultats, événements",
-                                    color: "from-violet-400 to-purple-500",
-                                    messages: [
-                                        {
-                                            business: "Institut CERCO",
-                                            message: "Rappel : Examen de Marketing lundi 8h. N'oubliez pas calculatrice + pièce d'identité. Bon courage ! Institut CERCO",
-                                            type: "Rappel important"
-                                        },
-                                        {
-                                            business: "École de Conduite",
-                                            message: "🎉 Félicitations Ibrahima ! Permis obtenu avec succès. Passez récupérer votre certificat dès demain. École de Conduite Elite",
-                                            type: "Résultats"
-                                        }
-                                    ]
+                                    quote: "L'automatisation me fait économiser 4h par jour. Incroyable !",
+                                    author: "Ousmane Sow",
+                                    role: "Restaurateur",
+                                    metric: "+95% taux de retour"
                                 }
-                            ].map((sector, index) => (
-                                <div key={index} className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/20 hover:border-white/40 shadow-xl hover:shadow-2xl transition-all duration-500">
-                                    <div className="mb-8">
-                                        <div className={`inline-flex items-center px-4 py-2 rounded-2xl bg-gradient-to-r ${sector.color} bg-opacity-20 backdrop-blur-sm border border-white/20 mb-4`}>
-                                            <span className="text-lg font-bold text-white">{sector.sector}</span>
+                            ].map((testimonial, index) => (
+                                <div key={index} className={`bg-white p-8 rounded-xl border border-gray-200 ${
+                                    visibleSections.has('testimonials') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                                }`} style={{ animationDelay: `${index * 0.1}s` }}>
+                                    <div className="text-blue-600 font-semibold text-sm mb-4">{testimonial.metric}</div>
+                                    <p className="text-gray-700 mb-6 italic">"{testimonial.quote}"</p>
+                                    <div className="flex items-center">
+                                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                                            <span className="text-blue-600 font-semibold">
+                                                {testimonial.author.split(' ').map(n => n[0]).join('')}
+                                            </span>
                                         </div>
-                                        <p className="text-gray-300 text-lg">{sector.description}</p>
-                                    </div>
-
-                                    <div className="space-y-6">
-                                        {sector.messages.map((msg, msgIndex) => (
-                                            <div key={msgIndex} className="bg-gradient-to-r from-slate-800/50 to-slate-700/50 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <span className={`text-sm font-semibold bg-gradient-to-r ${sector.color} bg-clip-text text-transparent`}>
-                                                        {msg.business}
-                                                    </span>
-                                                    <span className="text-xs bg-white/10 backdrop-blur-sm px-3 py-1 rounded-full text-gray-300">
-                                                        {msg.type}
-                                                    </span>
-                                                </div>
-                                                <p className="text-white leading-relaxed text-sm bg-gradient-to-r from-slate-900/50 to-slate-800/50 rounded-xl p-4 border border-white/10">
-                                                    "{msg.message}"
-                                                </p>
-                                                <div className="flex items-center justify-between mt-3">
-                                                    <span className="text-xs text-gray-400">📊 Taux d'ouverture: 98%</span>
-                                                    <span className="text-xs text-green-400">✅ Livré avec succès</span>
-                                                </div>
-                                            </div>
-                                        ))}
+                                        <div>
+                                            <div className="font-semibold text-gray-900">{testimonial.author}</div>
+                                            <div className="text-gray-600 text-sm">{testimonial.role}</div>
+                                        </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-
-                        <div className="text-center mt-16">
-                            <div className="bg-gradient-to-r from-white/10 to-white/5 backdrop-blur-lg rounded-3xl p-8 border border-white/20 max-w-4xl mx-auto">
-                                <h3 className="text-2xl font-bold text-white mb-4">
-                                    💡 Votre secteur n'est pas listé ?
-                                </h3>
-                                <p className="text-gray-300 mb-6 leading-relaxed">
-                                    HelloBoost s'adapte à TOUS les secteurs d'activité ! Immobilier, automobile, beauté, fitness, événementiel...
-                                    Notre IA vous aide à créer les messages parfaits pour votre audience.
-                                </p>
-                                <Link
-                                    href={route('register')}
-                                    className="group relative rounded-2xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-600 px-8 py-4 text-lg font-bold text-white shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 overflow-hidden inline-block"
-                                >
-                                    <span className="relative z-10">Tester avec mon activité</span>
-                                    <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-600 to-violet-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                </Link>
-                            </div>
-                        </div>
                     </div>
-                </div>
+                </section>
 
-                {/* Enhanced How it works section */}
-                <div className="bg-gradient-to-b from-white/5 to-white/10 backdrop-blur-sm py-24 border-y border-white/10">
-                    <div className="container mx-auto px-6">
-                        <div className="mb-20 text-center">
-                            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm border border-purple-400/30 mb-8">
-                                <span className="text-sm font-semibold bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-transparent">⚡ Simplicité maximale</span>
-                            </div>
-                            <h2 className="mb-6 text-5xl font-bold">
-                                <span className="bg-gradient-to-r from-white via-purple-200 to-pink-200 bg-clip-text text-transparent">Comment ça marche ?</span>
+                {/* Pricing Section */}
+                <section className="py-24" data-section id="pricing">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="text-center mb-16">
+                            <h2 className={`text-3xl md:text-4xl font-bold text-gray-900 mb-4 ${
+                                visibleSections.has('pricing') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`}>
+                                Tarifs simples et transparents
                             </h2>
-                            <p className="mx-auto text-xl text-gray-300 md:w-2/3">
-                                3 étapes simples pour révolutionner votre communication client
+                            <p className={`text-xl text-gray-600 ${
+                                visibleSections.has('pricing') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
+                            }`} style={{ animationDelay: '0.1s' }}>
+                                Choisissez le plan parfait pour votre business
                             </p>
                         </div>
 
-                        <div className="flex flex-col items-center space-y-12 md:flex-row md:items-start md:space-x-8 md:space-y-0 justify-center">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
                             {[
                                 {
-                                    step: "1",
-                                    title: "Créez votre compte",
-                                    description: "Inscription en 2 minutes, activation instantanée et 50 SMS offerts pour commencer",
-                                    color: "from-cyan-400 to-blue-500",
-                                    icon: "👤"
-                                },
-                                {
-                                    step: "2",
-                                    title: "Importez vos contacts",
-                                    description: "Glissez-déposez votre fichier Excel/CSV ou connectez vos outils existants en un clic",
-                                    color: "from-violet-400 to-purple-500",
-                                    icon: "📋"
-                                },
-                                {
-                                    step: "3",
-                                    title: "Lancez vos campagnes",
-                                    description: "Créez des messages personnalisés avec l'IA et regardez vos ventes décoller",
-                                    color: "from-emerald-400 to-teal-500",
-                                    icon: "🚀"
-                                }
-                            ].map((step, index) => (
-                                <div key={index} className="flex flex-col items-center max-w-sm text-center group">
-                                    <div className="relative mb-8">
-                                        <div className={`w-24 h-24 rounded-3xl bg-gradient-to-r ${step.color} flex items-center justify-center shadow-2xl group-hover:scale-110 transition-all duration-300`}>
-                                            <span className="text-3xl">{step.icon}</span>
-                                        </div>
-                                        <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white text-slate-900 flex items-center justify-center font-bold text-lg shadow-lg">
-                                            {step.step}
-                                        </div>
-                                    </div>
-                                    <h3 className="text-2xl font-bold mb-4 text-white group-hover:text-cyan-300 transition-colors duration-300">
-                                        {step.title}
-                                    </h3>
-                                    <p className="text-gray-300 leading-relaxed">
-                                        {step.description}
-                                    </p>
-
-                                    {/* Arrow between steps (hidden on mobile) */}
-                                    {index < 2 && (
-                                        <div className="hidden md:block absolute top-12 left-full w-16 h-0.5 bg-gradient-to-r from-white/30 to-transparent ml-4">
-                                            <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-0 h-0 border-l-4 border-l-white/30 border-y-2 border-y-transparent"></div>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Enhanced Pricing Section */}
-                <div id="pricing" className="bg-gradient-to-b from-slate-900 to-slate-800 py-24 relative overflow-hidden">
-                    <div className="absolute inset-0">
-                        <div className="absolute top-1/3 left-1/3 w-96 h-96 rounded-full bg-gradient-to-r from-cyan-400/5 to-blue-500/5 blur-3xl"></div>
-                        <div className="absolute bottom-1/3 right-1/3 w-80 h-80 rounded-full bg-gradient-to-r from-violet-400/5 to-purple-500/5 blur-3xl"></div>
-                    </div>
-
-                    <div className="container mx-auto px-6 relative z-10">
-                        <div className="mb-20 text-center">
-                            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm border border-green-400/30 mb-8">
-                                <span className="text-sm font-semibold bg-gradient-to-r from-green-200 to-emerald-200 bg-clip-text text-transparent">💎 Tarifs transparents</span>
-                            </div>
-                            <h2 className="mb-6 text-5xl font-bold">
-                                <span className="bg-gradient-to-r from-white via-green-200 to-emerald-200 bg-clip-text text-transparent">Plans sur mesure</span>
-                            </h2>
-                            <p className="mx-auto text-xl text-gray-300 md:w-2/3">
-                                Choisissez le plan parfait pour booster votre business - sans engagement, changement possible à tout moment
-                            </p>
-                        </div>
-
-                        <div className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto">
-                            {[
-                                {
-                                    name: "Pack Starter",
+                                    name: "Starter",
                                     price: "7.500",
-                                    description: "Parfait pour découvrir HelloBoost",
-                                    color: "from-cyan-400 to-blue-500",
+                                    description: "Parfait pour débuter",
                                     features: [
-                                        "Jusqu'à 150 clients",
-                                        "3 campagnes par mois (300 SMS)",
-                                        "75 SMS personnalisés par mois",
-                                        "Support par email",
+                                        "Jusqu'à 150 contacts",
+                                        "300 SMS/mois",
+                                        "Support email",
                                         "Analytics de base"
                                     ],
                                     popular: false
                                 },
                                 {
-                                    name: "Pack Business",
+                                    name: "Business",
                                     price: "18.000",
-                                    description: "Le choix des entrepreneurs ambitieux",
-                                    color: "from-violet-400 to-purple-500",
+                                    description: "Le plus populaire",
                                     features: [
-                                        "Jusqu'à 750 clients",
-                                        "6 campagnes par mois (1.500 SMS)",
-                                        "300 SMS personnalisés par mois",
-                                        "Report de 15% des SMS non utilisés",
+                                        "Jusqu'à 750 contacts",
+                                        "1.500 SMS/mois",
                                         "Support prioritaire",
-                                        "Analytics avancées + IA"
+                                        "Analytics avancées",
+                                        "Automatisation"
                                     ],
                                     popular: true
                                 },
                                 {
-                                    name: "Pack Enterprise",
+                                    name: "Enterprise",
                                     price: "35.000",
-                                    description: "Pour les leaders du marché",
-                                    color: "from-emerald-400 to-teal-500",
+                                    description: "Pour les leaders",
                                     features: [
-                                        "Jusqu'à 3.000 clients",
-                                        "12 campagnes par mois (6.000 SMS)",
-                                        "750 SMS personnalisés par mois",
-                                        "Report de 25% des SMS non utilisés",
-                                        "Support dédié 24/7",
-                                        "Analytics prédictives IA",
-                                        "API complète + Webhooks"
+                                        "Jusqu'à 3.000 contacts",
+                                        "6.000 SMS/mois",
+                                        "Support 24/7",
+                                        "API complète",
+                                        "Analytics prédictives"
                                     ],
                                     popular: false
                                 }
                             ].map((plan, index) => (
-                                <div key={index} className={`relative flex flex-col bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-3xl p-8 border ${plan.popular ? 'border-violet-400/50 scale-105' : 'border-white/20'} shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-500`}>
+                                <div key={index} className={`relative bg-white border-2 rounded-xl p-8 ${
+                                    plan.popular ? 'border-blue-500 shadow-lg' : 'border-gray-200'
+                                } ${visibleSections.has('pricing') && !prefersReducedMotion ? 'animate-fade-in-up' : ''}`}
+                                     style={{ animationDelay: `${index * 0.1}s` }}>
                                     {plan.popular && (
-                                        <div className="absolute -top-4 left-0 right-0 mx-auto w-40 rounded-full bg-gradient-to-r from-violet-500 to-purple-600 px-4 py-2 text-center text-sm font-bold text-white shadow-xl">
-                                            🔥 Plus populaire
+                                        <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                                            <span className="bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-medium">
+                                                Plus populaire
+                                            </span>
                                         </div>
                                     )}
 
-                                    <div className="mb-8 flex flex-col">
-                                        <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-r ${plan.color} flex items-center justify-center text-2xl shadow-lg`}>
-                                            {index === 0 ? "🚀" : index === 1 ? "⭐" : "👑"}
+                                    <div className="text-center mb-8">
+                                        <h3 className="text-xl font-semibold text-gray-900 mb-2">{plan.name}</h3>
+                                        <p className="text-gray-600 mb-4">{plan.description}</p>
+                                        <div className="flex items-baseline justify-center">
+                                            <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
+                                            <span className="text-gray-600 ml-2">FCFA/mois</span>
                                         </div>
-                                        <h3 className="text-2xl font-bold text-white text-center mb-2">{plan.name}</h3>
-                                        <div className="text-center mb-4">
-                                            <div className="flex items-baseline justify-center">
-                                                <span className={`text-5xl font-extrabold bg-gradient-to-r ${plan.color} bg-clip-text text-transparent`}>
-                                                    {plan.price}
-                                                </span>
-                                                <span className="ml-2 text-xl text-gray-400">FCFA</span>
-                                            </div>
-                                            <span className="text-gray-400">/mois</span>
-                                        </div>
-                                        <p className="text-gray-300 text-center">{plan.description}</p>
                                     </div>
 
-                                    <ul className="mb-8 space-y-4 flex-1">
+                                    <ul className="space-y-3 mb-8">
                                         {plan.features.map((feature, featureIndex) => (
                                             <li key={featureIndex} className="flex items-center">
-                                                <div className={`w-6 h-6 rounded-full bg-gradient-to-r ${plan.color} flex items-center justify-center mr-3 text-sm`}>
-                                                    ✓
-                                                </div>
-                                                <span className="text-gray-200">{feature}</span>
+                                                <svg className="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                                                </svg>
+                                                <span className="text-gray-700">{feature}</span>
                                             </li>
                                         ))}
                                     </ul>
 
                                     <Link
                                         href={route('register')}
-                                        className={`mt-auto rounded-2xl px-6 py-4 text-center font-bold transition-all duration-300 ${plan.popular
-                                            ? `bg-gradient-to-r ${plan.color} text-white shadow-xl hover:shadow-2xl transform hover:scale-105`
-                                            : `border border-white/30 text-white hover:bg-white/10`
-                                            }`}
+                                        className={`w-full py-3 px-6 rounded-lg text-center font-semibold transition-colors ${
+                                            plan.popular
+                                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                : 'border-2 border-gray-300 text-gray-700 hover:border-gray-400'
+                                        }`}
                                     >
                                         Choisir ce plan
                                     </Link>
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </section>
 
-                        <div className="mt-16 text-center">
-                            <p className="text-gray-400 mb-4">
-                                🎁 <span className="text-white font-semibold">Offre de lancement :</span> 50 SMS gratuits pour tous les nouveaux inscrits
-                            </p>
-                            <p className="text-gray-500 text-sm">
-                                Tous les plans incluent un essai gratuit de 7 jours • Annulation possible à tout moment • Support inclus
-                            </p>
+                {/* CTA Final */}
+                <section className="py-24 bg-blue-600">
+                    <div className="max-w-4xl mx-auto text-center px-6 lg:px-8">
+                        <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+                            Prêt à booster votre business ?
+                        </h2>
+                        <p className="text-xl text-blue-100 mb-10">
+                            Rejoignez les 8,500+ entrepreneurs qui transforment leur communication
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <Link
+                                href={route('register')}
+                                className="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors"
+                            >
+                                Commencer gratuitement
+                            </Link>
+                            <button className="border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors">
+                                Planifier une démo
+                            </button>
                         </div>
+                        <p className="text-blue-200 text-sm mt-6">
+                            Essai gratuit • Sans engagement • Support inclus
+                        </p>
                     </div>
-                </div>
+                </section>
 
-                {/* Enhanced Gallery section */}
-                <div className="bg-gradient-to-b from-slate-800 to-slate-900 py-24 relative overflow-hidden">
-                    <div className="absolute inset-0">
-                        <div className="absolute top-1/4 right-1/4 w-72 h-72 rounded-full bg-gradient-to-r from-pink-400/10 to-rose-500/10 blur-3xl"></div>
-                        <div className="absolute bottom-1/4 left-1/4 w-64 h-64 rounded-full bg-gradient-to-r from-yellow-400/10 to-orange-500/10 blur-3xl"></div>
-                    </div>
-
-                    <div className="container mx-auto px-6 relative z-10">
-                        <div className="mb-20 text-center">
-                            <div className="inline-flex items-center px-6 py-3 rounded-full bg-gradient-to-r from-pink-500/20 to-rose-500/20 backdrop-blur-sm border border-pink-400/30 mb-8">
-                                <span className="text-sm font-semibold bg-gradient-to-r from-pink-200 to-rose-200 bg-clip-text text-transparent">🎨 Interface moderne</span>
-                            </div>
-                            <h2 className="mb-6 text-5xl font-bold">
-                                <span className="bg-gradient-to-r from-white via-pink-200 to-rose-200 bg-clip-text text-transparent">Découvrez HelloBoost en action</span>
-                            </h2>
-                            <p className="mx-auto text-xl text-gray-300 md:w-2/3">
-                                Une interface intuitive conçue pour maximiser votre productivité et vos résultats
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {[
-                                {
-                                    title: "Dashboard intelligent",
-                                    description: "Visualisez toutes vos métriques en temps réel avec des graphiques interactifs",
-                                    color: "from-cyan-400 to-blue-500",
-                                    icon: "📊"
-                                },
-                                {
-                                    title: "Créateur de campagne IA",
-                                    description: "Interface révolutionnaire pour créer des campagnes personnalisées en quelques clics",
-                                    color: "from-violet-400 to-purple-500",
-                                    icon: "🎯"
-                                },
-                                {
-                                    title: "Gestion contacts avancée",
-                                    description: "Organisez et segmentez votre base client avec des outils d'analyse comportementale",
-                                    color: "from-emerald-400 to-teal-500",
-                                    icon: "👥"
-                                }
-                            ].map((item, index) => (
-                                <div key={index} className="group bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-3xl overflow-hidden border border-white/20 hover:border-white/40 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-500">
-                                    {/* Mock screenshot area */}
-                                    <div className="h-48 bg-gradient-to-br from-slate-700 to-slate-800 relative overflow-hidden">
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <div className={`w-20 h-20 rounded-2xl bg-gradient-to-r ${item.color} flex items-center justify-center text-3xl shadow-xl group-hover:scale-110 transition-transform duration-300`}>
-                                                {item.icon}
-                                            </div>
-                                        </div>
-                                        {/* Decorative elements */}
-                                        <div className="absolute top-4 left-4 w-3 h-3 rounded-full bg-red-400"></div>
-                                        <div className="absolute top-4 left-10 w-3 h-3 rounded-full bg-yellow-400"></div>
-                                        <div className="absolute top-4 left-16 w-3 h-3 rounded-full bg-green-400"></div>
-
-                                        {/* Mock interface elements */}
-                                        <div className="absolute bottom-4 left-4 right-4 space-y-2">
-                                            <div className="h-2 bg-white/20 rounded"></div>
-                                            <div className="h-2 bg-white/15 rounded w-3/4"></div>
-                                            <div className="h-2 bg-white/10 rounded w-1/2"></div>
-                                        </div>
-                                    </div>
-
-                                    <div className="p-6">
-                                        <h3 className="font-bold text-xl text-white mb-3 group-hover:text-cyan-300 transition-colors duration-300">
-                                            {item.title}
-                                        </h3>
-                                        <p className="text-gray-300 leading-relaxed">
-                                            {item.description}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Enhanced Call To Action */}
-                <div className="bg-gradient-to-r from-cyan-600 via-blue-700 to-violet-800 py-24 relative overflow-hidden">
-                    {/* Enhanced decorative elements */}
-                    <div className="absolute inset-0">
-                        <div className="absolute top-0 left-0 w-96 h-96 rounded-full bg-white opacity-5 -mt-48 -ml-48 animate-pulse"></div>
-                        <div className="absolute bottom-0 right-0 w-80 h-80 rounded-full bg-white opacity-5 -mb-40 -mr-40 animate-pulse" style={{ animationDelay: '1s' }}></div>
-                        <div className="absolute top-1/2 left-1/3 w-64 h-64 rounded-full bg-gradient-to-r from-yellow-400/10 to-orange-500/10 blur-3xl"></div>
-                    </div>
-
-                    <div className="container mx-auto px-6 text-center relative z-10">
-                        <div className="max-w-4xl mx-auto">
-                            <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-8">
-                                <span className="text-sm font-semibold text-white">🎉 Offre limitée</span>
-                            </div>
-
-                            <h2 className="mb-6 text-5xl font-bold text-white md:text-6xl leading-tight">
-                                Prêt à <span className="bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">booster</span> votre business ?
-                            </h2>
-
-                            <p className="mb-12 text-xl text-blue-100 leading-relaxed max-w-3xl mx-auto">
-                                Rejoignez plus de 8 500 entrepreneurs qui ont déjà transformé leur communication client avec HelloBoost.
-                                <span className="font-semibold text-white"> Démarrez gratuitement dès aujourd'hui</span> et obtenez vos premiers résultats en moins de 24h !
-                            </p>
-
-                            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-8">
-                                <Link
-                                    href={route('register')}
-                                    className="group relative rounded-2xl bg-white px-10 py-5 text-xl font-bold text-slate-900 shadow-2xl hover:shadow-white/25 transform hover:scale-105 transition-all duration-300 overflow-hidden"
-                                >
-                                    <span className="relative z-10 flex items-center">
-                                        Commencer gratuitement maintenant
-                                        <span className="ml-3 text-2xl group-hover:translate-x-1 transition-transform duration-300">🚀</span>
-                                    </span>
-                                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 to-orange-200 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                </Link>
-
-                                <div className="flex items-center text-blue-100">
-                                    <span className="text-lg">💳</span>
-                                    <span className="ml-2 font-medium">Aucune carte requise • 50 SMS offerts</span>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap justify-center items-center gap-8 text-blue-200">
-                                <div className="flex items-center">
-                                    <span className="text-xl mr-2">⚡</span>
-                                    <span className="font-medium">Activation en 2 minutes</span>
-                                </div>
-                                <div className="flex items-center">
-                                    <span className="text-xl mr-2">🛡️</span>
-                                    <span className="font-medium">Sécurité bancaire</span>
-                                </div>
-                                <div className="flex items-center">
-                                    <span className="text-xl mr-2">📞</span>
-                                    <span className="font-medium">Support 24/7</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Enhanced Footer */}
-                <footer className="bg-gradient-to-t from-slate-900 to-slate-800 py-20 text-white border-t border-white/10">
-                    <div className="container mx-auto px-6">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                {/* Footer */}
+                <footer className="bg-gray-900 text-white py-16">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                            {/* Logo & Description */}
                             <div className="col-span-1 md:col-span-2">
-                                <div className="flex items-center mb-6">
-                                    <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-cyan-400 to-blue-500 flex items-center justify-center shadow-xl mr-4">
-                                        <span className="text-xl font-bold">🚀</span>
+                                <div className="flex items-center mb-4">
+                                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                                        <span className="text-white text-sm font-bold">H</span>
                                     </div>
-                                    <span className="text-3xl font-bold bg-gradient-to-r from-white via-cyan-200 to-blue-200 bg-clip-text text-transparent">HelloBoost</span>
+                                    <span className="text-xl font-semibold">HelloBoost</span>
                                 </div>
-                                <p className="text-gray-400 mb-6 max-w-md leading-relaxed">
-                                    La plateforme SMS nouvelle génération qui propulse votre business vers de nouveaux sommets.
-                                    Conçue par des entrepreneurs, pour des entrepreneurs.
+                                <p className="text-gray-400 mb-6 max-w-md">
+                                    La plateforme SMS intelligente qui propulse votre business vers de nouveaux sommets.
                                 </p>
                                 <div className="flex space-x-4">
-                                    {[
-                                        { name: 'Twitter', icon: '🐦' },
-                                        { name: 'Facebook', icon: '📘' },
-                                        { name: 'LinkedIn', icon: '💼' },
-                                        { name: 'Instagram', icon: '📸' }
-                                    ].map((social) => (
-                                        <a
-                                            key={social.name}
-                                            href="#"
-                                            className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-all duration-300 hover:scale-110"
-                                            title={social.name}
-                                        >
-                                            <span className="text-xl">{social.icon}</span>
+                                    {['Twitter', 'Facebook', 'LinkedIn'].map((social) => (
+                                        <a key={social} href="#" className="text-gray-400 hover:text-white transition-colors">
+                                            <span className="sr-only">{social}</span>
+                                            <div className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-gray-700 transition-colors">
+                                                <span className="text-sm">{social[0]}</span>
+                                            </div>
                                         </a>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="col-span-1">
-                                <h3 className="font-bold text-lg mb-6 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Produit</h3>
-                                <ul className="space-y-3">
-                                    {['Fonctionnalités', 'Tarifs', 'Témoignages', 'Guide de démarrage', 'API Documentation'].map((item) => (
-                                        <li key={item}>
-                                            <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200 hover:underline">
-                                                {item}
-                                            </a>
-                                        </li>
-                                    ))}
+                            {/* Links */}
+                            <div>
+                                <h3 className="font-semibold mb-4">Produit</h3>
+                                <ul className="space-y-2 text-gray-400">
+                                    <li><a href="#" className="hover:text-white transition-colors">Fonctionnalités</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">Tarifs</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">API</a></li>
                                 </ul>
                             </div>
 
-                            <div className="col-span-1">
-                                <h3 className="font-bold text-lg mb-6 bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">Support</h3>
-                                <ul className="space-y-3">
-                                    {['Centre d\'aide', 'Tutoriels', 'FAQ', 'Contact', 'Statut système'].map((item) => (
-                                        <li key={item}>
-                                            <a href="#" className="text-gray-400 hover:text-white transition-colors duration-200 hover:underline">
-                                                {item}
-                                            </a>
-                                        </li>
-                                    ))}
+                            <div>
+                                <h3 className="font-semibold mb-4">Support</h3>
+                                <ul className="space-y-2 text-gray-400">
+                                    <li><a href="#" className="hover:text-white transition-colors">Centre d'aide</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                                    <li><a href="#" className="hover:text-white transition-colors">Statut</a></li>
                                 </ul>
                             </div>
                         </div>
 
-                        <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center">
-                            <p className="text-gray-500 mb-4 md:mb-0">
-                                &copy; {new Date().getFullYear()} HelloBoost. Tous droits réservés.
-                                <span className="text-red-400 mx-1">♥</span>
-                                Made in West Africa
+                        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+                            <p className="text-gray-400 text-sm">
+                                © 2024 HelloBoost. Tous droits réservés.
                             </p>
-                            <div className="flex space-x-6 text-sm">
-                                <a href="#" className="text-gray-500 hover:text-white transition-colors duration-200">Confidentialité</a>
-                                <a href="#" className="text-gray-500 hover:text-white transition-colors duration-200">Conditions</a>
-                                <a href="#" className="text-gray-500 hover:text-white transition-colors duration-200">Mentions légales</a>
+                            <div className="flex space-x-6 text-sm text-gray-400 mt-4 md:mt-0">
+                                <a href="#" className="hover:text-white transition-colors">Confidentialité</a>
+                                <a href="#" className="hover:text-white transition-colors">Conditions</a>
+                                <a href="#" className="hover:text-white transition-colors">Mentions légales</a>
                             </div>
                         </div>
                     </div>
                 </footer>
             </div>
+
+            {/* CSS Animations */}
+            <style jsx>{`
+                @keyframes fade-in {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                @keyframes fade-in-up {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                .animate-fade-in {
+                    animation: fade-in 0.6s ease-out forwards;
+                    opacity: 0;
+                }
+
+                .animate-fade-in-up {
+                    animation: fade-in-up 0.6s ease-out forwards;
+                    opacity: 0;
+                }
+
+                @media (prefers-reduced-motion: reduce) {
+                    .animate-fade-in,
+                    .animate-fade-in-up {
+                        animation: none;
+                        opacity: 1;
+                        transform: none;
+                    }
+                }
+
+                /* Smooth scroll */
+                html {
+                    scroll-behavior: smooth;
+                }
+            `}</style>
         </>
     );
 }

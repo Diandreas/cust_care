@@ -18,7 +18,7 @@ class Campaign extends Model
     const STATUS_PAUSED = 'paused';
     const STATUS_FAILED = 'failed';
     const STATUS_CANCELLED = 'cancelled';
-    
+
     // Liste des statuts pour validation
     public static $statuses = [
         self::STATUS_DRAFT,
@@ -60,31 +60,31 @@ class Campaign extends Model
     {
         return $this->belongsToMany(Client::class, 'campaign_client')->withTimestamps();
     }
-    
+
     /**
      * Vérifie si la campagne peut être modifiée
      */
     public function canBeEdited(): bool
     {
         return !in_array($this->status, [
-            self::STATUS_SENDING, 
-            self::STATUS_SENT, 
+            self::STATUS_SENDING,
+            self::STATUS_SENT,
             self::STATUS_PARTIALLY_SENT
         ]);
     }
-    
+
     /**
      * Vérifie si la campagne peut être annulée
      */
     public function canBeCancelled(): bool
     {
         return in_array($this->status, [
-            self::STATUS_SCHEDULED, 
-            self::STATUS_SENDING, 
+            self::STATUS_SCHEDULED,
+            self::STATUS_SENDING,
             self::STATUS_PAUSED
         ]);
     }
-    
+
     /**
      * Vérifie si la campagne peut être réessayée
      */
@@ -92,4 +92,19 @@ class Campaign extends Model
     {
         return $this->status === self::STATUS_FAILED;
     }
-} 
+    public function getDeliveryRateAttribute(): float
+    {
+        if ($this->recipients_count === 0) return 0;
+
+        return round(($this->delivered_count / $this->recipients_count) * 100, 2);
+    }
+
+    /**
+     * Scope pour les campagnes programmées
+     */
+    public function scopeScheduled($query)
+    {
+        return $query->where('status', self::STATUS_SCHEDULED)
+            ->where('scheduled_at', '<=', now());
+    }
+}

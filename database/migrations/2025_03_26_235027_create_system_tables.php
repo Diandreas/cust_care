@@ -21,6 +21,8 @@ return new class extends Migration
             $table->string('phone_number')->nullable();
             $table->rememberToken();
             $table->timestamps();
+
+
         });
 
         // Table pour réinitialisation de mot de passe

@@ -143,4 +143,40 @@ public function routeNotificationForTwilio($notification)
 {
     return $this->phone_number;
 }
+
+    public function twilioNumbers()
+    {
+        return $this->hasMany(TwilioNumber::class);
+    }
+
+    /**
+     * Obtenir le plan d'abonnement depuis la relation subscription ou l'attribut direct
+     */
+    public function getSubscriptionPlanAttribute()
+    {
+        // Si vous utilisez le modèle Subscription
+        if ($this->subscription) {
+            return $this->subscription->plan;
+        }
+
+        // Sinon utiliser l'attribut direct sur User
+        return $this->attributes['subscription_plan'] ?? 'starter';
+    }
+
+    /**
+     * Vérifier si l'utilisateur peut envoyer des SMS
+     */
+    public function canSendSms($count = 1): bool
+    {
+        $quotas = config('services.twilio.quotas');
+        $planQuota = $quotas[$this->subscription_plan]['sms_per_month'] ?? 0;
+
+        $currentUsage = $this->messages()
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
+
+        return ($currentUsage + $count) <= $planQuota;
+    }
+
 }

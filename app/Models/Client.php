@@ -11,18 +11,15 @@ class Client extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'name',
-        'phone',
-        'email',
-        'birthday',
-        'address',
-        'notes',
-        'gender',
+        'user_id', 'name', 'phone', 'email', 'birthday',
+        'address', 'notes', 'gender', 'opt_out', 'opt_out_date'
     ];
+
 
     protected $casts = [
         'birthday' => 'date',
+        'opt_out' => 'boolean',
+        'opt_out_date' => 'datetime',
     ];
 
     protected $appends = [
@@ -56,7 +53,7 @@ class Client extends Model
     {
         return $this->belongsToMany(Tag::class);
     }
-    
+
     /**
      * Obtenir la date du dernier message
      */
@@ -64,7 +61,7 @@ class Client extends Model
     {
         return $this->messages()->latest()->value('created_at');
     }
-    
+
     /**
      * Obtenir la date de la dernière visite
      */
@@ -72,7 +69,7 @@ class Client extends Model
     {
         return $this->visits()->latest('visit_date')->value('visit_date');
     }
-    
+
     /**
      * Déterminer si le client est actif (au moins un message dans les 90 jours)
      */
@@ -80,10 +77,10 @@ class Client extends Model
     {
         $lastMessage = $this->messages()->latest()->first();
         if (!$lastMessage) return false;
-        
+
         return $lastMessage->created_at->diffInDays(now()) <= 90;
     }
-    
+
     /**
      * Scope pour les clients actifs
      */
@@ -93,7 +90,7 @@ class Client extends Model
             $q->where('created_at', '>=', now()->subDays(90));
         });
     }
-    
+
     /**
      * Scope pour les clients inactifs
      */
@@ -119,7 +116,7 @@ class Client extends Model
             $q->where('created_at', '>=', now()->subDays(90));
         });
     }
-    
+
     /**
      * Scope pour filtrer par tags
      */
@@ -129,4 +126,39 @@ class Client extends Model
             $q->whereIn('tags.id', $tagIds);
         });
     }
-} 
+
+    public function scopeOptedIn($query)
+    {
+        return $query->where('opt_out', false);
+    }
+
+    /**
+     * Vérifier si le client peut recevoir des SMS
+     */
+    public function canReceiveSms(): bool
+    {
+        return !$this->opt_out;
+    }
+
+    /**
+     * Marquer comme désinscrit
+     */
+    public function optOut(): void
+    {
+        $this->update([
+            'opt_out' => true,
+            'opt_out_date' => now()
+        ]);
+    }
+
+    /**
+     * Marquer comme réinscrit
+     */
+    public function optIn(): void
+    {
+        $this->update([
+            'opt_out' => false,
+            'opt_out_date' => null
+        ]);
+    }
+}
