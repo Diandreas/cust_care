@@ -689,8 +689,6 @@
             "failed": "Échoué"
         },
         "viewAllTransactions": "Voir toutes les transactions",
-        "transactionHistory": "Historique des transactions",
-        "allTransactions": "Toutes les transactions",
         "plans": {
             "title": "Forfaits d'abonnement",
             "heading": "Choisissez le forfait adapté à votre entreprise",
@@ -805,233 +803,97 @@
         "saved": "Enregistré."
     },
     "welcome": {
-        "meta": {
-            "title": "HelloBoost - Messages Automatiques pour Votre Business"
-        },
-        "header": {
-            "brand": "HelloBoost",
-            "nav": {
-                "examples": "Exemples concrets",
-                "pricing": "Tarifs",
-                "testimonials": "Témoignages"
-            },
-            "dashboard": "Dashboard",
-            "login": "Connexion",
-            "getStarted": "Commencer"
-        },
         "hero": {
-            "badge": "Vos clients reçoivent automatiquement les bons messages au bon moment",
-            "title": {
-                "line1": "Envoyez des messages",
-                "line2": "automatiques",
-                "line3": "à vos clients"
-            },
-            "subtitle": {
-                "highlight": "Messages d'anniversaire, rappels de RDV, promotions ciblées...",
-                "description": "HelloBoost envoie automatiquement les messages que vos clients attendent,",
-                "emphasis": "sans que vous ayez rien à faire."
-            },
-            "cta": {
-                "primary": "Automatiser mes messages",
-                "secondary": "Voir comment ça marche"
-            },
-            "promise": {
-                "title": "🎯 Résultat garanti en 24h",
-                "description": "Configurez une fois, vos clients reçoivent des messages personnalisés pour toujours"
-            }
+            "title": "Connectez avec vos clients par SMS comme jamais auparavant",
+            "subtitle": "Plateforme professionnelle pour gérer vos campagnes SMS, automatiser vos événements et fidéliser vos clients.",
+            "startButton": "Commencer gratuitement",
+            "learnMoreButton": "En savoir plus"
         },
-        "demo": {
-            "header": {
-                "title": "Campagne automatique en cours"
+        "features": {
+            "title": "Fonctionnalités puissantes",
+            "subtitle": "Tout ce dont vous avez besoin pour gérer efficacement vos communications par SMS",
+            "feature1": {
+                "title": "Gestion des clients",
+                "description": "Organisez vos contacts par catégories et conservez toutes les informations importantes."
             },
-            "automaticSend": "Envoyé automatiquement",
-            "delivered": "✅ Livré",
-            "automaticResult": "Résultat automatique"
-        },
-        "examples": {
-            "birthday": {
-                "title": "Messages d'anniversaire automatiques",
-                "example": "Joyeux anniversaire Aminata ! 🎉 Profitez de 20% de réduction sur votre prochain RDV avec le code ANNIV20",
-                "business": "Cabinet Dr Diallo",
-                "result": "73% des patients reviennent dans le mois"
+            "feature2": {
+                "title": "Campagnes SMS",
+                "description": "Créez et programmez des campagnes SMS ciblées pour atteindre vos clients au bon moment."
             },
-            "appointment": {
-                "title": "Rappels de rendez-vous intelligents",
-                "example": "Bonjour Mme Kone, votre RDV est demain à 14h. Confirmez en répondant OUI. Merci ! 📅",
-                "business": "Pharmacie Centrale",
-                "result": "95% de taux de présence aux RDV"
-            },
-            "promotion": {
-                "title": "Promotions ciblées automatiques",
-                "example": "🔥 FLASH SALE ! 50% sur vos articles préférés jusqu'à demain 18h. Venez vite !",
-                "business": "Boutique Fatou",
-                "result": "+180% de ventes le jour J"
-            },
-            "loyalty": {
-                "title": "Fidélisation personnalisée",
-                "example": "Salut Omar ! Cela fait 2 semaines... Revenez cette semaine et obtenez votre plat GRATUIT ! 🍽️",
-                "business": "Restaurant Le Baobab",
-                "result": "87% des clients inactifs reviennent"
+            "feature3": {
+                "title": "Événements automatiques",
+                "description": "Automatisez les messages pour les anniversaires, fêtes et autres événements importants."
             }
         },
         "howItWorks": {
-            "title": "Concrètement, qu'est-ce que vos clients vont recevoir ?",
-            "subtitle": "Voici exactement ce que HelloBoost envoie automatiquement à vos clients"
-        },
-        "features": {
-            "birthday": {
-                "title": "Messages d'anniversaire",
-                "description": "Le jour J, vos clients reçoivent automatiquement un message personnalisé avec une offre spéciale",
-                "example": "Joyeux anniversaire Marie ! 🎉 Profitez de 25% sur tout aujourd'hui avec ANNIV25",
-                "frequency": "Automatique chaque année"
+            "title": "Comment ça fonctionne",
+            "subtitle": "Démarrez en trois étapes simples",
+            "step1": {
+                "title": "Créez votre compte",
+                "description": "Inscrivez-vous et choisissez le forfait qui correspond le mieux à vos besoins"
             },
-            "reminder": {
-                "title": "Rappels de rendez-vous",
-                "description": "24h avant leur RDV, vos clients reçoivent un rappel automatique pour éviter les absences",
-                "example": "Rappel : RDV demain 14h chez Dr Diallo. Confirmez en répondant OUI",
-                "frequency": "24h avant chaque RDV"
+            "step2": {
+                "title": "Importez vos contacts",
+                "description": "Ajoutez vos clients et organisez-les en segments pertinents"
             },
-            "promotion": {
-                "title": "Promotions ciblées",
-                "description": "Vos clients fidèles reçoivent en priorité vos offres spéciales et nouveautés",
-                "example": "FLASH SALE ! 50% sur vos articles favoris jusqu'à ce soir. Venez vite !",
-                "frequency": "Selon vos campagnes"
-            },
-            "winback": {
-                "title": "Reconquête clients perdus",
-                "description": "Après 30 jours d'absence, vos anciens clients reçoivent une offre de retour personnalisée",
-                "example": "Salut Omar ! On vous a manqué... Revenez avec 30% de réduction !",
-                "frequency": "Après 30 jours d'inactivité"
-            },
-            "loyalty": {
-                "title": "Fidélisation automatique",
-                "description": "Après 5 visites, vos clients fidèles reçoivent automatiquement des avantages VIP",
-                "example": "Bravo Fatou ! Vous êtes VIP. Voici 20% sur votre prochaine commande",
-                "frequency": "Après X achats/visites"
-            },
-            "stock": {
-                "title": "Nouveautés & Stock",
-                "description": "Vos clients sont prévenus en premier quand leurs produits préférés arrivent",
-                "example": "Bonne nouvelle ! Vos chaussures préférées sont de retour en stock !",
-                "frequency": "Dès que disponible"
-            },
-            "cta": {
-                "title": "✨ Tout cela se configure en 2 minutes et fonctionne pour toujours",
-                "button": "Configurer mes messages automatiques"
-            }
-        },
-        "stats": {
-            "clients": {
-                "label": "Entrepreneurs",
-                "sublabel": "qui automatisent leurs messages"
-            },
-            "messages": {
-                "label": "Messages automatiques",
-                "sublabel": "envoyés chaque mois"
-            },
-            "satisfaction": {
-                "label": "Clients satisfaits",
-                "sublabel": "qui recommandent HelloBoost"
+            "step3": {
+                "title": "Lancez vos campagnes",
+                "description": "Créez, planifiez et suivez vos campagnes SMS en toute simplicité"
             }
         },
         "testimonials": {
-            "title": "Résultats concrets de nos clients",
-            "testimonial1": {
-                "quote": "Depuis que j'utilise HelloBoost, mes patients ne ratent plus jamais leurs RDV. Les rappels automatiques ont révolutionné ma pratique !",
-                "author": "Dr. Aminata Diallo",
-                "role": "Chirurgien-Dentiste, Dakar",
-                "metric": "+73% présence aux RDV",
-                "detail": "Économie de 6h/semaine en appels de rappel"
-            },
-            "testimonial2": {
-                "quote": "Les messages d'anniversaire automatiques avec code promo ont boosté mes ventes. Mes clientes adorent cette attention personnalisée !",
-                "author": "Fatou Touré",
-                "role": "Boutique Mode, Dakar",
-                "metric": "+180% CA le jour d'anniversaire",
-                "detail": "2,400 messages d'anniversaire automatiques/an"
-            },
-            "testimonial3": {
-                "quote": "HelloBoost reconquête automatiquement mes anciens clients. Chaque mois, 30% de mes clients 'perdus' reviennent grâce aux messages de reconquête.",
-                "author": "Ousmane Sow",
-                "role": "Restaurant Le Baobab",
-                "metric": "+95% taux de retour",
-                "detail": "347 clients reconquis automatiquement"
-            }
+            "title": "Ils utilisent déjà EliteSMS",
+            "subtitle": "Découvrez comment des entreprises comme la vôtre transforment leur communication client",
+            "quote1": "Grâce à EliteSMS, nous avons augmenté notre taux de fidélisation de 30% en seulement 3 mois. Un outil indispensable pour notre boutique.",
+            "quote2": "L'automatisation des messages d'anniversaire a créé un lien fort avec nos clients. Ils apprécient cette attention personnalisée.",
+            "quote3": "Le rapport qualité-prix est imbattable. Nous gérons efficacement notre communication avec plus de 1500 clients grâce à cette plateforme."
+        },
+        "gallery": {
+            "title": "EliteSMS en action",
+            "subtitle": "Découvrez notre plateforme à travers ces captures d'écran"
         },
         "pricing": {
-            "title": "Combien coûte l'automatisation de vos messages ?",
-            "subtitle": "Moins que ce que vous dépensez en café par mois",
-            "popular": "⭐ Plus choisi",
-            "currency": "FCFA/mois",
+            "title": "Plans tarifaires",
+            "subtitle": "Choisissez le plan qui correspond le mieux à vos besoins",
+            "popular": "Plus populaire",
             "starter": {
-                "name": "Starter",
-                "price": "7.500",
-                "description": "Automatisation de base",
-                "feature1": "150 clients maximum",
-                "feature2": "Messages d'anniversaire automatiques",
-                "feature3": "Rappels de RDV basiques",
-                "feature4": "Support par email",
-                "result": "Économise 2h/semaine"
+                "name": "Pack Starter",
+                "description": "Idéal pour les petites entreprises et les débutants",
+                "feature1": "Jusqu'à 100 clients",
+                "feature2": "2 campagnes par mois (200 SMS)",
+                "feature3": "50 SMS personnalisés par mois",
+                "feature4": "Support par email"
             },
             "business": {
-                "name": "Business",
-                "price": "18.000",
-                "description": "Automatisation complète",
-                "feature1": "750 clients maximum",
-                "feature2": "Tous les types de messages auto",
-                "feature3": "Reconquête clients perdus",
-                "feature4": "Promotions ciblées automatiques",
-                "feature5": "Analytics détaillées",
-                "result": "Économise 8h/semaine + augmente CA"
+                "name": "Pack Business",
+                "description": "Parfait pour les entreprises en croissance",
+                "feature1": "Jusqu'à 500 clients",
+                "feature2": "4 campagnes par mois (1 000 SMS)",
+                "feature3": "200 SMS personnalisés par mois",
+                "feature4": "Report de 10% des SMS non utilisés",
+                "feature5": "Support prioritaire"
             },
             "enterprise": {
-                "name": "Enterprise",
-                "price": "35.000",
-                "description": "Automatisation sur-mesure",
-                "feature1": "3.000 clients maximum",
-                "feature2": "Automatisation personnalisée",
-                "feature3": "Intégrations avancées",
-                "feature4": "Support dédié 24/7",
-                "feature5": "Formation incluse",
-                "result": "ROI garanti sous 30 jours"
+                "name": "Pack Enterprise",
+                "description": "Pour les entreprises avec besoins importants",
+                "feature1": "Jusqu'à 2 000 clients",
+                "feature2": "8 campagnes par mois (4 000 SMS)",
+                "feature3": "500 SMS personnalisés par mois",
+                "feature4": "Report de 20% des SMS non utilisés",
+                "feature5": "Support dédié 24/7"
             },
-            "cta": "Automatiser maintenant",
-            "guarantee": "Garantie satisfait ou remboursé 30 jours"
+            "button": "Commencer"
         },
-        "finalCta": {
-            "title": "Prêt à automatiser vos messages ?",
-            "subtitle": {
-                "part1": "En 2 minutes",
-                "part2": ", configurez vos messages automatiques.",
-                "part3": "Pour toujours",
-                "part4": ", vos clients reçoivent les bons messages au bon moment."
-            },
-            "features": {
-                "setup": "Configuration en 2min",
-                "freeSms": "100 SMS gratuits",
-                "results": "Résultats en 24h"
-            },
-            "button": "Automatiser mes messages maintenant",
-            "benefits": "✅ Essai gratuit • ✅ Sans engagement • ✅ Configuration en 2 minutes"
+        "cta": {
+            "title": "Prêt à améliorer vos communications par SMS?",
+            "subtitle": "Inscrivez-vous aujourd'hui et obtenez 50 SMS gratuits pour essayer notre service",
+            "button": "Créer un compte gratuitement"
         },
         "footer": {
-            "brand": "HelloBoost",
-            "description": "Automatisez vos messages clients en 2 minutes. Résultats garantis en 24h.",
-            "automation": {
-                "title": "Automatisation",
-                "birthday": "Messages d'anniversaire",
-                "appointments": "Rappels de RDV",
-                "winback": "Reconquête clients"
-            },
-            "support": {
-                "title": "Support",
-                "setup": "Configuration gratuite",
-                "support24": "Support 24/7",
-                "training": "Formation incluse"
-            },
-            "copyright": "© 2024 HelloBoost. Messages automatiques pour votre business.",
             "privacy": "Confidentialité",
-            "terms": "Conditions"
+            "terms": "Conditions",
+            "contact": "Contact",
+            "rights": "Tous droits réservés."
         }
     },
     "gender": {

@@ -113,34 +113,34 @@ export default function Welcome({
     // Exemples concrets d'utilisation
     const realExamples = [
         {
-            title: "Messages d'anniversaire automatiques",
-            example: '"Joyeux anniversaire Aminata ! 🎉 Profitez de 20% de réduction sur votre prochain RDV avec le code ANNIV20"',
-            business: "Cabinet Dr Diallo",
-            result: "73% des patients reviennent dans le mois"
+            title: t('welcome.examples.birthday.title'),
+            example: t('welcome.examples.birthday.example'),
+            business: t('welcome.examples.birthday.business'),
+            result: t('welcome.examples.birthday.result')
         },
         {
-            title: "Rappels de rendez-vous intelligents",
-            example: '"Bonjour Mme Kone, votre RDV est demain à 14h. Confirmez en répondant OUI. Merci ! 📅"',
-            business: "Pharmacie Centrale",
-            result: "95% de taux de présence aux RDV"
+            title: t('welcome.examples.appointment.title'),
+            example: t('welcome.examples.appointment.example'),
+            business: t('welcome.examples.appointment.business'),
+            result: t('welcome.examples.appointment.result')
         },
         {
-            title: "Promotions ciblées automatiques",
-            example: '"🔥 FLASH SALE ! 50% sur vos articles préférés jusqu\'à demain 18h. Venez vite !"',
-            business: "Boutique Fatou",
-            result: "+180% de ventes le jour J"
+            title: t('welcome.examples.promotion.title'),
+            example: t('welcome.examples.promotion.example'),
+            business: t('welcome.examples.promotion.business'),
+            result: t('welcome.examples.promotion.result')
         },
         {
-            title: "Fidélisation personnalisée",
-            example: '"Salut Omar ! Cela fait 2 semaines... Revenez cette semaine et obtenez votre plat GRATUIT ! 🍽️"',
-            business: "Restaurant Le Baobab",
-            result: "87% des clients inactifs reviennent"
+            title: t('welcome.examples.loyalty.title'),
+            example: t('welcome.examples.loyalty.example'),
+            business: t('welcome.examples.loyalty.business'),
+            result: t('welcome.examples.loyalty.result')
         }
     ];
 
     return (
         <>
-            <Head title="HelloBoost - Messages Automatiques pour Votre Business" />
+            <Head title={t('welcome.meta.title')} />
 
             <div className="min-h-screen bg-white text-gray-900">
                 {/* Header Modern avec gradient */}
@@ -157,20 +157,20 @@ export default function Welcome({
                                     <span className="text-white text-sm font-bold">H</span>
                                 </div>
                                 <span className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                                    HelloBoost
+                                    {t('welcome.header.brand')}
                                 </span>
                             </div>
 
                             {/* Navigation */}
                             <nav className="hidden md:flex items-center space-x-8">
                                 <a href="#examples" className="text-gray-600 hover:text-purple-600 transition-colors">
-                                    Exemples concrets
+                                    {t('welcome.header.nav.examples')}
                                 </a>
                                 <a href="#pricing" className="text-gray-600 hover:text-purple-600 transition-colors">
-                                    Tarifs
+                                    {t('welcome.header.nav.pricing')}
                                 </a>
                                 <a href="#testimonials" className="text-gray-600 hover:text-purple-600 transition-colors">
-                                    Témoignages
+                                    {t('welcome.header.nav.testimonials')}
                                 </a>
                             </nav>
 
@@ -205,7 +205,7 @@ export default function Welcome({
                                         href={route('dashboard')}
                                         className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-pink-700 transition-all"
                                     >
-                                        Dashboard
+                                        {t('welcome.header.dashboard')}
                                     </Link>
                                 ) : (
                                     <>
@@ -213,13 +213,13 @@ export default function Welcome({
                                             href={route('login')}
                                             className="text-gray-600 hover:text-purple-600 px-3 py-2 text-sm font-medium transition-colors"
                                         >
-                                            Connexion
+                                            {t('welcome.header.login')}
                                         </Link>
                                         <Link
                                             href={route('register')}
                                             className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-purple-700 hover:to-pink-700 transition-all"
                                         >
-                                            Commencer
+                                            {t('welcome.header.getStarted')}
                                         </Link>
                                     </>
                                 )}
@@ -237,20 +237,20 @@ export default function Welcome({
                                 visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in' : ''
                             }`}>
                                 <span className="w-2 h-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mr-2"></span>
-                                Vos clients reçoivent automatiquement les bons messages au bon moment
+                                {t('welcome.hero.badge')}
                             </div>
 
                             {/* Headline ultra-claire */}
                             <h1 className={`text-4xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight ${
                                 visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                             }`} style={{ animationDelay: '0.1s' }}>
-                                Envoyez des messages
+                                {t('welcome.hero.title.line1')}
                                 <br />
                                 <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                                    automatiques
+                                    {t('welcome.hero.title.line2')}
                                 </span>
                                 <br />
-                                à vos clients
+                                {t('welcome.hero.title.line3')}
                             </h1>
 
                             {/* Bénéfices concrets */}
@@ -258,11 +258,11 @@ export default function Welcome({
                                 visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                             }`} style={{ animationDelay: '0.2s' }}>
                                 <p className="mb-4 leading-relaxed">
-                                    <strong className="text-gray-900">Messages d'anniversaire, rappels de RDV, promotions ciblées...</strong>
+                                    <strong className="text-gray-900">{t('welcome.hero.subtitle.highlight')}</strong>
                                 </p>
                                 <p className="text-lg">
-                                    HelloBoost envoie automatiquement les messages que vos clients attendent,
-                                    <span className="font-semibold text-purple-600"> sans que vous ayez rien à faire.</span>
+                                    {t('welcome.hero.subtitle.description')}
+                                    <span className="font-semibold text-purple-600"> {t('welcome.hero.subtitle.emphasis')}</span>
                                 </p>
                             </div>
 
@@ -274,10 +274,10 @@ export default function Welcome({
                                     href={route('register')}
                                     className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 transform hover:scale-105"
                                 >
-                                    Automatiser mes messages
+                                    {t('welcome.hero.cta.primary')}
                                 </Link>
                                 <button className="border-2 border-purple-300 text-purple-700 px-8 py-4 rounded-lg text-lg font-semibold hover:border-purple-400 hover:bg-purple-50 transition-all duration-200">
-                                    Voir comment ça marche
+                                    {t('welcome.hero.cta.secondary')}
                                 </button>
                             </div>
 
@@ -286,10 +286,10 @@ export default function Welcome({
                                 visibleSections.has('hero') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                             }`} style={{ animationDelay: '0.4s' }}>
                                 <p className="text-lg font-semibold text-gray-900 mb-2">
-                                    🎯 Résultat garanti en 24h
+                                    {t('welcome.hero.promise.title')}
                                 </p>
                                 <p className="text-gray-700">
-                                    Configurez une fois, vos clients reçoivent des messages personnalisés pour toujours
+                                    {t('welcome.hero.promise.description')}
                                 </p>
                             </div>
                         </div>
@@ -302,7 +302,7 @@ export default function Welcome({
                                 {/* Header de l'interface */}
                                 <div className="bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4 text-white">
                                     <div className="flex items-center justify-between">
-                                        <h3 className="font-semibold">Campagne automatique en cours</h3>
+                                        <h3 className="font-semibold">{t('welcome.demo.header.title')}</h3>
                                         <span className="bg-white/20 px-3 py-1 rounded-full text-sm">
                                             {realExamples[currentExample].business}
                                         </span>
@@ -322,8 +322,8 @@ export default function Welcome({
                                                     {realExamples[currentExample].example}
                                                 </p>
                                                 <div className="mt-4 flex items-center justify-between">
-                                                    <span className="text-sm text-gray-600">Envoyé automatiquement</span>
-                                                    <span className="text-green-600 text-sm font-medium">✅ Livré</span>
+                                                    <span className="text-sm text-gray-600">{t('welcome.demo.automaticSend')}</span>
+                                                    <span className="text-green-600 text-sm font-medium">{t('welcome.demo.delivered')}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -335,7 +335,7 @@ export default function Welcome({
                                                     {realExamples[currentExample].result}
                                                 </div>
                                                 <p className="text-gray-700 font-medium">
-                                                    Résultat automatique
+                                                    {t('welcome.demo.automaticResult')}
                                                 </p>
                                             </div>
                                         </div>
@@ -367,12 +367,12 @@ export default function Welcome({
                             <h2 className={`text-3xl md:text-4xl font-bold text-gray-900 mb-4 ${
                                 visibleSections.has('examples') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                             }`}>
-                                Concrètement, qu'est-ce que vos clients vont recevoir ?
+                                {t('welcome.howItWorks.title')}
                             </h2>
                             <p className={`text-xl text-gray-600 max-w-3xl mx-auto ${
                                 visibleSections.has('examples') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                             }`} style={{ animationDelay: '0.1s' }}>
-                                Voici exactement ce que HelloBoost envoie automatiquement à vos clients
+                                {t('welcome.howItWorks.subtitle')}
                             </p>
                         </div>
 
@@ -380,45 +380,45 @@ export default function Welcome({
                             {[
                                 {
                                     icon: "🎂",
-                                    title: "Messages d'anniversaire",
-                                    description: "Le jour J, vos clients reçoivent automatiquement un message personnalisé avec une offre spéciale",
-                                    example: '"Joyeux anniversaire Marie ! 🎉 Profitez de 25% sur tout aujourd\'hui avec ANNIV25"',
-                                    frequency: "Automatique chaque année"
+                                    title: t('welcome.features.birthday.title'),
+                                    description: t('welcome.features.birthday.description'),
+                                    example: t('welcome.features.birthday.example'),
+                                    frequency: t('welcome.features.birthday.frequency')
                                 },
                                 {
                                     icon: "📅",
-                                    title: "Rappels de rendez-vous",
-                                    description: "24h avant leur RDV, vos clients reçoivent un rappel automatique pour éviter les absences",
-                                    example: '"Rappel : RDV demain 14h chez Dr Diallo. Confirmez en répondant OUI"',
-                                    frequency: "24h avant chaque RDV"
+                                    title: t('welcome.features.reminder.title'),
+                                    description: t('welcome.features.reminder.description'),
+                                    example: t('welcome.features.reminder.example'),
+                                    frequency: t('welcome.features.reminder.frequency')
                                 },
                                 {
                                     icon: "🔥",
-                                    title: "Promotions ciblées",
-                                    description: "Vos clients fidèles reçoivent en priorité vos offres spéciales et nouveautés",
-                                    example: '"FLASH SALE ! 50% sur vos articles favoris jusqu\'à ce soir. Venez vite !"',
-                                    frequency: "Selon vos campagnes"
+                                    title: t('welcome.features.promotion.title'),
+                                    description: t('welcome.features.promotion.description'),
+                                    example: t('welcome.features.promotion.example'),
+                                    frequency: t('welcome.features.promotion.frequency')
                                 },
                                 {
                                     icon: "💔",
-                                    title: "Reconquête clients perdus",
-                                    description: "Après 30 jours d'absence, vos anciens clients reçoivent une offre de retour personnalisée",
-                                    example: '"Salut Omar ! On vous a manqué... Revenez avec 30% de réduction !"',
-                                    frequency: "Après 30 jours d'inactivité"
+                                    title: t('welcome.features.winback.title'),
+                                    description: t('welcome.features.winback.description'),
+                                    example: t('welcome.features.winback.example'),
+                                    frequency: t('welcome.features.winback.frequency')
                                 },
                                 {
                                     icon: "🎁",
-                                    title: "Fidélisation automatique",
-                                    description: "Après 5 visites, vos clients fidèles reçoivent automatiquement des avantages VIP",
-                                    example: '"Bravo Fatou ! Vous êtes VIP. Voici 20% sur votre prochaine commande"',
-                                    frequency: "Après X achats/visites"
+                                    title: t('welcome.features.loyalty.title'),
+                                    description: t('welcome.features.loyalty.description'),
+                                    example: t('welcome.features.loyalty.example'),
+                                    frequency: t('welcome.features.loyalty.frequency')
                                 },
                                 {
                                     icon: "📦",
-                                    title: "Nouveautés & Stock",
-                                    description: "Vos clients sont prévenus en premier quand leurs produits préférés arrivent",
-                                    example: '"Bonne nouvelle ! Vos chaussures préférées sont de retour en stock !"',
-                                    frequency: "Dès que disponible"
+                                    title: t('welcome.features.stock.title'),
+                                    description: t('welcome.features.stock.description'),
+                                    example: t('welcome.features.stock.example'),
+                                    frequency: t('welcome.features.stock.frequency')
                                 }
                             ].map((feature, index) => (
                                 <div key={index} className={`bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 ${
@@ -444,13 +444,13 @@ export default function Welcome({
                         <div className="text-center mt-16">
                             <div className="bg-white rounded-xl p-8 shadow-lg inline-block">
                                 <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                                    ✨ Tout cela se configure en 2 minutes et fonctionne pour toujours
+                                    {t('welcome.features.cta.title')}
                                 </h3>
                                 <Link
                                     href={route('register')}
                                     className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:from-purple-700 hover:to-pink-700 transition-all duration-200 inline-block"
                                 >
-                                    Configurer mes messages automatiques
+                                    {t('welcome.features.cta.button')}
                                 </Link>
                             </div>
                         </div>
@@ -465,20 +465,20 @@ export default function Welcome({
                                 {
                                     value: animatedStats.clients,
                                     suffix: "+",
-                                    label: "Entrepreneurs",
-                                    sublabel: "qui automatisent leurs messages"
+                                    label: t('welcome.stats.clients.label'),
+                                    sublabel: t('welcome.stats.clients.sublabel')
                                 },
                                 {
                                     value: animatedStats.messages,
                                     suffix: "+",
-                                    label: "Messages automatiques",
-                                    sublabel: "envoyés chaque mois"
+                                    label: t('welcome.stats.messages.label'),
+                                    sublabel: t('welcome.stats.messages.sublabel')
                                 },
                                 {
                                     value: animatedStats.satisfaction,
                                     suffix: "%",
-                                    label: "Clients satisfaits",
-                                    sublabel: "qui recommandent HelloBoost"
+                                    label: t('welcome.stats.satisfaction.label'),
+                                    sublabel: t('welcome.stats.satisfaction.sublabel')
                                 }
                             ].map((stat, index) => (
                                 <div key={index} className={`${
@@ -502,32 +502,32 @@ export default function Welcome({
                             <h2 className={`text-3xl md:text-4xl font-bold text-gray-900 mb-4 ${
                                 visibleSections.has('testimonials') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                             }`}>
-                                Résultats concrets de nos clients
+                                {t('welcome.testimonials.title')}
                             </h2>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {[
                                 {
-                                    quote: "Depuis que j'utilise HelloBoost, mes patients ne ratent plus jamais leurs RDV. Les rappels automatiques ont révolutionné ma pratique !",
-                                    author: "Dr. Aminata Diallo",
-                                    role: "Chirurgien-Dentiste, Dakar",
-                                    metric: "+73% présence aux RDV",
-                                    detail: "Économie de 6h/semaine en appels de rappel"
+                                    quote: t('welcome.testimonials.testimonial1.quote'),
+                                    author: t('welcome.testimonials.testimonial1.author'),
+                                    role: t('welcome.testimonials.testimonial1.role'),
+                                    metric: t('welcome.testimonials.testimonial1.metric'),
+                                    detail: t('welcome.testimonials.testimonial1.detail')
                                 },
                                 {
-                                    quote: "Les messages d'anniversaire automatiques avec code promo ont boosté mes ventes. Mes clientes adorent cette attention personnalisée !",
-                                    author: "Fatou Touré",
-                                    role: "Boutique Mode, Dakar",
-                                    metric: "+180% CA le jour d'anniversaire",
-                                    detail: "2,400 messages d'anniversaire automatiques/an"
+                                    quote: t('welcome.testimonials.testimonial2.quote'),
+                                    author: t('welcome.testimonials.testimonial2.author'),
+                                    role: t('welcome.testimonials.testimonial2.role'),
+                                    metric: t('welcome.testimonials.testimonial2.metric'),
+                                    detail: t('welcome.testimonials.testimonial2.detail')
                                 },
                                 {
-                                    quote: "HelloBoost reconquête automatiquement mes anciens clients. Chaque mois, 30% de mes clients 'perdus' reviennent grâce aux messages de reconquête.",
-                                    author: "Ousmane Sow",
-                                    role: "Restaurant Le Baobab",
-                                    metric: "+95% taux de retour",
-                                    detail: "347 clients reconquis automatiquement"
+                                    quote: t('welcome.testimonials.testimonial3.quote'),
+                                    author: t('welcome.testimonials.testimonial3.author'),
+                                    role: t('welcome.testimonials.testimonial3.role'),
+                                    metric: t('welcome.testimonials.testimonial3.metric'),
+                                    detail: t('welcome.testimonials.testimonial3.detail')
                                 }
                             ].map((testimonial, index) => (
                                 <div key={index} className={`bg-white p-8 rounded-xl shadow-lg border border-gray-100 ${
@@ -566,57 +566,57 @@ export default function Welcome({
                             <h2 className={`text-3xl md:text-4xl font-bold text-gray-900 mb-4 ${
                                 visibleSections.has('pricing') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                             }`}>
-                                Combien coûte l'automatisation de vos messages ?
+                                {t('welcome.pricing.title')}
                             </h2>
                             <p className={`text-xl text-gray-600 ${
                                 visibleSections.has('pricing') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                             }`} style={{ animationDelay: '0.1s' }}>
-                                Moins que ce que vous dépensez en café par mois
+                                {t('welcome.pricing.subtitle')}
                             </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
                             {[
                                 {
-                                    name: "Starter",
-                                    price: "7.500",
-                                    description: "Automatisation de base",
+                                    name: t('welcome.pricing.starter.name'),
+                                    price: t('welcome.pricing.starter.price'),
+                                    description: t('welcome.pricing.starter.description'),
                                     features: [
-                                        "150 clients maximum",
-                                        "Messages d'anniversaire automatiques",
-                                        "Rappels de RDV basiques",
-                                        "Support par email"
+                                        t('welcome.pricing.starter.feature1'),
+                                        t('welcome.pricing.starter.feature2'),
+                                        t('welcome.pricing.starter.feature3'),
+                                        t('welcome.pricing.starter.feature4')
                                     ],
                                     popular: false,
-                                    result: "Économise 2h/semaine"
+                                    result: t('welcome.pricing.starter.result')
                                 },
                                 {
-                                    name: "Business",
-                                    price: "18.000",
-                                    description: "Automatisation complète",
+                                    name: t('welcome.pricing.business.name'),
+                                    price: t('welcome.pricing.business.price'),
+                                    description: t('welcome.pricing.business.description'),
                                     features: [
-                                        "750 clients maximum",
-                                        "Tous les types de messages auto",
-                                        "Reconquête clients perdus",
-                                        "Promotions ciblées automatiques",
-                                        "Analytics détaillées"
+                                        t('welcome.pricing.business.feature1'),
+                                        t('welcome.pricing.business.feature2'),
+                                        t('welcome.pricing.business.feature3'),
+                                        t('welcome.pricing.business.feature4'),
+                                        t('welcome.pricing.business.feature5')
                                     ],
                                     popular: true,
-                                    result: "Économise 8h/semaine + augmente CA"
+                                    result: t('welcome.pricing.business.result')
                                 },
                                 {
-                                    name: "Enterprise",
-                                    price: "35.000",
-                                    description: "Automatisation sur-mesure",
+                                    name: t('welcome.pricing.enterprise.name'),
+                                    price: t('welcome.pricing.enterprise.price'),
+                                    description: t('welcome.pricing.enterprise.description'),
                                     features: [
-                                        "3.000 clients maximum",
-                                        "Automatisation personnalisée",
-                                        "Intégrations avancées",
-                                        "Support dédié 24/7",
-                                        "Formation incluse"
+                                        t('welcome.pricing.enterprise.feature1'),
+                                        t('welcome.pricing.enterprise.feature2'),
+                                        t('welcome.pricing.enterprise.feature3'),
+                                        t('welcome.pricing.enterprise.feature4'),
+                                        t('welcome.pricing.enterprise.feature5')
                                     ],
                                     popular: false,
-                                    result: "ROI garanti sous 30 jours"
+                                    result: t('welcome.pricing.enterprise.result')
                                 }
                             ].map((plan, index) => (
                                 <div key={index} className={`relative bg-white border-2 rounded-xl p-8 ${
@@ -626,7 +626,7 @@ export default function Welcome({
                                     {plan.popular && (
                                         <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                                             <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-medium">
-                                                ⭐ Plus choisi
+                                                {t('welcome.pricing.popular')}
                                             </span>
                                         </div>
                                     )}
@@ -638,7 +638,7 @@ export default function Welcome({
                                             <span className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                                                 {plan.price}
                                             </span>
-                                            <span className="text-gray-600 ml-2">FCFA/mois</span>
+                                            <span className="text-gray-600 ml-2">{t('welcome.pricing.currency')}</span>
                                         </div>
                                         <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-3">
                                             <span className="text-purple-700 font-medium text-sm">
@@ -666,7 +666,7 @@ export default function Welcome({
                                                 : 'border-2 border-purple-300 text-purple-700 hover:border-purple-400 hover:bg-purple-50'
                                         }`}
                                     >
-                                        Automatiser maintenant
+                                        {t('welcome.pricing.cta')}
                                     </Link>
                                 </div>
                             ))}
@@ -678,7 +678,7 @@ export default function Welcome({
                                 <div className="flex items-center justify-center text-green-700">
                                     <span className="text-2xl mr-2">🛡️</span>
                                     <span className="font-semibold">
-                                        Garantie satisfait ou remboursé 30 jours
+                                        {t('welcome.pricing.guarantee')}
                                     </span>
                                 </div>
                             </div>
@@ -690,27 +690,29 @@ export default function Welcome({
                 <section className="py-24 bg-gradient-to-r from-purple-600 to-pink-600">
                     <div className="max-w-4xl mx-auto text-center px-6 lg:px-8">
                         <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
-                            Prêt à automatiser vos messages ?
+                            {t('welcome.finalCta.title')}
                         </h2>
                         <p className="text-xl text-purple-100 mb-10">
-                            <strong className="text-white">En 2 minutes</strong>, configurez vos messages automatiques.
+                            <strong className="text-white">{t('welcome.finalCta.subtitle.part1')}</strong>
+                            {t('welcome.finalCta.subtitle.part2')}
                             <br />
-                            <strong className="text-white">Pour toujours</strong>, vos clients reçoivent les bons messages au bon moment.
+                            <strong className="text-white">{t('welcome.finalCta.subtitle.part3')}</strong>
+                            {t('welcome.finalCta.subtitle.part4')}
                         </p>
 
                         {/* Promesses concrètes */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 text-purple-100">
                             <div className="bg-white/10 rounded-lg p-4">
                                 <div className="text-2xl mb-2">⏱️</div>
-                                <div className="font-medium">Configuration en 2min</div>
+                                <div className="font-medium">{t('welcome.finalCta.features.setup')}</div>
                             </div>
                             <div className="bg-white/10 rounded-lg p-4">
                                 <div className="text-2xl mb-2">🎁</div>
-                                <div className="font-medium">100 SMS gratuits</div>
+                                <div className="font-medium">{t('welcome.finalCta.features.freeSms')}</div>
                             </div>
                             <div className="bg-white/10 rounded-lg p-4">
                                 <div className="text-2xl mb-2">📈</div>
-                                <div className="font-medium">Résultats en 24h</div>
+                                <div className="font-medium">{t('welcome.finalCta.features.results')}</div>
                             </div>
                         </div>
 
@@ -719,11 +721,11 @@ export default function Welcome({
                                 href={route('register')}
                                 className="bg-white text-purple-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors"
                             >
-                                Automatiser mes messages maintenant
+                                {t('welcome.finalCta.button')}
                             </Link>
                         </div>
                         <p className="text-purple-200 text-sm mt-6">
-                            ✅ Essai gratuit • ✅ Sans engagement • ✅ Configuration en 2 minutes
+                            {t('welcome.finalCta.benefits')}
                         </p>
                     </div>
                 </section>
@@ -737,40 +739,39 @@ export default function Welcome({
                                     <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center mr-3">
                                         <span className="text-white text-sm font-bold">H</span>
                                     </div>
-                                    <span className="text-xl font-semibold">HelloBoost</span>
+                                    <span className="text-xl font-semibold">{t('welcome.footer.brand')}</span>
                                 </div>
                                 <p className="text-gray-400 mb-6 max-w-md">
-                                    Automatisez vos messages clients en 2 minutes.
-                                    Résultats garantis en 24h.
+                                    {t('welcome.footer.description')}
                                 </p>
                             </div>
 
                             <div>
-                                <h3 className="font-semibold mb-4">Automatisation</h3>
+                                <h3 className="font-semibold mb-4">{t('welcome.footer.automation.title')}</h3>
                                 <ul className="space-y-2 text-gray-400">
-                                    <li>Messages d'anniversaire</li>
-                                    <li>Rappels de RDV</li>
-                                    <li>Reconquête clients</li>
+                                    <li>{t('welcome.footer.automation.birthday')}</li>
+                                    <li>{t('welcome.footer.automation.appointments')}</li>
+                                    <li>{t('welcome.footer.automation.winback')}</li>
                                 </ul>
                             </div>
 
                             <div>
-                                <h3 className="font-semibold mb-4">Support</h3>
+                                <h3 className="font-semibold mb-4">{t('welcome.footer.support.title')}</h3>
                                 <ul className="space-y-2 text-gray-400">
-                                    <li>Configuration gratuite</li>
-                                    <li>Support 24/7</li>
-                                    <li>Formation incluse</li>
+                                    <li>{t('welcome.footer.support.setup')}</li>
+                                    <li>{t('welcome.footer.support.support24')}</li>
+                                    <li>{t('welcome.footer.support.training')}</li>
                                 </ul>
                             </div>
                         </div>
 
                         <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
                             <p className="text-gray-400 text-sm">
-                                © 2024 HelloBoost. Messages automatiques pour votre business.
+                                {t('welcome.footer.copyright')}
                             </p>
                             <div className="flex space-x-6 text-sm text-gray-400 mt-4 md:mt-0">
-                                <a href="#" className="hover:text-white transition-colors">Confidentialité</a>
-                                <a href="#" className="hover:text-white transition-colors">Conditions</a>
+                                <a href="#" className="hover:text-white transition-colors">{t('welcome.footer.privacy')}</a>
+                                <a href="#" className="hover:text-white transition-colors">{t('welcome.footer.terms')}</a>
                             </div>
                         </div>
                     </div>

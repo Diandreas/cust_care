@@ -677,7 +677,45 @@
             "subscriptionRequired": "You must have an active subscription to access this feature."
         },
         "smsBalanceInsufficient": "Insufficient SMS balance for this operation. Please top up your account.",
-        "smsCreditCost": "1 credit = 1 SMS"
+        "smsCreditCost": "1 credit = 1 SMS",
+        "dashboardTitle": "Subscription Dashboard",
+        "browsePlans": "Browse Plans",
+        "renewalStatus": "Renewal Status",
+        "autoRenew": "Auto Renewal",
+        "autoRenewOn": "Auto-renewal enabled",
+        "autoRenewOff": "Auto-renewal disabled",
+        "nextRenewal": "Next renewal",
+        "usageStatistics": "Usage Statistics",
+        "manageSubscription": "Manage Subscription",
+        "campaignsUsage": "Campaigns Usage",
+        "maxClients": "Max clients",
+        "buyMoreSMS": "Buy More SMS",
+        "increaseClientLimit": "Increase Client Limit",
+        "recentTransactions": "Recent Transactions",
+        "type": "Type",
+        "description": "Description",
+        "date": "Date",
+        "amount": "Amount",
+        "noTransactions": "No recent transactions",
+        "turnOffAutoRenew": "Turn Off Auto-Renewal",
+        "turnOnAutoRenew": "Turn On Auto-Renewal",
+        "upgradePlan": "Upgrade Plan",
+        "cancelSubscription": "Cancel Subscription",
+        "cancelNotice": "Cancellation will take effect at the end of the current period",
+        "cancelAtPeriodEnd": "Cancel at Period End",
+        "transactionType": {
+            "subscription": "Subscription",
+            "addon": "Add-on",
+            "refund": "Refund"
+        },
+        "transactionStatus": {
+            "completed": "Completed",
+            "pending": "Pending",
+            "failed": "Failed"
+        },
+        "viewAllTransactions": "View All Transactions",
+        "transactionHistory": "Transaction History",
+        "allTransactions": "All Transactions"
     },
     "settings": {
         "title": "Settings",
@@ -758,97 +796,233 @@
         "saved": "Saved."
     },
     "welcome": {
-        "hero": {
-            "title": "Connect with your customers via SMS like never before",
-            "subtitle": "Professional platform to manage your SMS campaigns, automate events, and build customer loyalty.",
-            "startButton": "Start for free",
-            "learnMoreButton": "Learn more"
+        "meta": {
+            "title": "HelloBoost - Automatic Messages for Your Business"
         },
-        "features": {
-            "title": "Powerful Features",
-            "subtitle": "Everything you need to efficiently manage your SMS communications",
-            "feature1": {
-                "title": "Client Management",
-                "description": "Organize your contacts by categories and keep all important information."
+        "header": {
+            "brand": "HelloBoost",
+            "nav": {
+                "examples": "Real Examples",
+                "pricing": "Pricing",
+                "testimonials": "Testimonials"
             },
-            "feature2": {
-                "title": "SMS Campaigns",
-                "description": "Create and schedule targeted SMS campaigns to reach your customers at the right time."
+            "dashboard": "Dashboard",
+            "login": "Login",
+            "getStarted": "Get Started"
+        },
+        "hero": {
+            "badge": "Your customers automatically receive the right messages at the right time",
+            "title": {
+                "line1": "Send messages",
+                "line2": "automatically",
+                "line3": "to your customers"
             },
-            "feature3": {
-                "title": "Automatic Events",
-                "description": "Automate messages for birthdays, holidays, and other important events."
+            "subtitle": {
+                "highlight": "Birthday messages, appointment reminders, targeted promotions...",
+                "description": "HelloBoost automatically sends the messages your customers expect,",
+                "emphasis": "without you having to do anything."
+            },
+            "cta": {
+                "primary": "Automate my messages",
+                "secondary": "See how it works"
+            },
+            "promise": {
+                "title": "🎯 Guaranteed results in 24h",
+                "description": "Set up once, your customers receive personalized messages forever"
+            }
+        },
+        "demo": {
+            "header": {
+                "title": "Automatic campaign in progress"
+            },
+            "automaticSend": "Sent automatically",
+            "delivered": "✅ Delivered",
+            "automaticResult": "Automatic result"
+        },
+        "examples": {
+            "birthday": {
+                "title": "Automatic birthday messages",
+                "example": "Happy birthday Aminata! 🎉 Enjoy 20% off your next appointment with code ANNIV20",
+                "business": "Dr Diallo Clinic",
+                "result": "73% of patients return within the month"
+            },
+            "appointment": {
+                "title": "Smart appointment reminders",
+                "example": "Hello Mrs Kone, your appointment is tomorrow at 2 PM. Confirm by replying YES. Thank you! 📅",
+                "business": "Central Pharmacy",
+                "result": "95% appointment attendance rate"
+            },
+            "promotion": {
+                "title": "Automatic targeted promotions",
+                "example": "🔥 FLASH SALE! 50% off your favorite items until tomorrow 6 PM. Come quickly!",
+                "business": "Fatou's Boutique",
+                "result": "+180% sales on the day"
+            },
+            "loyalty": {
+                "title": "Personalized loyalty building",
+                "example": "Hi Omar! It's been 2 weeks... Come back this week and get your meal FREE! 🍽️",
+                "business": "Le Baobab Restaurant",
+                "result": "87% of inactive customers return"
             }
         },
         "howItWorks": {
-            "title": "How It Works",
-            "subtitle": "Get started in three simple steps",
-            "step1": {
-                "title": "Create your account",
-                "description": "Sign up and choose the plan that best fits your needs"
+            "title": "Specifically, what will your customers receive?",
+            "subtitle": "Here's exactly what HelloBoost automatically sends to your customers"
+        },
+        "features": {
+            "birthday": {
+                "title": "Birthday messages",
+                "description": "On their special day, your customers automatically receive a personalized message with a special offer",
+                "example": "Happy birthday Marie! 🎉 Enjoy 25% off everything today with ANNIV25",
+                "frequency": "Automatic every year"
             },
-            "step2": {
-                "title": "Import your contacts",
-                "description": "Add your clients and organize them into relevant segments"
+            "reminder": {
+                "title": "Appointment reminders",
+                "description": "24 hours before their appointment, your customers receive an automatic reminder to avoid no-shows",
+                "example": "Reminder: Appointment tomorrow 2 PM at Dr Diallo's. Confirm by replying YES",
+                "frequency": "24 hours before each appointment"
             },
-            "step3": {
-                "title": "Launch your campaigns",
-                "description": "Create, schedule and track your SMS campaigns with ease"
+            "promotion": {
+                "title": "Targeted promotions",
+                "description": "Your loyal customers receive priority access to your special offers and new products",
+                "example": "FLASH SALE! 50% off your favorite items until tonight. Come quickly!",
+                "frequency": "According to your campaigns"
+            },
+            "winback": {
+                "title": "Lost customer recovery",
+                "description": "After 30 days of absence, your former customers receive a personalized comeback offer",
+                "example": "Hi Omar! We've missed you... Come back with 30% off!",
+                "frequency": "After 30 days of inactivity"
+            },
+            "loyalty": {
+                "title": "Automatic loyalty building",
+                "description": "After 5 visits, your loyal customers automatically receive VIP benefits",
+                "example": "Congratulations Fatou! You're VIP. Here's 20% off your next order",
+                "frequency": "After X purchases/visits"
+            },
+            "stock": {
+                "title": "New products & Stock",
+                "description": "Your customers are notified first when their favorite products arrive",
+                "example": "Good news! Your favorite shoes are back in stock!",
+                "frequency": "As soon as available"
+            },
+            "cta": {
+                "title": "✨ All of this is set up in 2 minutes and works forever",
+                "button": "Set up my automatic messages"
+            }
+        },
+        "stats": {
+            "clients": {
+                "label": "Entrepreneurs",
+                "sublabel": "who automate their messages"
+            },
+            "messages": {
+                "label": "Automatic messages",
+                "sublabel": "sent each month"
+            },
+            "satisfaction": {
+                "label": "Satisfied customers",
+                "sublabel": "who recommend HelloBoost"
             }
         },
         "testimonials": {
-            "title": "They already use EliteSMS",
-            "subtitle": "Discover how businesses like yours are transforming their customer communications",
-            "quote1": "Thanks to EliteSMS, we increased our retention rate by 30% in just 3 months. An essential tool for our store.",
-            "quote2": "Automating birthday messages has created a strong connection with our customers. They appreciate this personalized attention.",
-            "quote3": "The value for money is unbeatable. We efficiently manage our communication with over 1,500 customers thanks to this platform."
-        },
-        "gallery": {
-            "title": "EliteSMS in action",
-            "subtitle": "Discover our platform through these screenshots"
+            "title": "Real results from our customers",
+            "testimonial1": {
+                "quote": "Since using HelloBoost, my patients never miss their appointments. Automatic reminders have revolutionized my practice!",
+                "author": "Dr. Aminata Diallo",
+                "role": "Dental Surgeon, Dakar",
+                "metric": "+73% appointment attendance",
+                "detail": "Saves 6 hours/week on reminder calls"
+            },
+            "testimonial2": {
+                "quote": "Automatic birthday messages with promo codes have boosted my sales. My customers love this personalized attention!",
+                "author": "Fatou Touré",
+                "role": "Fashion Boutique, Dakar",
+                "metric": "+180% revenue on birthday",
+                "detail": "2,400 automatic birthday messages/year"
+            },
+            "testimonial3": {
+                "quote": "HelloBoost automatically wins back my former customers. Every month, 30% of my 'lost' customers return thanks to recovery messages.",
+                "author": "Ousmane Sow",
+                "role": "Le Baobab Restaurant",
+                "metric": "+95% return rate",
+                "detail": "347 customers automatically won back"
+            }
         },
         "pricing": {
-            "title": "Pricing Plans",
-            "subtitle": "Choose the plan that best fits your needs",
-            "popular": "Most Popular",
+            "title": "How much does automating your messages cost?",
+            "subtitle": "Less than what you spend on coffee per month",
+            "popular": "⭐ Most chosen",
+            "currency": "FCFA/month",
             "starter": {
-                "name": "Starter Pack",
-                "description": "Ideal for small businesses and beginners",
-                "feature1": "Up to 100 clients",
-                "feature2": "2 campaigns per month (200 SMS)",
-                "feature3": "50 personalized SMS per month",
-                "feature4": "Email support"
+                "name": "Starter",
+                "price": "7,500",
+                "description": "Basic automation",
+                "feature1": "150 clients maximum",
+                "feature2": "Automatic birthday messages",
+                "feature3": "Basic appointment reminders",
+                "feature4": "Email support",
+                "result": "Saves 2h/week"
             },
             "business": {
-                "name": "Business Pack",
-                "description": "Perfect for growing businesses",
-                "feature1": "Up to 500 clients",
-                "feature2": "4 campaigns per month (1,000 SMS)",
-                "feature3": "200 personalized SMS per month",
-                "feature4": "10% rollover of unused SMS",
-                "feature5": "Priority support"
+                "name": "Business",
+                "price": "18,000",
+                "description": "Complete automation",
+                "feature1": "750 clients maximum",
+                "feature2": "All types of automatic messages",
+                "feature3": "Lost customer recovery",
+                "feature4": "Automatic targeted promotions",
+                "feature5": "Detailed analytics",
+                "result": "Saves 8h/week + increases revenue"
             },
             "enterprise": {
-                "name": "Enterprise Pack",
-                "description": "For businesses with significant needs",
-                "feature1": "Up to 2,000 clients",
-                "feature2": "8 campaigns per month (4,000 SMS)",
-                "feature3": "500 personalized SMS per month",
-                "feature4": "20% rollover of unused SMS",
-                "feature5": "Dedicated 24/7 support"
+                "name": "Enterprise",
+                "price": "35,000",
+                "description": "Custom automation",
+                "feature1": "3,000 clients maximum",
+                "feature2": "Personalized automation",
+                "feature3": "Advanced integrations",
+                "feature4": "Dedicated 24/7 support",
+                "feature5": "Training included",
+                "result": "Guaranteed ROI within 30 days"
             },
-            "button": "Get started"
+            "cta": "Automate now",
+            "guarantee": "30-day money-back guarantee"
         },
-        "cta": {
-            "title": "Ready to improve your SMS communications?",
-            "subtitle": "Sign up today and get 50 free SMS to try our service",
-            "button": "Create a free account"
+        "finalCta": {
+            "title": "Ready to automate your messages?",
+            "subtitle": {
+                "part1": "In 2 minutes",
+                "part2": ", set up your automatic messages.",
+                "part3": "Forever",
+                "part4": ", your customers receive the right messages at the right time."
+            },
+            "features": {
+                "setup": "2-minute setup",
+                "freeSms": "100 free SMS",
+                "results": "Results in 24h"
+            },
+            "button": "Automate my messages now",
+            "benefits": "✅ Free trial • ✅ No commitment • ✅ 2-minute setup"
         },
         "footer": {
+            "brand": "HelloBoost",
+            "description": "Automate your customer messages in 2 minutes. Results guaranteed in 24h.",
+            "automation": {
+                "title": "Automation",
+                "birthday": "Birthday messages",
+                "appointments": "Appointment reminders",
+                "winback": "Customer recovery"
+            },
+            "support": {
+                "title": "Support",
+                "setup": "Free setup",
+                "support24": "24/7 support",
+                "training": "Training included"
+            },
+            "copyright": "© 2024 HelloBoost. Automatic messages for your business.",
             "privacy": "Privacy",
-            "terms": "Terms",
-            "contact": "Contact",
-            "rights": "All rights reserved."
+            "terms": "Terms"
         }
     },
     "phone": {
