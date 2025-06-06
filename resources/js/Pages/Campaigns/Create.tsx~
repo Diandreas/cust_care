@@ -1,0 +1,1011 @@
+// resources/js/Pages/Campaigns/Create.tsx
+import React, { useState, useEffect } from 'react';
+import { Head, useForm } from '@inertiajs/react';
+import { PageProps } from '@/types';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { useTranslation } from 'react-i18next';
+import AdvancedRecipientSelector from '@/Components/AdvancedRecipientSelector';
+import MessagePreview from '@/Components/MessagePreview';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter
+} from '@/Components/ui/dialog';
+import { Button } from '@/Components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Badge } from '@/Components/ui/badge';
+import { Textarea } from '@/Components/ui/textarea';
+import { Input } from '@/Components/ui/input';
+import { Label } from '@/Components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
+import { Alert, AlertDescription } from '@/Components/ui/alert';
+import { Progress } from '@/Components/ui/progress';
+import { AlertCircle, AlertTriangle, Check, X, ChevronLeft, ChevronRight, Users, MessageSquare, Calendar, Settings, Info, Clock } from 'lucide-react';
+
+interface Client {
+    id: number;
+    name: string;
+    phone: string;
+    email?: string;
+    tags: { id: number; name: string }[];
+    last_message_date?: string;
+}
+
+interface Tag {
+    id: number;
+    name: string;
+    clients_count: number;
+}
+
+interface Template {
+    id: number;
+    name: string;
+    content: string;
+}
+
+interface CreateCampaignProps {
+    templates: Template[];
+    tags: Tag[];
+    clients: Client[];
+    [key: string]: unknown;
+}
+
+interface AlertModalProps {
+    title: string;
+    message: string;
+    open: boolean;
+    onClose: () => void;
+    onConfirm?: () => void;
+    confirmLabel?: string;
+    isError?: boolean;
+}
+
+export default function CreateCampaign({
+                                           auth,
+                                           templates,
+                                           tags,
+                                           clients,
+                                       }: PageProps<CreateCampaignProps>) {
+    const { t } = useTranslation();
+    const [step, setStep] = useState(1);
+    const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+    const [remainingChars, setRemainingChars] = useState(160);
+    const [selectionMethod, setSelectionMethod] = useState('advanced');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showSelectedClients, setShowSelectedClients] = useState(false);
+    const [previewClient, setPreviewClient] = useState<Client | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // États pour les modales
+    const [alertModal, setAlertModal] = useState<AlertModalProps | null>(null);
+    const [showConfirmRecipientsModal, setShowConfirmRecipientsModal] = useState(false);
+    const [showConfirmCreateModal, setShowConfirmCreateModal] = useState(false);
+
+    const { data, setData, post, processing, errors } = useForm({
+        name: '',
+        message_content: '',
+        scheduled_at: '',
+        send_now: true,
+        client_ids: [] as number[],
+        selected_all_clients: false,
+        filter_criteria: {} as any,
+    });
+
+    // Fonction pour afficher une modale d'alerte
+    const showAlert = (title: string, message: string, isError: boolean = false, onConfirm?: () => void) => {
+        setAlertModal({
+            title,
+            message,
+            open: true,
+            onClose: () => setAlertModal(null),
+            onConfirm,
+            confirmLabel: onConfirm ? t('common.ok') : undefined,
+            isError
+        });
+    };
+
+    // Gérer le changement de template
+    const handleTemplateChange = (templateId: number) => {
+        setSelectedTemplate(templateId);
+        const template = templates.find((t) => t.id === templateId);
+        if (template) {
+            setData('message_content', template.content);
+            updateRemainingChars(template.content);
+        }
+    };
+
+    // Mettre à jour le compteur de caractères
+    const updateRemainingChars = (content: string) => {
+        const smsLength = content.length;
+        const remainingChars = 160 - smsLength;
+        setRemainingChars(remainingChars);
+    };
+
+    // Gérer la sélection des clients avec le sélecteur avancé
+    const handleAdvancedClientSelection = (selectedClientIds: number[]) => {
+        setData('client_ids', selectedClientIds);
+    };
+
+    // Gérer la sélection individuelle d'un client
+    const handleClientSelection = (clientId: number) => {
+        if (data.client_ids.includes(clientId)) {
+            setData('client_ids', data.client_ids.filter(id => id !== clientId));
+        } else {
+            setData('client_ids', [...data.client_ids, clientId]);
+        }
+    };
+
+    // Gérer la soumission du formulaire
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+
+        // Empêcher les soumissions multiples
+        if (isSubmitting || processing) {
+            return;
+        }
+
+        // Vérifier que nous sommes bien à l'étape 4
+        if (step !== 4) {
+            setStep(4);
+            return;
+        }
+
+        // Vérifications des champs obligatoires
+        if (!data.name) {
+            showAlert(t('common.error'), t('campaigns.nameRequired'), true, () => setStep(1));
+            return;
+        }
+
+        if (!data.message_content) {
+            showAlert(t('common.error'), t('campaigns.messageRequired'), true, () => setStep(2));
+            return;
+        }
+
+        if (data.client_ids.length === 0) {
+            showAlert(t('common.error'), t('campaigns.recipientsRequired'), true, () => setStep(3));
+            return;
+        }
+
+        // Vérifier la programmation si l'envoi n'est pas immédiat
+        if (!data.send_now && !data.scheduled_at) {
+            showAlert(t('common.error'), t('campaigns.scheduleRequired'), true);
+            return;
+        }
+
+        // Afficher la modale de confirmation avant création de la campagne
+        setShowConfirmCreateModal(true);
+    };
+
+    // Confirmer la création de la campagne
+    const confirmCreateCampaign = () => {
+        setIsSubmitting(true);
+        setShowConfirmCreateModal(false);
+        post(route('campaigns.store'), {
+            onFinish: () => setIsSubmitting(false)
+        });
+    };
+
+    // Récupérer tous les clients disponibles
+    const allClients = clients || [];
+
+    // Filtrer les clients pour la recherche manuelle
+    const filteredClients = searchTerm
+        ? allClients.filter(client =>
+            client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            client.phone.includes(searchTerm))
+        : allClients;
+
+    // Détails des clients sélectionnés pour l'aperçu
+    const selectedClientsDetails = allClients.filter(client =>
+        data.client_ids.includes(client.id)
+    );
+
+    // Suivant du formulaire multi-étapes
+    const handleNext = () => {
+        if (step === 1 && !data.name) {
+            showAlert(t('common.error'), t('campaigns.nameRequired'), true);
+            return;
+        }
+        if (step === 2 && !data.message_content) {
+            showAlert(t('common.error'), t('campaigns.messageRequired'), true);
+            return;
+        }
+        if (step === 3 && data.client_ids.length === 0) {
+            showAlert(t('common.error'), t('campaigns.recipientsRequired'), true);
+            return;
+        }
+
+        // Si on est à l'étape 3 et qu'il y a des destinataires sélectionnés
+        if (step === 3 && data.client_ids.length > 0) {
+            setShowConfirmRecipientsModal(true);
+            return;
+        }
+
+        setStep(step + 1);
+    };
+
+    // Confirmer les destinataires et passer à l'étape suivante
+    const confirmRecipients = () => {
+        setShowConfirmRecipientsModal(false);
+        setStep(step + 1);
+    };
+
+    // Précédent du formulaire multi-étapes
+    const handlePrevious = () => {
+        setStep(step - 1);
+    };
+
+    // Calculer le pourcentage de progression
+    const progressPercentage = (step / 4) * 100;
+
+    // Icônes pour chaque étape
+    const stepIcons = [
+        <Settings className="h-4 w-4" />,
+        <MessageSquare className="h-4 w-4" />,
+        <Users className="h-4 w-4" />,
+        <Calendar className="h-4 w-4" />
+    ];
+
+    return (
+        <AuthenticatedLayout
+            user={auth.user}
+            header={
+                <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                    <h2 className="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                        {t('campaigns.create')}
+                    </h2>
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        {t('campaigns.steps.step' + step)} / 4
+                    </div>
+                </div>
+            }
+        >
+            <Head title={t('campaigns.create')} />
+
+            <div className="py-4 sm:py-12">
+                <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+                    {/* Progress Bar */}
+                    <div className="mb-6">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {t('campaigns.step' + step + 'Title')}
+                            </span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                                {step}/4
+                            </span>
+                        </div>
+                        <Progress value={progressPercentage} className="h-2" />
+                    </div>
+
+                    {/* Steps Navigation Mobile */}
+                    <div className="block sm:hidden mb-6">
+                        <div className="flex items-center justify-center space-x-2">
+                            {[1, 2, 3, 4].map((stepNumber) => (
+                                <div
+                                    key={stepNumber}
+                                    className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium ${
+                                        step >= stepNumber
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                    }`}
+                                >
+                                    {step > stepNumber ? (
+                                        <Check className="h-3 w-3" />
+                                    ) : (
+                                        stepIcons[stepNumber - 1]
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <Card className="overflow-hidden shadow-lg">
+                        {/* Steps Navigation Desktop */}
+                        <div className="hidden sm:block border-b border-gray-200 bg-gray-50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-white">
+                                    {t('campaigns.createNew')}
+                                </h3>
+                                <div className="flex items-center space-x-2">
+                                    {[1, 2, 3, 4].map((stepNumber, index) => (
+                                        <React.Fragment key={stepNumber}>
+                                            <div
+                                                className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                                                    step >= stepNumber
+                                                        ? 'bg-indigo-600 text-white'
+                                                        : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                                                }`}
+                                            >
+                                                {step > stepNumber ? (
+                                                    <Check className="h-4 w-4" />
+                                                ) : (
+                                                    stepIcons[stepNumber - 1]
+                                                )}
+                                            </div>
+                                            {index < 3 && (
+                                                <div
+                                                    className={`h-0.5 w-12 ${
+                                                        step >= stepNumber + 1
+                                                            ? 'bg-indigo-600'
+                                                            : 'bg-gray-200 dark:bg-gray-700'
+                                                    }`}
+                                                />
+                                            )}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSubmit}>
+                            <CardContent className="p-4 sm:p-6">
+                                {/* Étape 1: Informations de base */}
+                                {step === 1 && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+                                                {t('campaigns.step1Title')}
+                                            </h4>
+                                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                                                {t('campaigns.step1Description')}
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div>
+                                                <Label htmlFor="name" className="text-sm font-medium">
+                                                    {t('campaigns.name')} *
+                                                </Label>
+                                                <Input
+                                                    id="name"
+                                                    name="name"
+                                                    value={data.name}
+                                                    onChange={(e) => setData('name', e.target.value)}
+                                                    placeholder={t('campaigns.namePlaceholder')}
+                                                    className="mt-2"
+                                                    autoFocus
+                                                />
+                                                {errors.name && (
+                                                    <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                                        {errors.name}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Étape 2: Contenu du message */}
+                                {step === 2 && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+                                                {t('campaigns.step2Title')}
+                                            </h4>
+                                        </div>
+
+                                        {/* Sélection de template */}
+                                        <div>
+                                            <Label htmlFor="template" className="text-sm font-medium">
+                                                {t('campaigns.selectTemplate')}
+                                            </Label>
+                                            <Select
+                                                value={selectedTemplate?.toString() || ''}
+                                                onValueChange={(value) => value && handleTemplateChange(Number(value))}
+                                            >
+                                                <SelectTrigger className="mt-2">
+                                                    <SelectValue placeholder={t('campaigns.noTemplate')} />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="">{t('campaigns.noTemplate')}</SelectItem>
+                                                    {templates.map((template) => (
+                                                        <SelectItem key={template.id} value={template.id.toString()}>
+                                                            {template.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+
+                                        {/* Contenu du message */}
+                                        <div>
+                                            <Label htmlFor="message_content" className="text-sm font-medium">
+                                                {t('campaigns.messageContent')} *
+                                            </Label>
+                                            <Textarea
+                                                id="message_content"
+                                                name="message_content"
+                                                rows={5}
+                                                value={data.message_content}
+                                                onChange={(e) => {
+                                                    setData('message_content', e.target.value);
+                                                    updateRemainingChars(e.target.value);
+                                                }}
+                                                placeholder={t('campaigns.messagePlaceholder')}
+                                                className="mt-2 resize-none"
+                                            />
+                                            {errors.message_content && (
+                                                <p className="mt-2 text-sm text-red-600 dark:text-red-400">
+                                                    {errors.message_content}
+                                                </p>
+                                            )}
+
+                                            {/* Compteur de caractères */}
+                                            <div className="mt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                                <div className="flex items-center space-x-4 text-sm">
+                                                    <span className={`${remainingChars < 0 ? 'text-red-600' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                        {t('campaigns.charactersRemaining')}: {remainingChars}
+                                                    </span>
+                                                    <Badge variant="outline">
+                                                        {Math.ceil(data.message_content.length / 160)} SMS
+                                                    </Badge>
+                                                </div>
+                                                {remainingChars < 0 && (
+                                                    <div className="flex items-center text-xs text-red-600">
+                                                        <AlertTriangle className="h-3 w-3 mr-1" />
+                                                        {t('sms.longMessageWarning')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Variables disponibles */}
+                                        <div>
+                                            <Label className="text-sm font-medium mb-3 block">
+                                                {t('campaigns.availableVariables')}
+                                            </Label>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                                                {[
+                                                    { id: 'client.name', label: t('campaigns.variables.clientName') },
+                                                    { id: 'client.phone', label: t('campaigns.variables.clientPhone') },
+                                                    { id: 'client.email', label: t('campaigns.variables.clientEmail') },
+                                                    { id: 'date', label: t('campaigns.variables.date') },
+                                                    { id: 'time', label: t('campaigns.variables.time') }
+                                                ].map(variable => (
+                                                    <Button
+                                                        key={variable.id}
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const newContent = data.message_content + `{{${variable.id}}}`;
+                                                            setData('message_content', newContent);
+                                                            updateRemainingChars(newContent);
+                                                        }}
+                                                        className="text-xs h-8"
+                                                    >
+                                                        {variable.label}
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Prévisualisation du message */}
+                                        {data.message_content && (
+                                            <div>
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-3 gap-2">
+                                                    <Label className="text-sm font-medium">
+                                                        {t('campaigns.messagePreview')}
+                                                    </Label>
+                                                    {clients.length > 0 && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Label htmlFor="preview_client" className="text-xs text-gray-500 dark:text-gray-400">
+                                                                {t('campaigns.previewAs')}:
+                                                            </Label>
+                                                            <Select
+                                                                value={previewClient?.id.toString() || ''}
+                                                                onValueChange={(value) => {
+                                                                    const clientId = Number(value);
+                                                                    const client = clients.find(c => c.id === clientId) || null;
+                                                                    setPreviewClient(client);
+                                                                }}
+                                                            >
+                                                                <SelectTrigger className="w-40 h-8 text-xs">
+                                                                    <SelectValue placeholder={t('campaigns.selectClient')} />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="">{t('campaigns.selectClient')}</SelectItem>
+                                                                    {clients.slice(0, 10).map(client => (
+                                                                        <SelectItem key={client.id} value={client.id.toString()}>
+                                                                            {client.name}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <MessagePreview
+                                                    messageContent={data.message_content}
+                                                    selectedClient={previewClient}
+                                                    className="border rounded-lg p-4 bg-gray-50 dark:bg-gray-800"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Étape 3: Destinataires */}
+                                {step === 3 && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+                                                {t('campaigns.step3Title')}
+                                            </h4>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+                                                <Label className="text-sm font-medium">
+                                                    {t('campaigns.selectRecipients')}
+                                                </Label>
+                                                <Badge variant="outline" className="w-fit">
+                                                    {data.client_ids.length} {t('campaigns.clientsSelected')}
+                                                </Badge>
+                                            </div>
+
+                                            {/* Onglets de méthode de sélection */}
+                                            <Tabs value={selectionMethod} onValueChange={setSelectionMethod} className="w-full">
+                                                <TabsList className="grid w-full grid-cols-2 mb-6">
+                                                    <TabsTrigger value="advanced" className="text-xs sm:text-sm">
+                                                        {t('campaigns.advancedFilters')}
+                                                    </TabsTrigger>
+                                                    <TabsTrigger value="manual" className="text-xs sm:text-sm">
+                                                        {t('campaigns.manualSelection')}
+                                                    </TabsTrigger>
+                                                </TabsList>
+
+                                                <TabsContent value="advanced" className="space-y-4">
+                                                    <AdvancedRecipientSelector
+                                                        clients={allClients}
+                                                        tags={tags}
+                                                        onSelectionChange={(selectedIds) => setData('client_ids', selectedIds)}
+                                                    />
+                                                </TabsContent>
+
+                                                <TabsContent value="manual" className="space-y-4">
+                                                    <div className="relative">
+                                                        <Input
+                                                            type="text"
+                                                            value={searchTerm}
+                                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                                            placeholder={t('campaigns.searchClients')}
+                                                            className="pl-10"
+                                                        />
+                                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                            <svg className="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                            </svg>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="max-h-60 sm:max-h-80 overflow-y-auto border rounded-lg">
+                                                        {filteredClients.length > 0 ? (
+                                                            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                                                                {filteredClients.map((client) => (
+                                                                    <label key={client.id} className="flex items-center p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={data.client_ids.includes(client.id)}
+                                                                            onChange={() => handleClientSelection(client.id)}
+                                                                            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                                                        />
+                                                                        <div className="ml-3 min-w-0 flex-1">
+                                                                            <div className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                                                                                {client.name}
+                                                                            </div>
+                                                                            <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                                                {client.phone}
+                                                                            </div>
+                                                                        </div>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                                                                {searchTerm ? t('campaigns.noSearchResults') : t('campaigns.noClientsAvailable')}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="flex flex-col sm:flex-row sm:justify-between gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setData('client_ids', [])}
+                                                            className="text-red-600 hover:text-red-500"
+                                                        >
+                                                            {t('campaigns.deselectAll')}
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => setData('client_ids', allClients.map(c => c.id))}
+                                                            className="text-indigo-600 hover:text-indigo-500"
+                                                        >
+                                                            {t('campaigns.selectAll')}
+                                                        </Button>
+                                                    </div>
+                                                </TabsContent>
+                                            </Tabs>
+                                        </div>
+
+                                        {/* Notification de validation */}
+                                        {data.client_ids.length > 0 ? (
+                                            <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                                <AlertDescription className="text-green-800 dark:text-green-200">
+                                                    {t('campaigns.recipientsValidMessage', { count: data.client_ids.length })}
+                                                </AlertDescription>
+                                            </Alert>
+                                        ) : (
+                                            <Alert className="border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+                                                <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                                                <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+                                                    {t('campaigns.noRecipientsSelected')}
+                                                </AlertDescription>
+                                            </Alert>
+                                        )}
+
+                                        {/* Récapitulatif des clients sélectionnés */}
+                                        {data.client_ids.length > 0 && (
+                                            <Card className="bg-gray-50 dark:bg-gray-800">
+                                                <CardHeader className="pb-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <CardTitle className="text-sm font-medium">
+                                                            {t('campaigns.selectedRecipients')}
+                                                        </CardTitle>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => setShowSelectedClients(!showSelectedClients)}
+                                                            className="text-xs"
+                                                        >
+                                                            {showSelectedClients ? t('campaigns.hideList') : t('campaigns.showList')}
+                                                        </Button>
+                                                    </div>
+                                                </CardHeader>
+                                                {showSelectedClients && (
+                                                    <CardContent className="pt-0">
+                                                        <div className="max-h-40 overflow-y-auto space-y-2">
+                                                            {selectedClientsDetails.map(client => (
+                                                                <div key={client.id} className="flex items-center justify-between py-1">
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                                                                            {client.name}
+                                                                        </div>
+                                                                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                                            {client.phone}
+                                                                        </div>
+                                                                    </div>
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => handleClientSelection(client.id)}
+                                                                        className="ml-2 h-6 w-6 p-0 text-red-600 hover:text-red-500"
+                                                                    >
+                                                                        <X className="h-3 w-3" />
+                                                                    </Button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </CardContent>
+                                                )}
+                                            </Card>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Étape 4: Programmation et Récapitulatif */}
+                                {step === 4 && (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="mb-4 text-lg font-medium text-gray-900 dark:text-white">
+                                                {t('campaigns.step4Title')}
+                                            </h4>
+                                        </div>
+
+                                        {/* Options d'envoi */}
+                                        <div className="space-y-4">
+                                            <Label className="text-sm font-medium">
+                                                {t('campaigns.sendingOptions')}
+                                            </Label>
+                                            <div className="space-y-3">
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        checked={data.send_now}
+                                                        onChange={() => setData('send_now', true)}
+                                                        className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                                                            {t('campaigns.sendImmediately')}
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="radio"
+                                                        checked={!data.send_now}
+                                                        onChange={() => setData('send_now', false)}
+                                                        className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                                    />
+                                                    <div className="flex items-center space-x-2">
+                                                        <Clock className="h-4 w-4 text-gray-400" />
+                                                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                                                            {t('campaigns.scheduleSending')}
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                            </div>
+
+                                            {!data.send_now && (
+                                                <div className="ml-7 space-y-2">
+                                                    <Label htmlFor="scheduled_at" className="text-sm font-medium">
+                                                        {t('campaigns.scheduleDateTime')} *
+                                                    </Label>
+                                                    <Input
+                                                        type="datetime-local"
+                                                        id="scheduled_at"
+                                                        name="scheduled_at"
+                                                        value={data.scheduled_at}
+                                                        onChange={(e) => setData('scheduled_at', e.target.value)}
+                                                        className="max-w-xs"
+                                                    />
+                                                    {errors.scheduled_at && (
+                                                        <p className="text-sm text-red-600 dark:text-red-400">
+                                                            {errors.scheduled_at}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Récapitulatif */}
+                                        <Card className="bg-gray-50 dark:bg-gray-800">
+                                            <CardHeader>
+                                                <CardTitle className="text-base font-medium">
+                                                    {t('campaigns.summary')}
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                            {t('campaigns.name')}
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                            {data.name}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                            {t('campaigns.recipients')}
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                            {data.client_ids.length} {t('common.clients')}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                            {t('campaigns.sendingTime')}
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                            {data.send_now ? t('campaigns.immediately') : new Date(data.scheduled_at).toLocaleString()}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                            {t('campaigns.messageSize')}
+                                                        </div>
+                                                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                                            {data.message_content.length} {t('campaigns.characters')} ({Math.ceil(data.message_content.length / 160)} SMS)
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                        {t('campaigns.messagePreview')}
+                                                    </div>
+                                                    <div className="rounded-md bg-white p-3 dark:bg-gray-900 border">
+                                                        <p className="whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-400">
+                                                            {data.message_content}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                )}
+                            </CardContent>
+
+                            {/* Navigation entre les étapes */}
+                            <div className="border-t border-gray-200 px-4 py-4 dark:border-gray-700 sm:px-6">
+                                <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handlePrevious}
+                                        disabled={step === 1 || processing || isSubmitting}
+                                        className="w-full sm:w-auto"
+                                    >
+                                        <ChevronLeft className="h-4 w-4 mr-2" />
+                                        {t('common.previous')}
+                                    </Button>
+
+                                    {step < 4 ? (
+                                        <Button
+                                            type="button"
+                                            onClick={handleNext}
+                                            className="w-full sm:w-auto"
+                                        >
+                                            {t('common.next')}
+                                            <ChevronRight className="h-4 w-4 ml-2" />
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            type="submit"
+                                            disabled={processing || isSubmitting}
+                                            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700"
+                                        >
+                                            {(processing || isSubmitting) ? (
+                                                <>
+                                                    <div className="animate-spin -ml-1 mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                                                    {t('common.processing')}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="h-4 w-4 mr-2" />
+                                                    {t('campaigns.createCampaign')}
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        </form>
+                    </Card>
+                </div>
+            </div>
+
+            {/* Modales */}
+            {alertModal && (
+                <Dialog open={alertModal.open} onOpenChange={(open) => !open && alertModal.onClose()}>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle className={alertModal.isError ? "text-red-600 dark:text-red-400" : ""}>
+                                <div className="flex items-center gap-2">
+                                    {alertModal.isError ? (
+                                        <AlertCircle className="h-5 w-5" />
+                                    ) : (
+                                        <Info className="h-5 w-5" />
+                                    )}
+                                    {alertModal.title}
+                                </div>
+                            </DialogTitle>
+                            <DialogDescription>
+                                {alertModal.message}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button
+                                onClick={() => {
+                                    alertModal.onClose();
+                                    if (alertModal.onConfirm) {
+                                        alertModal.onConfirm();
+                                    }
+                                }}
+                                className={alertModal.isError ? "bg-red-600 text-white hover:bg-red-700" : ""}
+                            >
+                                {alertModal.confirmLabel || t('common.close')}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Modale de confirmation des destinataires */}
+            <Dialog open={showConfirmRecipientsModal} onOpenChange={setShowConfirmRecipientsModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('campaigns.confirmRecipientsTitle')}</DialogTitle>
+                        <DialogDescription>
+                            {t('campaigns.confirmRecipients', { count: data.client_ids.length })}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="my-4 max-h-60 overflow-y-auto border rounded-md p-4">
+                        <div className="space-y-2">
+                            {selectedClientsDetails.slice(0, 15).map(client => (
+                                <div key={client.id} className="flex items-center justify-between py-1">
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                                            {client.name}
+                                        </div>
+                                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                            {client.phone}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {selectedClientsDetails.length > 15 && (
+                                <div className="py-2 text-center text-sm text-gray-500 dark:text-gray-400">
+                                    {t('common.andMoreResults', { count: selectedClientsDetails.length - 15 })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowConfirmRecipientsModal(false)}
+                            className="w-full sm:w-auto"
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            onClick={confirmRecipients}
+                            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700"
+                        >
+                            <Check className="mr-2 h-4 w-4" />
+                            {t('common.confirm')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modale de confirmation de création */}
+            <Dialog open={showConfirmCreateModal} onOpenChange={setShowConfirmCreateModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('campaigns.confirmCreationTitle')}</DialogTitle>
+                        <DialogDescription>
+                            {t('campaigns.confirmCreation')}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowConfirmCreateModal(false)}
+                            className="w-full sm:w-auto"
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            onClick={confirmCreateCampaign}
+                            disabled={processing || isSubmitting}
+                            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700"
+                        >
+                            {(processing || isSubmitting) ? (
+                                <>
+                                    <div className="animate-spin -ml-1 mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                                    {t('common.processing')}
+                                </>
+                            ) : (
+                                <>
+                                    <Check className="mr-2 h-4 w-4" />
+                                    {t('campaigns.createCampaign')}
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </AuthenticatedLayout>
+    );
+}

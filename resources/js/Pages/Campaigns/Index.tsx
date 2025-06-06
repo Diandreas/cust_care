@@ -934,7 +934,7 @@ export default function CampaignsIndex({
 
     // Event Wrapper component to filter props
     const EventWrapper = ({ event, children }: any) => {
-        // Instead of explicitly trying to remove specific props, 
+        // Instead of explicitly trying to remove specific props,
         // let's extract only the safe DOM props that we want to keep
         // and create a clean props object for the DOM element
         const child = React.Children.only(children);
@@ -956,66 +956,256 @@ export default function CampaignsIndex({
         <AuthenticatedLayout
             user={auth.user}
             header={
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
-                            {t('campaigns.title')}
-                        </h1>
-                        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            {t('campaigns.subtitle')}
-                        </p>
-                    </div>
 
-                    <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-0">
-                        <Button
-                            onClick={() => setShowCreateModal(true)}
-                            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-all duration-200"
-                        >
-                            <Plus className="mr-2 h-4 w-4" />
-                            {t('campaigns.create')}
-                        </Button>
+                <div className="p-4 border-b bg-card">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div className="flex items-center">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setSidebarOpen(!sidebarOpen)}
+                                className="mr-2"
+                            >
+                                {sidebarOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
+                            </Button>
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" className="ml-2 border-gray-200 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
-                                    <Menu className="mr-2 h-4 w-4" />
-                                    {t('common.actions')}
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-56 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
-                                <DropdownMenuItem onClick={() => router.visit(route('campaigns.create'))} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    {t('campaigns.createAdvanced')}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={toggleSelectionMode} className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
-                                    <CheckSquare className="mr-2 h-4 w-4" />
-                                    {selectionMode ? t('common.cancelSelection') : t('common.selectMultiple')}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                            <h1 className="text-xl font-semibold">{t('common.campaigns')}</h1>
 
-                        <div className="ml-auto flex items-center">
-                            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as 'calendar' | 'grid')} className="hidden sm:block">
-                                <TabsList className="border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-                                    <TabsTrigger
-                                        value="calendar"
-                                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400"
+                            <div className="ml-4 flex items-center">
+                                <Tabs
+                                    value={viewMode}
+                                    onValueChange={(value) => setViewMode(value as 'calendar' | 'grid')}
+                                    className="w-auto"
+                                >
+                                    <TabsList className="grid w-auto grid-cols-2">
+                                        <TabsTrigger value="calendar" className="px-3">
+                                            <CalendarIcon className="h-4 w-4 mr-2" />
+                                            <span className="hidden sm:inline">{t('campaigns.calendar')}</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger value="grid" className="px-3">
+                                            <Grid className="h-4 w-4 mr-2" />
+                                            <span className="hidden sm:inline">{t('campaigns.grid')}</span>
+                                        </TabsTrigger>
+                                    </TabsList>
+                                </Tabs>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                            <div className="relative w-full sm:w-auto" ref={searchRef}>
+                                <form onSubmit={handleSearch}>
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder={t('common.searchCampaigns')}
+                                        value={searchTerm}
+                                        onChange={handleSearchChange}
+                                        className="pl-9 w-full sm:w-[200px] md:w-[300px]"
+                                    />
+                                </form>
+
+                                {/* Search results dropdown */}
+                                {showSearchResults && searchResults.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-popover rounded-md border shadow-md z-10 max-h-64 overflow-y-auto">
+                                        {searchResults.map(campaign => (
+                                            <Link
+                                                key={campaign.id}
+                                                href={route('campaigns.show', campaign.id)}
+                                                className="flex items-center p-3 hover:bg-muted border-b last:border-b-0"
+                                            >
+                                                <div
+                                                    className="h-3 w-3 rounded-full mr-3 flex-shrink-0"
+                                                    style={{ backgroundColor: getStatusColor(campaign.status) }}
+                                                ></div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="font-medium truncate">{campaign.name}</div>
+                                                    {campaign.message_content && (
+                                                        <div className="text-xs text-muted-foreground truncate">{campaign.message_content.substring(0, 50)}{campaign.message_content.length > 50 ? '...' : ''}</div>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {campaign.scheduled_at ? formatDate(campaign.scheduled_at) : '-'}
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {showSearchResults && searchResults.length === 0 && searchTerm.length >= 2 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-popover rounded-md border shadow-md z-10 p-4 text-center text-muted-foreground">
+                                        {t('campaigns.noSearchResults')}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Actions */}
+                            {!selectionMode ? (
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={toggleSelectionMode}
                                     >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {t('campaigns.calendarView')}
-                                    </TabsTrigger>
-                                    <TabsTrigger
-                                        value="grid"
-                                        className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400"
+                                        <CheckSquare className="h-4 w-4 mr-2" />
+                                        <span>{t('campaigns.selectMode')}</span>
+                                    </Button>
+
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 text-indigo-700 border-indigo-200 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20 hover:text-indigo-800 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 dark:text-indigo-400 dark:border-indigo-800/30 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30"
+                                            >
+                                                <Zap className="h-4 w-4 mr-2" />
+                                                <span>{t('campaigns.quickActions')}</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={enableAllUpcomingCampaigns}>
+                                                <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
+                                                <span>{t('campaigns.enableAllUpcoming')}</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={disableAllCampaigns}>
+                                                <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
+                                                <span>{t('campaigns.disableAllCampaigns')}</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={disableBirthdayCampaigns}>
+                                                <Gift className="mr-2 h-4 w-4 text-orange-500" />
+                                                <span>{t('campaigns.disableBirthdayCampaigns')}</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowQuickAddModal(true)}
+                                        className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 border-green-200 hover:from-green-500/20 hover:to-emerald-500/20 hover:text-green-800"
                                     >
-                                        <Grid className="mr-2 h-4 w-4" />
-                                        {t('campaigns.gridView')}
-                                    </TabsTrigger>
-                                </TabsList>
-                            </Tabs>
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        <span>{t('campaigns.quickAdd')}</span>
+                                    </Button>
+
+                                    <Link href={route('campaigns.create')}>
+                                        <Button className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-md transition-all duration-200">
+                                            <CalendarAdd className="h-4 w-4 mr-2" />
+                                            <span>{t('campaigns.create')}</span>
+                                        </Button>
+                                    </Link>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="outline">
+                                        {selectedCampaignIds.length} {t('campaigns.selected')}
+                                    </Badge>
+
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                disabled={selectedCampaignIds.length === 0}
+                                            >
+                                                <MoreHorizontal className="h-4 w-4 mr-2" />
+                                                <span>{t('campaigns.actions')}</span>
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem onClick={selectAllCampaigns}>
+                                                <CheckSquare className="mr-2 h-4 w-4" />
+                                                <span>{t('campaigns.selectAll')}</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={deselectAllCampaigns}>
+                                                <Square className="mr-2 h-4 w-4" />
+                                                <span>{t('campaigns.deselectAll')}</span>
+                                            </DropdownMenuItem>
+                                            <Separator />
+                                            <DropdownMenuItem onClick={bulkDisableCampaigns}>
+                                                <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
+                                                <span>{t('campaigns.pauseSelected')}</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={bulkEnableCampaigns}>
+                                                <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
+                                                <span>{t('campaigns.enableSelected')}</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem
+                                                onClick={bulkDeleteCampaigns}
+                                                className="text-destructive focus:text-destructive"
+                                            >
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>{t('campaigns.deleteSelected')}</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={toggleSelectionMode}
+                                    >
+                                        <X className="h-4 w-4 mr-2" />
+                                        <span>{t('campaigns.cancel')}</span>
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     </div>
+
+                    {/* Calendar control header */}
+                    {viewMode === 'calendar' && (
+                        <div className="flex flex-wrap justify-between items-center mt-4 gap-2">
+                            <div className="flex items-center space-x-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigateCalendar('TODAY')}
+                                    className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20"
+                                >
+                                    {t('campaigns.today')}
+                                </Button>
+
+                                <div className="flex items-center">
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => navigateCalendar('PREV')}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        onClick={() => navigateCalendar('NEXT')}
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+
+                                    <span className="ml-3 text-base font-medium">
+                                        {currentMonth}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center">
+                                <Tabs
+                                    value={calendarView}
+                                    onValueChange={handleViewChange}
+                                    className="w-auto"
+                                >
+                                    <TabsList className="grid grid-cols-3">
+                                        <TabsTrigger value={Views.MONTH} className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400">{t('campaigns.month')}</TabsTrigger>
+                                        <TabsTrigger value={Views.WEEK} className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400">{t('campaigns.week')}</TabsTrigger>
+                                        <TabsTrigger value={Views.MONTH}>{t('campaigns.month')}</TabsTrigger>
+                                        <TabsTrigger value={Views.WEEK}>{t('campaigns.week')}</TabsTrigger>
+                                        <TabsTrigger value={Views.DAY}>{t('campaigns.day')}</TabsTrigger>
+                                    </TabsList>
+                                </Tabs>
+                            </div>
+                        </div>
+                    )}
                 </div>
+
             }
         >
             <Head title={t('common.campaigns')} />
@@ -1024,254 +1214,6 @@ export default function CampaignsIndex({
                 {/* Main Content */}
                 <div className="flex flex-col w-full">
                     {/* Header */}
-                    <div className="p-4 border-b bg-card">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="flex items-center">
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => setSidebarOpen(!sidebarOpen)}
-                                    className="mr-2"
-                                >
-                                    {sidebarOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
-                                </Button>
-
-                                <h1 className="text-xl font-semibold">{t('common.campaigns')}</h1>
-
-                                <div className="ml-4 flex items-center">
-                                    <Tabs
-                                        value={viewMode}
-                                        onValueChange={(value) => setViewMode(value as 'calendar' | 'grid')}
-                                        className="w-auto"
-                                    >
-                                        <TabsList className="grid w-auto grid-cols-2">
-                                            <TabsTrigger value="calendar" className="px-3">
-                                                <CalendarIcon className="h-4 w-4 mr-2" />
-                                                <span className="hidden sm:inline">{t('campaigns.calendar')}</span>
-                                            </TabsTrigger>
-                                            <TabsTrigger value="grid" className="px-3">
-                                                <Grid className="h-4 w-4 mr-2" />
-                                                <span className="hidden sm:inline">{t('campaigns.grid')}</span>
-                                            </TabsTrigger>
-                                        </TabsList>
-                                    </Tabs>
-                                </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                                <div className="relative w-full sm:w-auto" ref={searchRef}>
-                                    <form onSubmit={handleSearch}>
-                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                        <Input
-                                            placeholder={t('common.searchCampaigns')}
-                                            value={searchTerm}
-                                            onChange={handleSearchChange}
-                                            className="pl-9 w-full sm:w-[200px] md:w-[300px]"
-                                        />
-                                    </form>
-
-                                    {/* Search results dropdown */}
-                                    {showSearchResults && searchResults.length > 0 && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover rounded-md border shadow-md z-10 max-h-64 overflow-y-auto">
-                                            {searchResults.map(campaign => (
-                                                <Link
-                                                    key={campaign.id}
-                                                    href={route('campaigns.show', campaign.id)}
-                                                    className="flex items-center p-3 hover:bg-muted border-b last:border-b-0"
-                                                >
-                                                    <div
-                                                        className="h-3 w-3 rounded-full mr-3 flex-shrink-0"
-                                                        style={{ backgroundColor: getStatusColor(campaign.status) }}
-                                                    ></div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="font-medium truncate">{campaign.name}</div>
-                                                        {campaign.message_content && (
-                                                            <div className="text-xs text-muted-foreground truncate">{campaign.message_content.substring(0, 50)}{campaign.message_content.length > 50 ? '...' : ''}</div>
-                                                        )}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {campaign.scheduled_at ? formatDate(campaign.scheduled_at) : '-'}
-                                                    </div>
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {showSearchResults && searchResults.length === 0 && searchTerm.length >= 2 && (
-                                        <div className="absolute top-full left-0 right-0 mt-1 bg-popover rounded-md border shadow-md z-10 p-4 text-center text-muted-foreground">
-                                            {t('campaigns.noSearchResults')}
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Actions */}
-                                {!selectionMode ? (
-                                    <div className="flex gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={toggleSelectionMode}
-                                        >
-                                            <CheckSquare className="h-4 w-4 mr-2" />
-                                            <span>{t('campaigns.selectMode')}</span>
-                                        </Button>
-
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 text-indigo-700 border-indigo-200 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20 hover:text-indigo-800 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 dark:text-indigo-400 dark:border-indigo-800/30 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30"
-                                                >
-                                                    <Zap className="h-4 w-4 mr-2" />
-                                                    <span>{t('campaigns.quickActions')}</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={enableAllUpcomingCampaigns}>
-                                                    <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
-                                                    <span>{t('campaigns.enableAllUpcoming')}</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={disableAllCampaigns}>
-                                                    <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
-                                                    <span>{t('campaigns.disableAllCampaigns')}</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={disableBirthdayCampaigns}>
-                                                    <Gift className="mr-2 h-4 w-4 text-orange-500" />
-                                                    <span>{t('campaigns.disableBirthdayCampaigns')}</span>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setShowQuickAddModal(true)}
-                                            className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 border-green-200 hover:from-green-500/20 hover:to-emerald-500/20 hover:text-green-800"
-                                        >
-                                            <Plus className="h-4 w-4 mr-2" />
-                                            <span>{t('campaigns.quickAdd')}</span>
-                                        </Button>
-
-                                        <Link href={route('campaigns.create')}>
-                                            <Button className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-md transition-all duration-200">
-                                                <CalendarAdd className="h-4 w-4 mr-2" />
-                                                <span>{t('campaigns.create')}</span>
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="outline">
-                                            {selectedCampaignIds.length} {t('campaigns.selected')}
-                                        </Badge>
-
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    disabled={selectedCampaignIds.length === 0}
-                                                >
-                                                    <MoreHorizontal className="h-4 w-4 mr-2" />
-                                                    <span>{t('campaigns.actions')}</span>
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent>
-                                                <DropdownMenuItem onClick={selectAllCampaigns}>
-                                                    <CheckSquare className="mr-2 h-4 w-4" />
-                                                    <span>{t('campaigns.selectAll')}</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={deselectAllCampaigns}>
-                                                    <Square className="mr-2 h-4 w-4" />
-                                                    <span>{t('campaigns.deselectAll')}</span>
-                                                </DropdownMenuItem>
-                                                <Separator />
-                                                <DropdownMenuItem onClick={bulkDisableCampaigns}>
-                                                    <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
-                                                    <span>{t('campaigns.pauseSelected')}</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={bulkEnableCampaigns}>
-                                                    <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
-                                                    <span>{t('campaigns.enableSelected')}</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={bulkDeleteCampaigns}
-                                                    className="text-destructive focus:text-destructive"
-                                                >
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    <span>{t('campaigns.deleteSelected')}</span>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={toggleSelectionMode}
-                                        >
-                                            <X className="h-4 w-4 mr-2" />
-                                            <span>{t('campaigns.cancel')}</span>
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Calendar control header */}
-                        {viewMode === 'calendar' && (
-                            <div className="flex flex-wrap justify-between items-center mt-4 gap-2">
-                                <div className="flex items-center space-x-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => navigateCalendar('TODAY')}
-                                        className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20"
-                                    >
-                                        {t('campaigns.today')}
-                                    </Button>
-
-                                    <div className="flex items-center">
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => navigateCalendar('PREV')}
-                                        >
-                                            <ChevronLeft className="h-4 w-4" />
-                                        </Button>
-
-                                        <Button
-                                            variant="outline"
-                                            size="icon"
-                                            onClick={() => navigateCalendar('NEXT')}
-                                        >
-                                            <ChevronRight className="h-4 w-4" />
-                                        </Button>
-
-                                        <span className="ml-3 text-base font-medium">
-                                            {currentMonth}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center">
-                                    <Tabs
-                                        value={calendarView}
-                                        onValueChange={handleViewChange}
-                                        className="w-auto"
-                                    >
-                                        <TabsList className="grid grid-cols-3">
-                                            <TabsTrigger value={Views.MONTH} className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400">{t('campaigns.month')}</TabsTrigger>
-                                            <TabsTrigger value={Views.WEEK} className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500/10 data-[state=active]:via-purple-500/10 data-[state=active]:to-pink-500/10 data-[state=active]:text-indigo-600 dark:data-[state=active]:from-indigo-900/30 dark:data-[state=active]:via-purple-900/30 dark:data-[state=active]:to-pink-900/30 dark:data-[state=active]:text-indigo-400">{t('campaigns.week')}</TabsTrigger>
-                                            <TabsTrigger value={Views.MONTH}>{t('campaigns.month')}</TabsTrigger>
-                                            <TabsTrigger value={Views.WEEK}>{t('campaigns.week')}</TabsTrigger>
-                                            <TabsTrigger value={Views.DAY}>{t('campaigns.day')}</TabsTrigger>
-                                        </TabsList>
-                                    </Tabs>
-                                </div>
-                            </div>
-                        )}
-                    </div>
 
                     <div className="flex flex-1 overflow-hidden pt-0">
                         {/* Sidebar with animation */}

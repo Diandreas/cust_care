@@ -206,8 +206,8 @@ const UserMenu = ({ user }) => {
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="rounded-lg cursor-pointer focus:bg-slate-50 dark:focus:bg-slate-800/50">
                         {/*<Link href={route('settings.index')} className="flex items-center py-2 px-3">*/}
-                            <Settings className="mr-3 h-4 w-4 text-slate-500 dark:text-slate-400" />
-                            <span className="font-medium text-slate-700 dark:text-slate-300">{t('navigation.settings')}</span>
+                        <Settings className="mr-3 h-4 w-4 text-slate-500 dark:text-slate-400" />
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{t('navigation.settings')}</span>
                         {/*</Link>*/}
                     </DropdownMenuItem>
                 </div>
@@ -468,30 +468,28 @@ export default function AuthenticatedLayout({
                 {/* Main Content */}
                 <div className={`${sidebarExpanded ? 'lg:ml-[240px]' : 'lg:ml-[72px]'} transition-all duration-400`}>
                     {/* Header */}
-                    {!isCampaignsPage && (
-                        <motion.div
-                            className={`sticky top-0 z-20 flex h-16 items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm ${isScrolled ? 'shadow-sm shadow-slate-200/50 dark:shadow-slate-800/50' : ''} transition-all duration-200`}
-                            initial={{ y: -10, opacity: 0 }}
-                            animate={{ y: 0, opacity: 1 }}
-                            transition={{ duration: 0.3 }}
+                    <motion.div
+                        className={`sticky top-0 z-20 flex h-16 items-center border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm ${isScrolled ? 'shadow-sm shadow-slate-200/50 dark:shadow-slate-800/50' : ''} transition-all duration-200`}
+                        initial={{ y: -10, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.3 }}
+                    >
+                        <button
+                            type="button"
+                            className="px-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 focus:outline-none lg:hidden transition-colors"
+                            onClick={() => setSheetOpen(true)}
+                            aria-label={t('navigation.openSidebar')}
                         >
-                            <button
-                                type="button"
-                                className="px-4 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 focus:outline-none lg:hidden transition-colors"
-                                onClick={() => setSheetOpen(true)}
-                                aria-label={t('navigation.openSidebar')}
-                            >
-                                <Menu className="h-5 w-5" aria-hidden="true" />
-                            </button>
+                            <Menu className="h-5 w-5" aria-hidden="true" />
+                        </button>
 
-                            <div className="flex flex-1 items-center justify-between px-4 sm:px-6 lg:px-8">
-                                <div className="flex items-center">{header}</div>
-                                <div className="flex items-center space-x-2">
-                                    <UserMenu user={user} />
-                                </div>
+                        <div className="flex flex-1 items-center justify-between px-4 sm:px-6 lg:px-8">
+                            <div className="flex items-center">{header}</div>
+                            <div className="flex items-center space-x-2">
+                                <UserMenu user={user} />
                             </div>
-                        </motion.div>
-                    )}
+                        </div>
+                    </motion.div>
 
                     {/* Main Content */}
                     <main className={`${fullWidth ? 'px-0' : 'px-4 sm:px-6 lg:px-8'} py-4 ${!isCampaignsPage ? 'pt-6' : ''}`}>
