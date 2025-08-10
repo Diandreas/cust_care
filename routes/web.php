@@ -19,6 +19,8 @@ use App\Http\Middleware\EnsureUserHasActiveSubscription;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\MarketingAssistantController;
+use App\Http\Controllers\FlyerController;
 
 // Page d'accueil
 Route::get('/', function () {
@@ -238,6 +240,61 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('clients/import/simple', [ClientImportController::class, 'store'])->name('clients.import.simple');
     Route::delete('api/clients/bulk-delete', [ClientController::class, 'bulkDelete']);
 });
+
+// Routes pour l'assistant marketing digital
+Route::middleware(['auth'])->prefix('assistant-marketing')->name('marketing.')->group(function () {
+    // Dashboard principal
+    Route::get('/', [MarketingAssistantController::class, 'dashboard'])->name('dashboard');
+    
+    // Chat avec l'IA
+    Route::get('/chat', [MarketingAssistantController::class, 'chat'])->name('chat');
+    Route::post('/chat/message', [MarketingAssistantController::class, 'chatMessage'])->name('chat.message');
+    
+    // Génération de contenu
+    Route::post('/generate-content', [MarketingAssistantController::class, 'generateContent'])->name('generate.content');
+    Route::post('/save-content', [MarketingAssistantController::class, 'saveGeneratedContent'])->name('save.content');
+    Route::post('/optimize-content', [MarketingAssistantController::class, 'optimizeContent'])->name('optimize.content');
+    
+    // WhatsApp
+    Route::get('/whatsapp', [MarketingAssistantController::class, 'whatsappConversations'])->name('whatsapp.index');
+    Route::post('/whatsapp/send', [MarketingAssistantController::class, 'sendWhatsAppMessage'])->name('whatsapp.send');
+    Route::post('/whatsapp/bulk-send', [MarketingAssistantController::class, 'bulkWhatsAppMessage'])->name('whatsapp.bulk');
+    
+    // Publications sur les réseaux sociaux
+    Route::post('/posts/schedule', [MarketingAssistantController::class, 'schedulePost'])->name('posts.schedule');
+    
+    // Automatisation
+    Route::post('/automation/rules', [MarketingAssistantController::class, 'createAutomationRule'])->name('automation.rules.store');
+    Route::post('/automation/seasonal', [MarketingAssistantController::class, 'createSeasonalReminder'])->name('automation.seasonal');
+    
+    // Templates
+    Route::get('/templates', [MarketingAssistantController::class, 'getTemplates'])->name('templates.index');
+    Route::post('/templates', [MarketingAssistantController::class, 'saveTemplate'])->name('templates.store');
+});
+
+// Routes pour le générateur de flyers
+Route::middleware(['auth'])->prefix('flyers')->name('flyers.')->group(function () {
+    Route::get('/', [FlyerController::class, 'index'])->name('index');
+    Route::get('/create', [FlyerController::class, 'create'])->name('create');
+    Route::post('/', [FlyerController::class, 'store'])->name('store');
+    Route::get('/{flyer}', [FlyerController::class, 'show'])->name('show');
+    Route::get('/{flyer}/edit', [FlyerController::class, 'edit'])->name('edit');
+    Route::put('/{flyer}', [FlyerController::class, 'update'])->name('update');
+    Route::delete('/{flyer}', [FlyerController::class, 'destroy'])->name('destroy');
+    
+    // Fonctionnalités spéciales
+    Route::post('/generate-content', [FlyerController::class, 'generateContent'])->name('generate.content');
+    Route::post('/{flyer}/export', [FlyerController::class, 'export'])->name('export');
+    Route::post('/{flyer}/duplicate', [FlyerController::class, 'duplicate'])->name('duplicate');
+    Route::get('/templates/default', [FlyerController::class, 'getDefaultTemplates'])->name('templates.default');
+});
+
+// Webhook pour WhatsApp (Twilio)
+Route::post('/webhooks/whatsapp', function (Illuminate\Http\Request $request) {
+    $whatsappService = app(\App\Services\WhatsAppService::class);
+    $whatsappService->processIncomingMessage($request->all());
+    return response('OK', 200);
+})->name('webhooks.whatsapp');
 
 // Routes pour les paramètres et la configuration Twilio
 Route::prefix('webhooks/twilio')->group(function () {

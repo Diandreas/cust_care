@@ -69,6 +69,15 @@
         "sweetalert2": "^11.17.2",
         "tailwind-merge": "^3.0.2",
         "tailwindcss-animate": "^1.0.7",
-        "vaul": "^1.1.2"
+        "vaul": "^1.1.2",
+        "@tiptap/react": "^2.6.6",
+        "@tiptap/starter-kit": "^2.6.6",
+        "@tiptap/extension-placeholder": "^2.6.6",
+        "react-markdown": "^9.0.1",
+        "fabric": "^6.4.3",
+        "html2canvas": "^1.4.1",
+        "react-color": "^2.19.3",
+        "react-beautiful-dnd": "^13.1.1",
+        "socket.io-client": "^4.8.1"
     }
 }
