@@ -2,191 +2,392 @@
 
 namespace App\Services;
 
-use App\Models\Client;
-use App\Models\Message;
+use App\Models\MarketingClient;
+use App\Models\MarketingMessage;
+use App\Models\MarketingCampaign;
 use Twilio\Rest\Client as TwilioClient;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Config;
 
 class WhatsAppService
 {
-    private TwilioClient $twilio;
-    private string $fromNumber;
+    protected $twilioClient;
+    protected $fromNumber;
+    protected $whatsappNumber;
 
     public function __construct()
     {
-        $this->twilio = new TwilioClient(
+        $this->fromNumber = config('services.twilio.whatsapp_number');
+        $this->whatsappNumber = config('services.twilio.whatsapp_number');
+        
+        $this->twilioClient = new TwilioClient(
             config('services.twilio.sid'),
             config('services.twilio.token')
         );
-        $this->fromNumber = 'whatsapp:' . config('services.twilio.whatsapp_number');
     }
 
-    public function sendMessage(Client $client, string $content, ?int $userId = null): Message
+    /**
+     * Envoyer un message WhatsApp à un client
+     */
+    public function sendMessage(MarketingClient $client, string $message, array $options = []): array
     {
         try {
-            $toNumber = 'whatsapp:' . $this->formatPhoneNumber($client->phone);
-            
-            $twilioMessage = $this->twilio->messages->create(
-                $toNumber,
+            // Vérifier que le client n'a pas opté out
+            if ($client->isOptedOut()) {
+                return [
+                    'success' => false,
+                    'error' => 'Client a opté out des communications WhatsApp',
+                    'code' => 'OPTED_OUT'
+                ];
+            }
+
+            // Valider le numéro de téléphone
+            $phoneNumber = $this->formatPhoneNumber($client->phone);
+            if (!$phoneNumber) {
+                return [
+                    'success' => false,
+                    'error' => 'Numéro de téléphone invalide',
+                    'code' => 'INVALID_PHONE'
+                ];
+            }
+
+            // Créer le message en base
+            $marketingMessage = MarketingMessage::create([
+                'user_id' => $client->user_id,
+                'client_id' => $client->id,
+                'campaign_id' => $options['campaign_id'] ?? null,
+                'type' => 'whatsapp',
+                'content' => $message,
+                'metadata' => $options,
+                'status' => 'pending',
+            ]);
+
+            // Envoyer via Twilio
+            $twilioMessage = $this->twilioClient->messages->create(
+                "whatsapp:{$phoneNumber}",
                 [
-                    'from' => $this->fromNumber,
-                    'body' => $content
+                    'from' => "whatsapp:{$this->fromNumber}",
+                    'body' => $message,
+                    'statusCallback' => route('webhooks.twilio.status'),
+                    'statusCallbackEvent' => ['delivered', 'read', 'failed'],
+                    'statusCallbackMethod' => 'POST',
                 ]
             );
 
-            return Message::create([
-                'user_id' => $userId,
-                'client_id' => $client->id,
-                'content' => $content,
+            // Mettre à jour le message
+            $marketingMessage->update([
                 'status' => 'sent',
-                'type' => 'whatsapp',
-                'external_id' => $twilioMessage->sid,
-                'sent_at' => now()
+                'sent_at' => now(),
+                'metadata' => array_merge($options, [
+                    'twilio_sid' => $twilioMessage->sid,
+                    'twilio_status' => $twilioMessage->status,
+                ]),
             ]);
 
+            // Mettre à jour le dernier contact du client
+            $client->updateLastContact();
+
+            return [
+                'success' => true,
+                'message_id' => $marketingMessage->id,
+                'twilio_sid' => $twilioMessage->sid,
+                'status' => $twilioMessage->status,
+            ];
+
         } catch (\Exception $e) {
-            Log::error('WhatsApp message failed: ' . $e->getMessage());
-            
-            return Message::create([
-                'user_id' => $userId,
+            Log::error('WhatsApp message sending failed', [
                 'client_id' => $client->id,
-                'content' => $content,
-                'status' => 'failed',
-                'type' => 'whatsapp',
-                'error_code' => $e->getMessage(),
-                'sent_at' => now()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
+
+            // Marquer le message comme échoué
+            if (isset($marketingMessage)) {
+                $marketingMessage->markAsFailed($e->getMessage());
+            }
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'code' => 'SENDING_FAILED'
+            ];
         }
     }
 
-    public function sendTemplateMessage(Client $client, string $templateName, array $parameters = [], ?int $userId = null): Message
+    /**
+     * Envoyer un message en masse à plusieurs clients
+     */
+    public function sendBulkMessage(array $clientIds, string $message, int $userId, array $options = []): array
     {
-        try {
-            $toNumber = 'whatsapp:' . $this->formatPhoneNumber($client->phone);
-            
-            $twilioMessage = $this->twilio->messages->create(
-                $toNumber,
-                [
-                    'from' => $this->fromNumber,
-                    'contentSid' => $templateName,
-                    'contentVariables' => json_encode($parameters)
-                ]
-            );
+        $results = [
+            'total' => count($clientIds),
+            'success' => 0,
+            'failed' => 0,
+            'errors' => [],
+        ];
 
-            return Message::create([
-                'user_id' => $userId,
-                'client_id' => $client->id,
-                'content' => "Template: $templateName",
-                'status' => 'sent',
-                'type' => 'whatsapp_template',
-                'external_id' => $twilioMessage->sid,
-                'sent_at' => now()
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('WhatsApp template message failed: ' . $e->getMessage());
-            
-            return Message::create([
-                'user_id' => $userId,
-                'client_id' => $client->id,
-                'content' => "Template: $templateName",
-                'status' => 'failed',
-                'type' => 'whatsapp_template',
-                'error_code' => $e->getMessage(),
-                'sent_at' => now()
-            ]);
-        }
-    }
-
-    public function sendBulkMessage(array $clientIds, string $content, ?int $userId = null): array
-    {
-        $results = [];
-        $clients = Client::whereIn('id', $clientIds)->where('opt_out', false)->get();
+        $clients = MarketingClient::whereIn('id', $clientIds)
+            ->where('user_id', $userId)
+            ->active()
+            ->get();
 
         foreach ($clients as $client) {
-            $results[] = $this->sendMessage($client, $content, $userId);
+            $result = $this->sendMessage($client, $message, $options);
             
-            // Délai pour éviter les limites de taux
-            usleep(100000); // 100ms
+            if ($result['success']) {
+                $results['success']++;
+            } else {
+                $results['failed']++;
+                $results['errors'][] = [
+                    'client_id' => $client->id,
+                    'error' => $result['error'],
+                    'code' => $result['code'] ?? 'UNKNOWN',
+                ];
+            }
+
+            // Délai anti-spam
+            if ($results['success'] > 0 && $results['success'] % 10 === 0) {
+                sleep(1);
+            }
         }
 
         return $results;
     }
 
-    public function processIncomingMessage(array $webhookData): void
+    /**
+     * Envoyer un message de campagne
+     */
+    public function sendCampaignMessage(MarketingCampaign $campaign, MarketingClient $client): array
+    {
+        $content = $campaign->content;
+        $message = $content['message'] ?? '';
+
+        // Personnaliser le message
+        $message = $this->personalizeMessage($message, $client);
+
+        return $this->sendMessage($client, $message, [
+            'campaign_id' => $campaign->id,
+            'campaign_name' => $campaign->name,
+            'type' => 'campaign',
+        ]);
+    }
+
+    /**
+     * Personnaliser un message avec les données du client
+     */
+    public function personalizeMessage(string $message, MarketingClient $client): string
+    {
+        $replacements = [
+            '{nom}' => $client->name,
+            '{prenom}' => explode(' ', $client->name)[0] ?? '',
+            '{telephone}' => $client->phone,
+            '{email}' => $client->email ?? '',
+            '{anniversaire}' => $client->birthday ? $client->birthday->format('d/m') : '',
+            '{tags}' => implode(', ', $client->tags ?? []),
+        ];
+
+        return str_replace(array_keys($replacements), array_values($replacements), $message);
+    }
+
+    /**
+     * Formater un numéro de téléphone pour WhatsApp
+     */
+    protected function formatPhoneNumber(string $phone): ?string
+    {
+        // Nettoyer le numéro
+        $phone = preg_replace('/[^0-9+]/', '', $phone);
+
+        // Ajouter le préfixe + si absent
+        if (!str_starts_with($phone, '+')) {
+            $phone = '+' . $phone;
+        }
+
+        // Validation basique
+        if (strlen($phone) < 10 || strlen($phone) > 15) {
+            return null;
+        }
+
+        return $phone;
+    }
+
+    /**
+     * Traiter les webhooks de statut Twilio
+     */
+    public function processStatusWebhook(array $data): void
+    {
+        $messageSid = $data['MessageSid'] ?? null;
+        $status = $data['MessageStatus'] ?? null;
+
+        if (!$messageSid || !$status) {
+            return;
+        }
+
+        // Trouver le message par le SID Twilio
+        $message = MarketingMessage::where('metadata->twilio_sid', $messageSid)->first();
+        
+        if (!$message) {
+            Log::warning('Message not found for Twilio SID', ['sid' => $messageSid]);
+            return;
+        }
+
+        // Mettre à jour le statut
+        switch ($status) {
+            case 'delivered':
+                $message->markAsDelivered();
+                break;
+            case 'read':
+                $message->markAsRead();
+                break;
+            case 'failed':
+                $error = $data['ErrorMessage'] ?? 'Unknown error';
+                $message->markAsFailed($error);
+                break;
+        }
+
+        // Mettre à jour les métadonnées
+        $metadata = $message->getMetadata();
+        $metadata['twilio_status'] = $status;
+        $metadata['status_updated_at'] = now()->toISOString();
+        $message->setMetadata($metadata);
+    }
+
+    /**
+     * Traiter les messages entrants WhatsApp
+     */
+    public function processIncomingMessage(array $data): void
+    {
+        $from = $data['From'] ?? null;
+        $body = $data['Body'] ?? '';
+        $messageSid = $data['MessageSid'] ?? null;
+
+        if (!$from || !$body) {
+            return;
+        }
+
+        // Extraire le numéro de téléphone
+        $phone = str_replace('whatsapp:', '', $from);
+        
+        // Trouver le client
+        $client = MarketingClient::where('phone', $phone)->first();
+        
+        if (!$client) {
+            Log::warning('Client not found for incoming WhatsApp message', ['phone' => $phone]);
+            return;
+        }
+
+        // Traiter les commandes spéciales
+        if ($this->isSpecialCommand($body)) {
+            $this->processSpecialCommand($client, $body);
+            return;
+        }
+
+        // Enregistrer le message entrant
+        MarketingMessage::create([
+            'user_id' => $client->user_id,
+            'client_id' => $client->id,
+            'type' => 'whatsapp',
+            'content' => $body,
+            'status' => 'delivered',
+            'delivered_at' => now(),
+            'metadata' => [
+                'direction' => 'incoming',
+                'twilio_sid' => $messageSid,
+                'type' => 'incoming',
+            ],
+        ]);
+
+        // Mettre à jour le dernier contact
+        $client->updateLastContact();
+    }
+
+    /**
+     * Vérifier si c'est une commande spéciale
+     */
+    protected function isSpecialCommand(string $body): bool
+    {
+        $commands = ['STOP', 'ARRET', 'OPT-OUT', 'UNSUBSCRIBE', 'DESABONNER'];
+        return in_array(strtoupper(trim($body)), $commands);
+    }
+
+    /**
+     * Traiter les commandes spéciales
+     */
+    protected function processSpecialCommand(MarketingClient $client, string $command): void
+    {
+        $command = strtoupper(trim($command));
+        
+        switch ($command) {
+            case 'STOP':
+            case 'ARRET':
+            case 'OPT-OUT':
+            case 'UNSUBSCRIBE':
+            case 'DESABONNER':
+                $client->optOut();
+                
+                // Envoyer confirmation
+                $this->sendMessage($client, 
+                    "Vous avez été désabonné des communications WhatsApp. Pour vous réabonner, contactez-nous.",
+                    ['type' => 'opt_out_confirmation']
+                );
+                break;
+        }
+    }
+
+    /**
+     * Obtenir les statistiques WhatsApp
+     */
+    public function getStats(int $userId, string $period = 'month'): array
+    {
+        $query = MarketingMessage::where('user_id', $userId)
+            ->ofType('whatsapp');
+
+        switch ($period) {
+            case 'today':
+                $query->sentToday();
+                break;
+            case 'week':
+                $query->sentThisWeek();
+                break;
+            case 'month':
+                $query->sentThisMonth();
+                break;
+        }
+
+        $total = $query->count();
+        $sent = $query->sent()->count();
+        $delivered = $query->delivered()->count();
+        $read = $query->read()->count();
+        $failed = $query->failed()->count();
+
+        return [
+            'total' => $total,
+            'sent' => $sent,
+            'delivered' => $delivered,
+            'read' => $read,
+            'failed' => $failed,
+            'delivery_rate' => $sent > 0 ? round(($delivered / $sent) * 100, 2) : 0,
+            'read_rate' => $delivered > 0 ? round(($read / $delivered) * 100, 2) : 0,
+        ];
+    }
+
+    /**
+     * Vérifier la configuration Twilio
+     */
+    public function testConnection(): array
     {
         try {
-            $fromNumber = str_replace('whatsapp:', '', $webhookData['From']);
-            $content = $webhookData['Body'];
-            $messageSid = $webhookData['MessageSid'];
-
-            // Trouver ou créer le client
-            $client = Client::where('phone', $this->formatPhoneNumber($fromNumber))->first();
+            $account = $this->twilioClient->api->accounts(config('services.twilio.sid'))->fetch();
             
-            if (!$client) {
-                $client = Client::create([
-                    'phone' => $this->formatPhoneNumber($fromNumber),
-                    'name' => 'Client WhatsApp',
-                    'user_id' => 1 // À adapter selon votre logique
-                ]);
-            }
-
-            // Enregistrer le message reçu
-            Message::create([
-                'client_id' => $client->id,
-                'content' => $content,
-                'status' => 'received',
-                'type' => 'whatsapp',
-                'is_reply' => true,
-                'external_id' => $messageSid,
-                'sent_at' => now()
-            ]);
-
-            // Déclencher le bot de réponse automatique si configuré
-            $this->triggerAutomaticResponse($client, $content);
-
+            return [
+                'success' => true,
+                'account_name' => $account->friendlyName,
+                'status' => $account->status,
+            ];
         } catch (\Exception $e) {
-            Log::error('Error processing incoming WhatsApp message: ' . $e->getMessage());
-        }
-    }
-
-    private function triggerAutomaticResponse(Client $client, string $incomingMessage): void
-    {
-        // Logique pour déclencher des réponses automatiques basées sur le contenu
-        $lowercaseMessage = strtolower($incomingMessage);
-
-        if (str_contains($lowercaseMessage, 'stop') || str_contains($lowercaseMessage, 'arrêt')) {
-            $client->optOut();
-            $this->sendMessage($client, "Vous avez été désinscrit de nos communications. Envoyez START pour vous réinscrire.");
-        } elseif (str_contains($lowercaseMessage, 'start') || str_contains($lowercaseMessage, 'démarrer')) {
-            $client->optIn();
-            $this->sendMessage($client, "Vous avez été réinscrit à nos communications. Merci !");
-        } elseif (str_contains($lowercaseMessage, 'info') || str_contains($lowercaseMessage, 'informations')) {
-            $this->sendMessage($client, "Voici nos informations de contact et nos services...");
-        }
-    }
-
-    private function formatPhoneNumber(string $phone): string
-    {
-        // Retirer tous les caractères non numériques
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-        
-        // Ajouter l'indicatif pays si manquant (adapter selon votre région)
-        if (!str_starts_with($phone, '33') && !str_starts_with($phone, '+33')) {
-            $phone = '33' . ltrim($phone, '0');
-        }
-        
-        return '+' . ltrim($phone, '+');
-    }
-
-    public function getMessageStatus(string $messageSid): string
-    {
-        try {
-            $message = $this->twilio->messages($messageSid)->fetch();
-            return $message->status;
-        } catch (\Exception $e) {
-            Log::error('Error fetching WhatsApp message status: ' . $e->getMessage());
-            return 'unknown';
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
         }
     }
 }

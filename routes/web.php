@@ -21,6 +21,13 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\MarketingAssistantController;
 use App\Http\Controllers\FlyerController;
+use App\Http\Controllers\MarketingClientController;
+use App\Http\Controllers\MarketingCampaignController;
+use App\Http\Controllers\MarketingAutomationController;
+use App\Http\Controllers\MarketingContentTemplateController;
+use App\Http\Controllers\MarketingFlyerController;
+use App\Http\Controllers\MarketingAIController;
+use App\Http\Controllers\MarketingWhatsAppController;
 
 // Page d'accueil
 Route::get('/', function () {
@@ -308,3 +315,77 @@ Route::middleware(['auth'])->prefix('admin/twilio')->group(function () {
     Route::post('/sms/send', [TwilioController::class, 'sendQuickSms'])->name('twilio.sms.send');
 });
 require __DIR__.'/auth.php';
+
+// Routes Marketing Digital
+Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')->group(function () {
+    // Tableau de bord principal
+    Route::get('/dashboard', function () {
+        return Inertia::render('Marketing/Dashboard');
+    })->name('dashboard');
+
+    // Gestion des clients
+    Route::resource('clients', MarketingClientController::class);
+    Route::post('clients/{client}/send-message', [MarketingClientController::class, 'sendMessage'])->name('clients.send-message');
+    Route::post('clients/import', [MarketingClientController::class, 'import'])->name('clients.import');
+    Route::get('clients/export', [MarketingClientController::class, 'export'])->name('clients.export');
+    Route::post('clients/bulk-action', [MarketingClientController::class, 'bulkAction'])->name('clients.bulk-action');
+
+    // Gestion des campagnes
+    Route::resource('campaigns', MarketingCampaignController::class);
+    Route::post('campaigns/{campaign}/start', [MarketingCampaignController::class, 'start'])->name('campaigns.start');
+    Route::post('campaigns/{campaign}/pause', [MarketingCampaignController::class, 'pause'])->name('campaigns.pause');
+    Route::post('campaigns/{campaign}/resume', [MarketingCampaignController::class, 'resume'])->name('campaigns.resume');
+    Route::post('campaigns/{campaign}/complete', [MarketingCampaignController::class, 'complete'])->name('campaigns.complete');
+    Route::post('campaigns/{campaign}/cancel', [MarketingCampaignController::class, 'cancel'])->name('campaigns.cancel');
+    Route::post('campaigns/{campaign}/schedule', [MarketingCampaignController::class, 'schedule'])->name('campaigns.schedule');
+    Route::post('campaigns/{campaign}/send', [MarketingCampaignController::class, 'send'])->name('campaigns.send');
+
+    // Gestion des automatisations
+    Route::resource('automations', MarketingAutomationController::class);
+    Route::post('automations/{automation}/activate', [MarketingAutomationController::class, 'activate'])->name('automations.activate');
+    Route::post('automations/{automation}/deactivate', [MarketingAutomationController::class, 'deactivate'])->name('automations.deactivate');
+    Route::post('automations/{automation}/execute', [MarketingAutomationController::class, 'execute'])->name('automations.execute');
+    Route::post('automations/{automation}/duplicate', [MarketingAutomationController::class, 'duplicate'])->name('automations.duplicate');
+    Route::post('automations/birthday-rule', [MarketingAutomationController::class, 'createBirthdayRule'])->name('automations.birthday-rule');
+    Route::post('automations/seasonal-rule', [MarketingAutomationController::class, 'createSeasonalRule'])->name('automations.seasonal-rule');
+    Route::post('automations/new-client-rule', [MarketingAutomationController::class, 'createNewClientRule'])->name('automations.new-client-rule');
+    Route::post('automations/inactive-client-rule', [MarketingAutomationController::class, 'createInactiveClientRule'])->name('automations.inactive-client-rule');
+    Route::post('automations/create-defaults', [MarketingAutomationController::class, 'createDefaultRules'])->name('automations.create-defaults');
+
+    // Gestion des templates de contenu
+    Route::resource('templates', MarketingContentTemplateController::class);
+    Route::post('templates/{template}/activate', [MarketingContentTemplateController::class, 'activate'])->name('templates.activate');
+    Route::post('templates/{template}/deactivate', [MarketingContentTemplateController::class, 'deactivate'])->name('templates.deactivate');
+    Route::post('templates/{template}/duplicate', [MarketingContentTemplateController::class, 'duplicate'])->name('templates.duplicate');
+    Route::post('templates/{template}/generate-content', [MarketingContentTemplateController::class, 'generateContent'])->name('templates.generate-content');
+
+    // Gestion des flyers
+    Route::resource('flyers', MarketingFlyerController::class);
+    Route::post('flyers/{flyer}/publish', [MarketingFlyerController::class, 'publish'])->name('flyers.publish');
+    Route::post('flyers/{flyer}/archive', [MarketingFlyerController::class, 'archive'])->name('flyers.archive');
+    Route::post('flyers/{flyer}/duplicate', [MarketingFlyerController::class, 'duplicate'])->name('flyers.duplicate');
+    Route::get('flyers/{flyer}/preview', [MarketingFlyerController::class, 'preview'])->name('flyers.preview');
+    Route::post('flyers/{flyer}/export', [MarketingFlyerController::class, 'export'])->name('flyers.export');
+    Route::post('flyers/{flyer}/apply-template', [MarketingFlyerController::class, 'applyTemplate'])->name('flyers.apply-template');
+    Route::post('flyers/{flyer}/generate-ai-content', [MarketingFlyerController::class, 'generateAIContent'])->name('flyers.generate-ai-content');
+
+    // Assistant IA
+    Route::get('ai/assistant', function () {
+        return Inertia::render('Marketing/AI/Assistant');
+    })->name('ai.assistant');
+    Route::post('ai/chat', [MarketingAIController::class, 'chat'])->name('ai.chat');
+    Route::post('ai/generate-content', [MarketingAIController::class, 'generateContent'])->name('ai.generate-content');
+    Route::post('ai/generate-article', [MarketingAIController::class, 'generateArticle'])->name('ai.generate-article');
+    Route::post('ai/generate-social-post', [MarketingAIController::class, 'generateSocialPost'])->name('ai.generate-social-post');
+    Route::post('ai/generate-flyer-content', [MarketingAIController::class, 'generateFlyerContent'])->name('ai.generate-flyer-content');
+    Route::post('ai/generate-personalized-message', [MarketingAIController::class, 'generatePersonalizedMessage'])->name('ai.generate-personalized-message');
+    Route::post('ai/optimize-content', [MarketingAIController::class, 'optimizeContent'])->name('ai.optimize-content');
+    Route::post('ai/generate-suggestions', [MarketingAIController::class, 'generateSuggestions'])->name('ai.generate-suggestions');
+
+    // WhatsApp Business
+    Route::get('whatsapp/conversations', [MarketingWhatsAppController::class, 'conversations'])->name('whatsapp.conversations');
+    Route::get('whatsapp/conversations/{conversation}', [MarketingWhatsAppController::class, 'showConversation'])->name('whatsapp.conversations.show');
+    Route::post('whatsapp/conversations/{conversation}/reply', [MarketingWhatsAppController::class, 'reply'])->name('whatsapp.conversations.reply');
+    Route::get('whatsapp/stats', [MarketingWhatsAppController::class, 'stats'])->name('whatsapp.stats');
+    Route::get('whatsapp/test-connection', [MarketingWhatsAppController::class, 'testConnection'])->name('whatsapp.test-connection');
+});
