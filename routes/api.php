@@ -203,6 +203,120 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::get('/quotas', [TwilioController::class, 'getQuotas']);
     });
 
+    // Marketing Digital - Routes principales
+    Route::prefix('marketing')->group(function () {
+        Route::get('/dashboard', [App\Http\Controllers\Api\MarketingController::class, 'dashboard']);
+        Route::get('/stats', [App\Http\Controllers\Api\MarketingController::class, 'stats']);
+        Route::get('/config', [App\Http\Controllers\Api\MarketingController::class, 'getConfig']);
+        Route::get('/test-services', [App\Http\Controllers\Api\MarketingController::class, 'testServices']);
+        Route::get('/performance-report', [App\Http\Controllers\Api\MarketingController::class, 'getPerformanceReport']);
+        Route::get('/improvement-suggestions', [App\Http\Controllers\Api\MarketingController::class, 'getImprovementSuggestions']);
+    });
+
+    // Marketing Digital - Gestion des clients
+    Route::prefix('marketing/clients')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\MarketingClientController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\MarketingClientController::class, 'store']);
+        Route::get('/{client}', [App\Http\Controllers\Api\MarketingClientController::class, 'show']);
+        Route::put('/{client}', [App\Http\Controllers\Api\MarketingClientController::class, 'update']);
+        Route::delete('/{client}', [App\Http\Controllers\Api\MarketingClientController::class, 'destroy']);
+        Route::post('/{client}/opt-out', [App\Http\Controllers\Api\MarketingClientController::class, 'optOut']);
+        Route::post('/{client}/opt-in', [App\Http\Controllers\Api\MarketingClientController::class, 'optIn']);
+        Route::post('/import', [App\Http\Controllers\Api\MarketingClientController::class, 'import']);
+        Route::get('/export', [App\Http\Controllers\Api\MarketingClientController::class, 'export']);
+        Route::post('/bulk-actions', [App\Http\Controllers\Api\MarketingClientController::class, 'bulkActions']);
+        Route::get('/{client}/messages', [App\Http\Controllers\Api\MarketingClientController::class, 'getMessages']);
+        Route::post('/{client}/send-message', [App\Http\Controllers\Api\MarketingClientController::class, 'sendMessage']);
+    });
+
+    // Marketing Digital - Gestion des campagnes
+    Route::prefix('marketing/campaigns')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\MarketingCampaignController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\MarketingCampaignController::class, 'store']);
+        Route::get('/{campaign}', [App\Http\Controllers\Api\MarketingCampaignController::class, 'show']);
+        Route::put('/{campaign}', [App\Http\Controllers\Api\MarketingCampaignController::class, 'update']);
+        Route::delete('/{campaign}', [App\Http\Controllers\Api\MarketingCampaignController::class, 'destroy']);
+        Route::post('/{campaign}/start', [App\Http\Controllers\Api\MarketingCampaignController::class, 'start']);
+        Route::post('/{campaign}/pause', [App\Http\Controllers\Api\MarketingCampaignController::class, 'pause']);
+        Route::post('/{campaign}/resume', [App\Http\Controllers\Api\MarketingCampaignController::class, 'resume']);
+        Route::post('/{campaign}/complete', [App\Http\Controllers\Api\MarketingCampaignController::class, 'complete']);
+        Route::post('/{campaign}/cancel', [App\Http\Controllers\Api\MarketingCampaignController::class, 'cancel']);
+        Route::post('/{campaign}/schedule', [App\Http\Controllers\Api\MarketingCampaignController::class, 'schedule']);
+        Route::get('/{campaign}/metrics', [App\Http\Controllers\Api\MarketingCampaignController::class, 'getMetrics']);
+        Route::post('/{campaign}/send', [App\Http\Controllers\Api\MarketingCampaignController::class, 'send']);
+    });
+
+    // Marketing Digital - Gestion des automatisations
+    Route::prefix('marketing/automations')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\MarketingAutomationController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\MarketingAutomationController::class, 'store']);
+        Route::get('/{automation}', [App\Http\Controllers\Api\MarketingAutomationController::class, 'show']);
+        Route::put('/{automation}', [App\Http\Controllers\Api\MarketingAutomationController::class, 'update']);
+        Route::delete('/{automation}', [App\Http\Controllers\Api\MarketingAutomationController::class, 'destroy']);
+        Route::post('/{automation}/activate', [App\Http\Controllers\Api\MarketingAutomationController::class, 'activate']);
+        Route::post('/{automation}/deactivate', [App\Http\Controllers\Api\MarketingAutomationController::class, 'deactivate']);
+        Route::post('/{automation}/execute', [App\Http\Controllers\Api\MarketingAutomationController::class, 'execute']);
+        Route::post('/{automation}/duplicate', [App\Http\Controllers\Api\MarketingAutomationController::class, 'duplicate']);
+        Route::get('/{automation}/execution-history', [App\Http\Controllers\Api\MarketingAutomationController::class, 'getExecutionHistory']);
+        Route::post('/birthday-rule', [App\Http\Controllers\Api\MarketingAutomationController::class, 'createBirthdayRule']);
+        Route::post('/seasonal-rule', [App\Http\Controllers\Api\MarketingAutomationController::class, 'createSeasonalRule']);
+        Route::post('/new-client-rule', [App\Http\Controllers\Api\MarketingAutomationController::class, 'createNewClientRule']);
+        Route::post('/inactive-client-rule', [App\Http\Controllers\Api\MarketingAutomationController::class, 'createInactiveClientRule']);
+    });
+
+    // Marketing Digital - Gestion des templates de contenu
+    Route::prefix('marketing/templates')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\MarketingTemplateController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\MarketingTemplateController::class, 'store']);
+        Route::get('/{template}', [App\Http\Controllers\Api\MarketingTemplateController::class, 'show']);
+        Route::put('/{template}', [App\Http\Controllers\Api\MarketingTemplateController::class, 'update']);
+        Route::delete('/{template}', [App\Http\Controllers\Api\MarketingTemplateController::class, 'destroy']);
+        Route::post('/{template}/activate', [App\Http\Controllers\Api\MarketingTemplateController::class, 'activate']);
+        Route::post('/{template}/deactivate', [App\Http\Controllers\Api\MarketingTemplateController::class, 'deactivate']);
+        Route::post('/{template}/duplicate', [App\Http\Controllers\Api\MarketingTemplateController::class, 'duplicate']);
+        Route::post('/{template}/generate-content', [App\Http\Controllers\Api\MarketingTemplateController::class, 'generateContent']);
+    });
+
+    // Marketing Digital - Gestion des flyers
+    Route::prefix('marketing/flyers')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\MarketingFlyerController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\MarketingFlyerController::class, 'store']);
+        Route::get('/{flyer}', [App\Http\Controllers\Api\MarketingFlyerController::class, 'show']);
+        Route::put('/{flyer}', [App\Http\Controllers\Api\MarketingFlyerController::class, 'update']);
+        Route::delete('/{flyer}', [App\Http\Controllers\Api\MarketingFlyerController::class, 'destroy']);
+        Route::post('/{flyer}/publish', [App\Http\Controllers\Api\MarketingFlyerController::class, 'publish']);
+        Route::post('/{flyer}/archive', [App\Http\Controllers\Api\MarketingFlyerController::class, 'archive']);
+        Route::post('/{flyer}/duplicate', [App\Http\Controllers\Api\MarketingFlyerController::class, 'duplicate']);
+        Route::get('/{flyer}/preview', [App\Http\Controllers\Api\MarketingFlyerController::class, 'generatePreview']);
+        Route::get('/{flyer}/export/{format}', [App\Http\Controllers\Api\MarketingFlyerController::class, 'export']);
+        Route::post('/{flyer}/apply-template', [App\Http\Controllers\Api\MarketingFlyerController::class, 'applyTemplate']);
+        Route::post('/{flyer}/generate-ai-content', [App\Http\Controllers\Api\MarketingFlyerController::class, 'generateAIContent']);
+    });
+
+    // Marketing Digital - Assistant IA et génération de contenu
+    Route::prefix('marketing/ai')->group(function () {
+        Route::post('/chat', [App\Http\Controllers\Api\MarketingAIController::class, 'chat']);
+        Route::post('/generate-content', [App\Http\Controllers\Api\MarketingAIController::class, 'generateContent']);
+        Route::post('/generate-article', [App\Http\Controllers\Api\MarketingAIController::class, 'generateArticle']);
+        Route::post('/generate-social-post', [App\Http\Controllers\Api\MarketingAIController::class, 'generateSocialPost']);
+        Route::post('/generate-flyer-content', [App\Http\Controllers\Api\MarketingAIController::class, 'generateFlyerContent']);
+        Route::post('/generate-personalized-message', [App\Http\Controllers\Api\MarketingAIController::class, 'generatePersonalizedMessage']);
+        Route::post('/optimize-content', [App\Http\Controllers\Api\MarketingAIController::class, 'optimizeContent']);
+        Route::post('/generate-suggestions', [App\Http\Controllers\Api\MarketingAIController::class, 'generateSuggestions']);
+    });
+
+    // Marketing Digital - WhatsApp Business
+    Route::prefix('marketing/whatsapp')->group(function () {
+        Route::post('/send-message', [App\Http\Controllers\Api\MarketingWhatsAppController::class, 'sendMessage']);
+        Route::post('/send-bulk', [App\Http\Controllers\Api\MarketingWhatsAppController::class, 'sendBulkMessage']);
+        Route::post('/send-campaign', [App\Http\Controllers\Api\MarketingWhatsAppController::class, 'sendCampaignMessage']);
+        Route::get('/conversations', [App\Http\Controllers\Api\MarketingWhatsAppController::class, 'getConversations']);
+        Route::get('/conversations/{conversation}', [App\Http\Controllers\Api\MarketingWhatsAppController::class, 'getConversation']);
+        Route::post('/conversations/{conversation}/reply', [App\Http\Controllers\Api\MarketingWhatsAppController::class, 'replyToConversation']);
+        Route::get('/stats', [App\Http\Controllers\Api\MarketingWhatsAppController::class, 'getStats']);
+        Route::get('/test-connection', [App\Http\Controllers\Api\MarketingWhatsAppController::class, 'testConnection']);
+    });
+
     // Paramètres et configuration utilisateur
     Route::prefix('settings')->group(function () {
         Route::get('/', [TwilioController::class, 'getSettings']);
