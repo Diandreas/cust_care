@@ -28,6 +28,8 @@ use App\Http\Controllers\MarketingContentTemplateController;
 use App\Http\Controllers\MarketingFlyerController;
 use App\Http\Controllers\MarketingAIController;
 use App\Http\Controllers\MarketingWhatsAppController;
+use App\Http\Controllers\MarketingChatController;
+use App\Http\Controllers\MarketingAnalyticsController;
 
 // Page d'accueil
 Route::get('/', function () {
