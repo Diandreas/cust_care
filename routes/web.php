@@ -28,6 +28,8 @@ use App\Http\Controllers\MarketingContentTemplateController;
 use App\Http\Controllers\MarketingFlyerController;
 use App\Http\Controllers\MarketingAIController;
 use App\Http\Controllers\MarketingWhatsAppController;
+use App\Http\Controllers\MarketingChatController;
+use App\Http\Controllers\MarketingAnalyticsController;
 
 // Page d'accueil
 Route::get('/', function () {
@@ -388,4 +390,65 @@ Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')
     Route::post('whatsapp/conversations/{conversation}/reply', [MarketingWhatsAppController::class, 'reply'])->name('whatsapp.conversations.reply');
     Route::get('whatsapp/stats', [MarketingWhatsAppController::class, 'stats'])->name('whatsapp.stats');
     Route::get('whatsapp/test-connection', [MarketingWhatsAppController::class, 'testConnection'])->name('whatsapp.test-connection');
+
+    // Interfaces améliorées (UI)
+    Route::get('chat', function () {
+        return Inertia::render('Marketing/Chat/Index', [
+            'conversation_history' => [],
+            'whatsapp_connected' => \Illuminate\Support\Facades\Cache::get('wa_connected:' . auth()->id(), false),
+            'ai_status' => 'online',
+        ]);
+    })->name('chat.index');
+
+    Route::get('ai/content-generator', function () {
+        return Inertia::render('Marketing/AI/ContentGenerator', [
+            'content_templates' => [],
+            'recent_generations' => []
+        ]);
+    })->name('ai.content-generator');
+
+    Route::get('automation/dashboard', function () {
+        return Inertia::render('Marketing/Automation/Dashboard', [
+            'automation_rules' => [],
+            'stats' => [
+                'total_rules' => 0,
+                'active_rules' => 0,
+                'total_executions' => 0,
+                'success_rate' => 0,
+                'messages_sent' => 0,
+                'clients_reached' => 0,
+                'revenue_generated' => 0,
+            ],
+            'performance_data' => [],
+            'upcoming_executions' => []
+        ]);
+    })->name('automation.dashboard');
+
+    Route::get('whatsapp/dashboard', function () {
+        return Inertia::render('Marketing/WhatsApp/Dashboard', [
+            'whatsapp_connected' => \Illuminate\Support\Facades\Cache::get('wa_connected:' . auth()->id(), false),
+            'whatsapp_config' => [],
+            'stats' => [
+                'total_messages' => 0,
+                'delivered_messages' => 0,
+                'read_messages' => 0,
+                'failed_messages' => 0,
+                'delivery_rate' => 0,
+                'read_rate' => 0,
+                'connected_clients' => 0,
+                'opt_out_clients' => 0,
+            ],
+            'recent_messages' => [],
+            'clients' => [],
+            'auth_link' => null,
+            'qr_code' => null,
+        ]);
+    })->name('whatsapp.dashboard');
+
+    // API Chat IA (JSON)
+    Route::post('chat/send', [MarketingChatController::class, 'sendMessage'])->name('chat.send');
+
+    // Authentification WhatsApp (OTP)
+    Route::post('whatsapp/request-auth', [MarketingWhatsAppController::class, 'requestAuth'])->name('whatsapp.request-auth');
+    Route::post('whatsapp/verify-auth', [MarketingWhatsAppController::class, 'verifyAuth'])->name('whatsapp.verify-auth');
 });
