@@ -446,7 +446,8 @@ Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')
     })->name('whatsapp.dashboard');
 
     // API Chat IA (JSON)
-    Route::post('chat/send', [MarketingChatController::class, 'sendMessage'])->name('chat.send');
+    Route::post('chat/send', [App\Http\Controllers\Marketing\MarketingChatController::class, 'sendMessage'])->name('chat.send');
+    Route::get('chat', [App\Http\Controllers\Marketing\MarketingChatController::class, 'index'])->name('chat.index');
 
     // Authentification WhatsApp (OTP)
     Route::post('whatsapp/request-auth', [MarketingWhatsAppController::class, 'requestAuth'])->name('whatsapp.request-auth');

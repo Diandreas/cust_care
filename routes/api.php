@@ -295,14 +295,18 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     // Marketing Digital - Assistant IA et génération de contenu
     Route::prefix('marketing/ai')->group(function () {
-        Route::post('/chat', [App\Http\Controllers\Api\MarketingAIController::class, 'chat']);
-        Route::post('/generate-content', [App\Http\Controllers\Api\MarketingAIController::class, 'generateContent']);
-        Route::post('/generate-article', [App\Http\Controllers\Api\MarketingAIController::class, 'generateArticle']);
-        Route::post('/generate-social-post', [App\Http\Controllers\Api\MarketingAIController::class, 'generateSocialPost']);
-        Route::post('/generate-flyer-content', [App\Http\Controllers\Api\MarketingAIController::class, 'generateFlyerContent']);
-        Route::post('/generate-personalized-message', [App\Http\Controllers\Api\MarketingAIController::class, 'generatePersonalizedMessage']);
-        Route::post('/optimize-content', [App\Http\Controllers\Api\MarketingAIController::class, 'optimizeContent']);
-        Route::post('/generate-suggestions', [App\Http\Controllers\Api\MarketingAIController::class, 'generateSuggestions']);
+        Route::post('/chat', [App\Http\Controllers\Marketing\MarketingChatController::class, 'sendMessage']);
+        Route::post('/generate-content', [App\Http\Controllers\Marketing\MarketingChatController::class, 'generateContent']);
+        Route::post('/analyze-performance', [App\Http\Controllers\Marketing\MarketingChatController::class, 'analyzePerformance']);
+        Route::post('/optimize-content', [App\Http\Controllers\Marketing\MarketingChatController::class, 'optimizeContent']);
+        Route::post('/bulk-whatsapp', [App\Http\Controllers\Marketing\MarketingChatController::class, 'sendBulkWhatsApp']);
+        Route::get('/stats', [App\Http\Controllers\Marketing\MarketingChatController::class, 'getChatStats']);
+    });
+
+    // Marketing Digital - Authentification WhatsApp simplifiée
+    Route::prefix('marketing/whatsapp-auth')->group(function () {
+        Route::post('/request-pin', [App\Services\WhatsAppService::class, 'sendAuthPin'])->name('whatsapp.auth.pin');
+        Route::post('/verify-pin', [App\Services\WhatsAppService::class, 'verifyPin'])->name('whatsapp.auth.verify');
     });
 
     // Marketing Digital - WhatsApp Business
