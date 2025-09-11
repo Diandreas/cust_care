@@ -570,7 +570,7 @@ class MarketingAutomationController extends Controller
         $this->authorize('update', $rule);
 
         $validator = Validator::make($request->all(), [
-            'is_active' => 'boolean',
+            'status' => 'string|in:active,inactive,draft',
             'name' => 'string|max:255',
             'conditions' => 'array',
             'actions' => 'array'
@@ -585,7 +585,7 @@ class MarketingAutomationController extends Controller
         }
 
         try {
-            $rule->update($request->only(['is_active', 'name', 'conditions', 'actions']));
+            $rule->update($request->only(['status', 'name', 'conditions', 'actions']));
 
             return response()->json([
                 'success' => true,

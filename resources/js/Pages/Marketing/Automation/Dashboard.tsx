@@ -66,7 +66,7 @@ export default function AutomationDashboard({
   performance_data = [],
   upcoming_executions = []
 }: AutomationDashboardProps) {
-  const { t } = useTranslation();
+  const t = (key: string) => key; // Temporary translation fallback
   const [selectedPeriod, setSelectedPeriod] = useState('week');
 
   const automationTypes = [

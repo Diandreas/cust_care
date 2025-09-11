@@ -1039,14 +1039,15 @@ export default function CampaignsIndex({
 
                             {/* Actions */}
                             {!selectionMode ? (
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={toggleSelectionMode}
                                     >
                                         <CheckSquare className="h-4 w-4 mr-2" />
-                                        <span>{t('campaigns.selectMode')}</span>
+                                        <span className="hidden sm:inline">{t('campaigns.selectMode')}</span>
+                                        <span className="sm:hidden">{t('campaigns.select')}</span>
                                     </Button>
 
                                     <DropdownMenu>
@@ -1057,21 +1058,22 @@ export default function CampaignsIndex({
                                                 className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 text-indigo-700 border-indigo-200 hover:from-indigo-500/20 hover:via-purple-500/20 hover:to-pink-500/20 hover:text-indigo-800 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 dark:text-indigo-400 dark:border-indigo-800/30 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30"
                                             >
                                                 <Zap className="h-4 w-4 mr-2" />
-                                                <span>{t('campaigns.quickActions')}</span>
+                                                <span className="hidden sm:inline">{t('campaigns.quickActions')}</span>
+                                                <span className="sm:hidden">{t('campaigns.actions')}</span>
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem onClick={enableAllUpcomingCampaigns}>
                                                 <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
-                                                <span>{t('campaigns.enableAllUpcoming')}</span>
+                                                <span>{t('campaigns.enableAll')}</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={disableAllCampaigns}>
                                                 <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
-                                                <span>{t('campaigns.disableAllCampaigns')}</span>
+                                                <span>{t('campaigns.disableAll')}</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={disableBirthdayCampaigns}>
                                                 <Gift className="mr-2 h-4 w-4 text-orange-500" />
-                                                <span>{t('campaigns.disableBirthdayCampaigns')}</span>
+                                                <span>{t('campaigns.disableBirthdays')}</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -1083,18 +1085,20 @@ export default function CampaignsIndex({
                                         className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 text-green-700 border-green-200 hover:from-green-500/20 hover:to-emerald-500/20 hover:text-green-800"
                                     >
                                         <Plus className="h-4 w-4 mr-2" />
-                                        <span>{t('campaigns.quickAdd')}</span>
+                                        <span className="hidden sm:inline">{t('campaigns.quickAdd')}</span>
+                                        <span className="sm:hidden">{t('campaigns.add')}</span>
                                     </Button>
 
                                     <Link href={route('campaigns.create')}>
                                         <Button className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white hover:shadow-md transition-all duration-200">
                                             <CalendarAdd className="h-4 w-4 mr-2" />
-                                            <span>{t('campaigns.create')}</span>
+                                            <span className="hidden sm:inline">{t('campaigns.create')}</span>
+                                            <span className="sm:hidden">+</span>
                                         </Button>
                                     </Link>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <Badge variant="outline">
                                         {selectedCampaignIds.length} {t('campaigns.selected')}
                                     </Badge>
@@ -1107,7 +1111,8 @@ export default function CampaignsIndex({
                                                 disabled={selectedCampaignIds.length === 0}
                                             >
                                                 <MoreHorizontal className="h-4 w-4 mr-2" />
-                                                <span>{t('campaigns.actions')}</span>
+                                                <span className="hidden sm:inline">{t('campaigns.actions')}</span>
+                                                <span className="sm:hidden">{t('campaigns.menu')}</span>
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent>
@@ -1122,18 +1127,18 @@ export default function CampaignsIndex({
                                             <Separator />
                                             <DropdownMenuItem onClick={bulkDisableCampaigns}>
                                                 <PauseCircle className="mr-2 h-4 w-4 text-yellow-500" />
-                                                <span>{t('campaigns.pauseSelected')}</span>
+                                                <span>{t('campaigns.pause')}</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={bulkEnableCampaigns}>
                                                 <PlayCircle className="mr-2 h-4 w-4 text-green-500" />
-                                                <span>{t('campaigns.enableSelected')}</span>
+                                                <span>{t('campaigns.enable')}</span>
                                             </DropdownMenuItem>
                                             <DropdownMenuItem
                                                 onClick={bulkDeleteCampaigns}
                                                 className="text-destructive focus:text-destructive"
                                             >
                                                 <Trash2 className="mr-2 h-4 w-4" />
-                                                <span>{t('campaigns.deleteSelected')}</span>
+                                                <span>{t('campaigns.delete')}</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -1144,7 +1149,8 @@ export default function CampaignsIndex({
                                         onClick={toggleSelectionMode}
                                     >
                                         <X className="h-4 w-4 mr-2" />
-                                        <span>{t('campaigns.cancel')}</span>
+                                        <span className="hidden sm:inline">{t('campaigns.cancel')}</span>
+                                        <span className="sm:hidden">{t('campaigns.close')}</span>
                                     </Button>
                                 </div>
                             )}

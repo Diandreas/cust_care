@@ -793,154 +793,11 @@ class WhatsAppService
     /**
      * Envoyer un code PIN d'authentification WhatsApp
      */
-    public function sendAuthPin(string $phoneNumber): array
-    {
-        try {
-            if (!$this->client) {
-                throw new \Exception('Twilio client not configured');
-            }
-
-            // Normaliser le numéro de téléphone
-            $normalizedPhone = $this->normalizePhoneNumber($phoneNumber);
-            
-            // Générer un code PIN à 6 chiffres
-            $pin = str_pad(random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
-            
-            // Message d'authentification
-            $message = "🔐 Code d'authentification HelloBoost: {$pin}\n\n";
-            $message .= "Ce code est valable 10 minutes. Ne le partagez avec personne.\n";
-            $message .= "Si vous n'avez pas demandé ce code, ignorez ce message.";
-
-            // Envoyer le SMS
-            $result = $this->sendMessage($normalizedPhone, $message);
-            
-            if (!$result['success']) {
-                return [
-                    'success' => false,
-                    'error' => 'Impossible d\'envoyer le code PIN'
-                ];
-            }
-
-            // Stocker le PIN dans la session avec expiration
-            $expiresAt = now()->addMinutes(10);
-            
-            // Créer ou mettre à jour la session d'authentification
-            $authSession = \App\Models\WhatsAppAuthSession::updateOrCreate([
-                'phone_number' => $normalizedPhone
-            ], [
-                'verification_code' => $pin,
-                'expires_at' => $expiresAt,
-                'is_verified' => false,
-                'attempts' => 0,
-                'last_attempt_at' => null
-            ]);
-
-            Log::info('PIN WhatsApp envoyé', [
-                'phone' => $normalizedPhone,
-                'session_id' => $authSession->id
-            ]);
-
-            return [
-                'success' => true,
-                'message' => 'Code PIN envoyé avec succès',
-                'expires_at' => $expiresAt->toISOString(),
-                'session_token' => $authSession->session_token
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Erreur envoi PIN WhatsApp', [
-                'phone' => $phoneNumber,
-                'error' => $e->getMessage()
-            ]);
-
-            return [
-                'success' => false,
-                'error' => 'Erreur lors de l\'envoi du code PIN'
-            ];
-        }
-    }
+  
 
     /**
      * Vérifier le code PIN d'authentification
      */
-    public function verifyPin(string $phoneNumber, string $pin, ?int $userId = null): array
-    {
-        try {
-            $normalizedPhone = $this->normalizePhoneNumber($phoneNumber);
-            
-            // Trouver la session d'authentification
-            $authSession = \App\Models\WhatsAppAuthSession::where('phone_number', $normalizedPhone)
-                ->where('is_verified', false)
-                ->where('expires_at', '>', now())
-                ->first();
-
-            if (!$authSession) {
-                return [
-                    'success' => false,
-                    'error' => 'Code PIN expiré ou introuvable'
-                ];
-            }
-
-            // Vérifier le nombre de tentatives (max 3)
-            if ($authSession->attempts >= 3) {
-                $authSession->delete();
-                return [
-                    'success' => false,
-                    'error' => 'Trop de tentatives. Demandez un nouveau code.'
-                ];
-            }
-
-            // Incrémenter les tentatives
-            $authSession->increment('attempts');
-            $authSession->update(['last_attempt_at' => now()]);
-
-            // Vérifier le code PIN
-            if ($authSession->verification_code !== $pin) {
-                return [
-                    'success' => false,
-                    'error' => 'Code PIN incorrect',
-                    'attempts_remaining' => 3 - $authSession->attempts
-                ];
-            }
-
-            // Code correct - activer la session
-            $sessionToken = \Illuminate\Support\Str::random(64);
-            $sessionExpiry = now()->addHours(24); // Session valable 24h
-
-            $authSession->update([
-                'is_verified' => true,
-                'session_token' => $sessionToken,
-                'expires_at' => $sessionExpiry,
-                'user_id' => $userId,
-                'verified_at' => now()
-            ]);
-
-            Log::info('Authentification WhatsApp réussie', [
-                'phone' => $normalizedPhone,
-                'user_id' => $userId,
-                'session_id' => $authSession->id
-            ]);
-
-            return [
-                'success' => true,
-                'message' => 'Authentification réussie',
-                'session_token' => $sessionToken,
-                'expires_at' => $sessionExpiry->toISOString(),
-                'welcome_message' => $this->generateWelcomeMessage($userId)
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('Erreur vérification PIN WhatsApp', [
-                'phone' => $phoneNumber,
-                'error' => $e->getMessage()
-            ]);
-
-            return [
-                'success' => false,
-                'error' => 'Erreur lors de la vérification du code'
-            ];
-        }
-    }
 
     /**
      * Générer le message de bienvenue après authentification
@@ -978,16 +835,7 @@ class WhatsAppService
     /**
      * Obtenir la session WhatsApp active
      */
-    public function getActiveSession(string $phoneNumber): ?\App\Models\WhatsAppAuthSession
-    {
-        $normalizedPhone = $this->normalizePhoneNumber($phoneNumber);
-        
-        return \App\Models\WhatsAppAuthSession::where('phone_number', $normalizedPhone)
-            ->where('is_verified', true)
-            ->where('expires_at', '>', now())
-            ->first();
-    }
-
+   
     /**
      * Déconnecter une session WhatsApp
      */
@@ -1135,3 +983,4 @@ class WhatsAppService
     {
         return \App\Models\WhatsAppAuthSession::where('expires_at', '<', now())->delete();
     }
+}

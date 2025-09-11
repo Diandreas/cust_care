@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { useTranslation } from 'react-i18next';
+// import { useTranslation } from 'react-i18next';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from '@/Components/ui/card';
@@ -73,7 +73,7 @@ export default function WhatsAppDashboard({
   auth_link,
   qr_code
 }: WhatsAppDashboardProps) {
-  const { t } = useTranslation();
+  const t = (key: string) => key; // Temporary translation fallback
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [authStep, setAuthStep] = useState(1);
   const [verificationCode, setVerificationCode] = useState('');

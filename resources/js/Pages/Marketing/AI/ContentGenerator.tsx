@@ -34,7 +34,7 @@ export default function ContentGenerator({
   content_templates = [],
   recent_generations = []
 }: ContentGeneratorProps) {
-  const { t } = useTranslation();
+  const t = (key: string) => key; // Temporary translation fallback
   const [activeTab, setActiveTab] = useState('social');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<any>(null);

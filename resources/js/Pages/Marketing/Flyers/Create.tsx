@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { useTranslation } from 'react-i18next';
+// import { useTranslation } from 'react-i18next';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from '@/Components/ui/card';
@@ -50,7 +50,7 @@ export default function FlyerCreate({
   formats = [],
   orientations = []
 }: FlyerCreateProps) {
-  const { t } = useTranslation();
+  const t = (key: string) => key; // Temporary translation fallback
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [canvasElements, setCanvasElements] = useState<any[]>([]);

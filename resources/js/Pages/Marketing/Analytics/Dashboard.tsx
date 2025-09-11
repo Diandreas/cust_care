@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import { PageProps } from '@/types';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { useTranslation } from 'react-i18next';
+// import { useTranslation } from 'react-i18next';
 import { 
   Card, CardContent, CardDescription, CardHeader, CardTitle 
 } from '@/Components/ui/card';
@@ -41,8 +41,8 @@ interface AnalyticsData {
 }
 
 interface AnalyticsDashboardProps extends PageProps {
-  analytics: AnalyticsData;
-  date_range: string;
+  analytics?: AnalyticsData;
+  date_range?: string;
 }
 
 export default function AnalyticsDashboard({ 
@@ -50,9 +50,29 @@ export default function AnalyticsDashboard({
   analytics,
   date_range = 'month'
 }: AnalyticsDashboardProps) {
-  const { t } = useTranslation();
+  const t = (key: string) => key; // Temporary translation fallback
   const [selectedPeriod, setSelectedPeriod] = useState(date_range);
   const [selectedMetric, setSelectedMetric] = useState('engagement');
+
+  // Default fallback data structure
+  const defaultAnalytics: AnalyticsData = {
+    overview: {
+      total_campaigns: 0,
+      total_messages: 0,
+      total_clients: 0,
+      engagement_rate: 0,
+      conversion_rate: 0,
+      revenue_generated: 0,
+    },
+    performance_data: [],
+    platform_stats: [],
+    campaign_performance: [],
+    client_engagement: [],
+    revenue_trends: [],
+  };
+
+  // Use provided analytics or fallback to defaults
+  const safeAnalytics = analytics || defaultAnalytics;
 
   const COLORS = ['#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444'];
 
@@ -149,7 +169,7 @@ export default function AnalyticsDashboard({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Campagnes Actives</p>
-                    <p className="text-3xl font-bold text-gray-900">{analytics.overview.total_campaigns}</p>
+                    <p className="text-3xl font-bold text-gray-900">{safeAnalytics.overview.total_campaigns}</p>
                     <p className="text-sm text-green-600 flex items-center">
                       <TrendingUp className="w-3 h-3 mr-1" />
                       +12% vs période précédente
@@ -173,7 +193,7 @@ export default function AnalyticsDashboard({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Messages Envoyés</p>
-                    <p className="text-3xl font-bold text-gray-900">{formatNumber(analytics.overview.total_messages)}</p>
+                    <p className="text-3xl font-bold text-gray-900">{formatNumber(safeAnalytics.overview.total_messages)}</p>
                     <p className="text-sm text-green-600 flex items-center">
                       <TrendingUp className="w-3 h-3 mr-1" />
                       +8% vs période précédente
@@ -197,11 +217,11 @@ export default function AnalyticsDashboard({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Taux d'Engagement</p>
-                    <p className="text-3xl font-bold text-gray-900">{analytics.overview.engagement_rate}%</p>
+                    <p className="text-3xl font-bold text-gray-900">{safeAnalytics.overview.engagement_rate}%</p>
                     <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
                       <div 
                         className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full" 
-                        style={{ width: `${analytics.overview.engagement_rate}%` }}
+                        style={{ width: `${safeAnalytics.overview.engagement_rate}%` }}
                       />
                     </div>
                   </div>
@@ -223,7 +243,7 @@ export default function AnalyticsDashboard({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Revenus Générés</p>
-                    <p className="text-3xl font-bold text-gray-900">{formatCurrency(analytics.overview.revenue_generated)}</p>
+                    <p className="text-3xl font-bold text-gray-900">{formatCurrency(safeAnalytics.overview.revenue_generated)}</p>
                     <p className="text-sm text-green-600 flex items-center">
                       <TrendingUp className="w-3 h-3 mr-1" />
                       +15% vs période précédente
@@ -276,7 +296,7 @@ export default function AnalyticsDashboard({
               <CardContent>
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={analytics.performance_data}>
+                    <AreaChart data={safeAnalytics.performance_data}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" />
                       <YAxis />
@@ -331,7 +351,7 @@ export default function AnalyticsDashboard({
               <CardContent>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={analytics.platform_stats}>
+                    <BarChart data={safeAnalytics.platform_stats}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="platform" />
                       <YAxis />
@@ -364,7 +384,7 @@ export default function AnalyticsDashboard({
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={analytics.platform_stats}
+                        data={safeAnalytics.platform_stats}
                         cx="50%"
                         cy="50%"
                         innerRadius={40}
@@ -372,7 +392,7 @@ export default function AnalyticsDashboard({
                         paddingAngle={5}
                         dataKey="messages"
                       >
-                        {analytics.platform_stats.map((entry, index) => (
+                        {safeAnalytics.platform_stats.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
@@ -382,7 +402,7 @@ export default function AnalyticsDashboard({
                 </div>
                 
                 <div className="space-y-2">
-                  {analytics.platform_stats.map((platform, index) => {
+                  {safeAnalytics.platform_stats.map((platform, index) => {
                     const Icon = platformIcons[platform.platform as keyof typeof platformIcons] || MessageCircle;
                     return (
                       <div key={platform.platform} className="flex items-center justify-between">
@@ -415,7 +435,7 @@ export default function AnalyticsDashboard({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {analytics.campaign_performance.slice(0, 5).map((campaign, index) => (
+                  {safeAnalytics.campaign_performance.slice(0, 5).map((campaign, index) => (
                     <div key={campaign.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white text-sm font-bold">

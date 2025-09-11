@@ -322,7 +322,24 @@ require __DIR__.'/auth.php';
 Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')->group(function () {
     // Tableau de bord principal
     Route::get('/dashboard', function () {
-        return Inertia::render('Marketing/Dashboard');
+        return Inertia::render('Marketing/Dashboard', [
+            'stats' => [
+                'total_clients' => \App\Models\MarketingClient::where('user_id', auth()->id())->count(),
+                'active_campaigns' => 0,
+                'messages_sent' => 0,
+                'engagement_rate' => 0,
+                'automation_rules' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->count(),
+                'whatsapp_connected' => false,
+                'ai_status' => config('openai.api_key') ? 'online' : 'offline'
+            ],
+            'recent_activities' => [],
+            'quick_stats' => [
+                'today_messages' => 0,
+                'active_automations' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->where('status', 'active')->count(),
+                'pending_campaigns' => 0,
+                'new_clients' => 0
+            ]
+        ]);
     })->name('dashboard');
 
     // Gestion des clients
@@ -377,7 +394,7 @@ Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')
             'automation_rules' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->get(),
             'stats' => [
                 'total_rules' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->count(),
-                'active_rules' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->where('is_active', true)->count(),
+                'active_rules' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->where('status', 'active')->count(),
                 'executed_today' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->whereDate('last_executed_at', today())->count(),
                 'last_execution' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->whereNotNull('last_executed_at')->latest('last_executed_at')->value('last_executed_at')
             ]
@@ -407,7 +424,16 @@ Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')
 
     // Assistant IA
     Route::get('ai/assistant', function () {
-        return Inertia::render('Marketing/AI/Assistant');
+        return Inertia::render('Marketing/AI/Assistant', [
+            'conversation_history' => [],
+            'suggested_prompts' => [
+                "Comment améliorer mon taux d'engagement ?",
+                "Créer une campagne WhatsApp",
+                "Idées de contenu pour les réseaux sociaux",
+                "Automatiser les messages d'anniversaire"
+            ],
+            'ai_status' => config('openai.api_key') ? 'online' : 'offline'
+        ]);
     })->name('ai.assistant');
     Route::post('ai/chat', [MarketingAIController::class, 'chat'])->name('ai.chat');
     Route::post('ai/generate-content', [MarketingAIController::class, 'generateContent'])->name('ai.generate-content');
@@ -419,6 +445,21 @@ Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')
     Route::post('ai/generate-suggestions', [MarketingAIController::class, 'generateSuggestions'])->name('ai.generate-suggestions');
 
     // WhatsApp Business
+    Route::get('whatsapp/dashboard', function () {
+        return Inertia::render('Marketing/WhatsApp/Dashboard', [
+            'auth_session' => null,
+            'conversations' => [],
+            'stats' => [
+                'total_conversations' => 0,
+                'messages_today' => 0,
+                'active_clients' => 0,
+                'response_time' => '0m'
+            ],
+            'clients' => [],
+            'auth_link' => null,
+            'qr_code' => null
+        ]);
+    })->name('whatsapp.dashboard');
     Route::get('whatsapp/conversations', [MarketingWhatsAppController::class, 'conversations'])->name('whatsapp.conversations');
     Route::get('whatsapp/conversations/{conversation}', [MarketingWhatsAppController::class, 'showConversation'])->name('whatsapp.conversations.show');
     Route::post('whatsapp/conversations/{conversation}/reply', [MarketingWhatsAppController::class, 'reply'])->name('whatsapp.conversations.reply');
@@ -440,6 +481,19 @@ Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')
             'recent_generations' => []
         ]);
     })->name('ai.content-generator');
+
+    // Analytics Dashboard
+    Route::get('analytics', function () {
+        return Inertia::render('Marketing/Analytics/Dashboard', [
+            'metrics' => [
+                'total_campaigns' => 0,
+                'engagement_rate' => 0,
+                'conversion_rate' => 0,
+                'roi' => 0
+            ],
+            'charts_data' => []
+        ]);
+    })->name('analytics.dashboard');
 
     Route::get('automation/dashboard', function () {
         return Inertia::render('Marketing/Automation/Dashboard', [

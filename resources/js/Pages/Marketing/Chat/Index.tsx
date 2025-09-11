@@ -39,7 +39,7 @@ export default function ChatIndex({
   whatsapp_connected = false,
   ai_status = 'online'
 }: ChatProps) {
-  const { t } = useTranslation();
+  const t = (key: string) => key; // Temporary translation fallback
   const [messages, setMessages] = useState<Message[]>(conversation_history);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);

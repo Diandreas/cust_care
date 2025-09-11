@@ -51,9 +51,18 @@ class MarketingClientController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        // Calculer les statistiques
+        $stats = [
+            'total_clients' => MarketingClient::where('user_id', auth()->id())->count(),
+            'active_clients' => MarketingClient::where('user_id', auth()->id())->where('status', 'active')->count(),
+            'inactive_clients' => MarketingClient::where('user_id', auth()->id())->where('status', 'inactive')->count(),
+            'opted_out_clients' => MarketingClient::where('user_id', auth()->id())->where('status', 'opted_out')->count(),
+        ];
+
         return Inertia::render('Marketing/Clients/Index', [
             'clients' => $clients,
-            'filters' => $request->only(['search', 'status', 'tags'])
+            'filters' => $request->only(['search', 'status', 'tags']),
+            'stats' => $stats
         ]);
     }
 

@@ -387,10 +387,34 @@ export default function ClientsIndex({
 
                                     <Button
                                         onClick={() => setShowQuickAddModal(true)}
-                                        className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                                        variant="outline"
+                                        className="border-border/60 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200"
                                     >
                                         <PlusCircle className="mr-2 h-4 w-4" />
                                         {t('common.quickAdd')}
+                                    </Button>
+
+                                    {/* Complete add button */}
+                                    <Button
+                                        asChild
+                                        className="rounded-lg bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-sm hover:shadow-md transition-shadow duration-200"
+                                    >
+                                        <Link href={route('clients.create')}>
+                                            <UserPlus className="mr-2 h-4 w-4" />
+                                            {t('common.addClient') || 'Nouveau Client'}
+                                        </Link>
+                                    </Button>
+
+                                    {/* Import button */}
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="border-border/60 shadow-sm dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-gray-200"
+                                    >
+                                        <Link href={route('clients.import-export')}>
+                                            <FileUp className="mr-2 h-4 w-4" />
+                                            {t('common.import') || 'Importer'}
+                                        </Link>
                                     </Button>
 
                                     {/* Actions dropdown */}

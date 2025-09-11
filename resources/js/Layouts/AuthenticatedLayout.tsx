@@ -237,7 +237,7 @@ const UserMenu = ({ user }) => {
                 >
                     <Avatar className="h-8 w-8">
                         <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm">
-                            {user.name.charAt(0)}
+                            {user?.name?.charAt(0) || 'U'}
                         </AvatarFallback>
                     </Avatar>
                 </Button>
@@ -249,12 +249,12 @@ const UserMenu = ({ user }) => {
                 <div className="flex items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg mb-2">
                     <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">
-                            {user.name.charAt(0)}
+                            {user?.name?.charAt(0) || 'U'}
                         </AvatarFallback>
                     </Avatar>
                     <div className="ml-3 flex flex-col">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{user?.name || 'Utilisateur'}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email || ''}</p>
                     </div>
                 </div>
                 <div className="space-y-1">
@@ -359,14 +359,14 @@ export default function AuthenticatedLayout({
             current: url.startsWith('/marketing'),
             children: [
                 { name: 'Dashboard', href: route('marketing.dashboard'), icon: BarChart3, current: url === '/marketing/dashboard' },
-                { name: 'Assistant IA', href: '/marketing/ai/assistant', icon: Bot, current: url.startsWith('/marketing/ai') },
-                { name: 'Clients Marketing', href: '/marketing/clients', icon: Users2, current: url.startsWith('/marketing/clients') },
-                { name: 'Configuration Auto', href: '/marketing/config/automation', icon: Settings, current: url.startsWith('/marketing/config') },
-                { name: 'Monitoring', href: '/marketing/monitoring/commands', icon: Activity, current: url.startsWith('/marketing/monitoring') },
-                { name: 'Automatisations', href: '/marketing/automation/dashboard', icon: Zap, current: url.startsWith('/marketing/automation') },
-                { name: 'Générateur Flyers', href: '/marketing/flyers/create', icon: Image, current: url.startsWith('/marketing/flyers') },
-                { name: 'WhatsApp Business', href: '/marketing/whatsapp/dashboard', icon: Phone, current: url.startsWith('/marketing/whatsapp') },
-                { name: 'Analytics', href: '/marketing/analytics', icon: BarChart3, current: url.startsWith('/marketing/analytics') },
+                { name: 'Assistant IA', href: route('marketing.ai.assistant'), icon: Bot, current: url.startsWith('/marketing/ai') },
+                { name: 'Clients Marketing', href: route('marketing.clients.index'), icon: Users2, current: url.startsWith('/marketing/clients') },
+                { name: 'Configuration Auto', href: route('marketing.config.automation'), icon: Settings, current: url.startsWith('/marketing/config') },
+                { name: 'Monitoring', href: route('marketing.monitoring.commands'), icon: Activity, current: url.startsWith('/marketing/monitoring') },
+                { name: 'Automatisations', href: route('marketing.automation.dashboard'), icon: Zap, current: url.startsWith('/marketing/automation') },
+                { name: 'Générateur Flyers', href: route('marketing.flyers.create'), icon: Image, current: url.startsWith('/marketing/flyers') },
+                { name: 'WhatsApp Business', href: route('marketing.whatsapp.dashboard'), icon: Phone, current: url.startsWith('/marketing/whatsapp') },
+                { name: 'Analytics', href: route('marketing.analytics.dashboard'), icon: BarChart3, current: url.startsWith('/marketing/analytics') },
             ]
         },
         { name: t('navigation.subscription'), href: route('subscription.index'), icon: CreditCard, current: url.startsWith('/subscription') },
@@ -423,12 +423,12 @@ export default function AuthenticatedLayout({
                                 <div className="flex items-center space-x-2">
                                     <Avatar className="h-9 w-9">
                                         <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">
-                                            {user.name.charAt(0)}
+                                            {user?.name?.charAt(0) || 'U'}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col">
-                                        <p className="text-sm font-semibold truncate max-w-[130px] text-slate-900 dark:text-white">{user.name}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[130px]">{user.email}</p>
+                                        <p className="text-sm font-semibold truncate max-w-[130px] text-slate-900 dark:text-white">{user?.name || 'Utilisateur'}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[130px]">{user?.email || ''}</p>
                                     </div>
                                 </div>
                                 <Link
@@ -503,13 +503,13 @@ export default function AuthenticatedLayout({
                             )}>
                                 <Avatar className="h-8 w-8">
                                     <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm">
-                                        {user.name.charAt(0)}
+                                        {user?.name?.charAt(0) || 'U'}
                                     </AvatarFallback>
                                 </Avatar>
                                 {sidebarExpanded && (
                                     <div className="flex flex-col">
-                                        <p className="text-sm font-semibold truncate max-w-[120px] text-slate-900 dark:text-white">{user.name}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{user.email}</p>
+                                        <p className="text-sm font-semibold truncate max-w-[120px] text-slate-900 dark:text-white">{user?.name || 'Utilisateur'}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{user?.email || ''}</p>
                                     </div>
                                 )}
                             </div>
