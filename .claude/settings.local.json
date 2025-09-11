@@ -4,7 +4,9 @@
       "WebSearch",
       "Bash(php artisan make:migration:*)",
       "Bash(php artisan make:controller:*)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(composer show:*)",
+      "Bash(composer:*)"
     ],
     "deny": [],
     "ask": []

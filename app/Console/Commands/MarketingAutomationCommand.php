@@ -13,11 +13,7 @@ class MarketingAutomationCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'marketing:automation 
-                            {--type=all : Type d\'automatisation à exécuter (all, birthday, seasonal, new-client, inactive-client)}
-                            {--user= : ID de l\'utilisateur spécifique}
-                            {--dry-run : Mode test sans exécution réelle}
-                            {--verbose : Affichage détaillé}';
+    protected $signature = 'marketing:automation {--type=all} {--user=} {--dry-run} {--verbose}';
 
     /**
      * The console command description.

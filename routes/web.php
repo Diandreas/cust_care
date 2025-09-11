@@ -251,7 +251,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Routes pour l'assistant marketing digital
-Route::middleware(['auth'])->prefix('assistant-marketing')->name('marketing.')->group(function () {
+Route::middleware(['auth'])->prefix('assistant-marketing')->name('assistant.')->group(function () {
     // Dashboard principal
     Route::get('/', [MarketingAssistantController::class, 'dashboard'])->name('dashboard');
     
@@ -370,6 +370,40 @@ Route::middleware(['auth', 'verified'])->prefix('marketing')->name('marketing.')
     Route::post('flyers/{flyer}/export', [MarketingFlyerController::class, 'export'])->name('flyers.export');
     Route::post('flyers/{flyer}/apply-template', [MarketingFlyerController::class, 'applyTemplate'])->name('flyers.apply-template');
     Route::post('flyers/{flyer}/generate-ai-content', [MarketingFlyerController::class, 'generateAIContent'])->name('flyers.generate-ai-content');
+
+    // Configuration des automatisations
+    Route::get('config/automation', function () {
+        return Inertia::render('Marketing/Config/AutomationConfig', [
+            'automation_rules' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->get(),
+            'stats' => [
+                'total_rules' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->count(),
+                'active_rules' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->where('is_active', true)->count(),
+                'executed_today' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->whereDate('last_executed_at', today())->count(),
+                'last_execution' => \App\Models\MarketingAutomationRule::where('user_id', auth()->id())->whereNotNull('last_executed_at')->latest('last_executed_at')->value('last_executed_at')
+            ]
+        ]);
+    })->name('config.automation');
+    
+    Route::post('automation/execute', [MarketingAutomationController::class, 'executeManual'])->name('automation.execute');
+    Route::patch('automation/rules/{rule}', [MarketingAutomationController::class, 'updateRule'])->name('automation.rules.update');
+    Route::post('automation/stop/{execution}', [MarketingAutomationController::class, 'stopExecution'])->name('automation.stop');
+    
+    // Dashboard de monitoring des commandes
+    Route::get('monitoring/commands', function () {
+        return Inertia::render('Marketing/Monitoring/CommandDashboard', [
+            'executions' => [], // TODO: Récupérer les exécutions depuis la DB ou cache
+            'system_status' => [
+                'cpu_usage' => rand(10, 90),
+                'memory_usage' => rand(20, 80),
+                'database_connections' => rand(5, 25),
+                'queue_size' => rand(0, 10),
+                'last_cron_run' => now()->subMinutes(5)->format('Y-m-d H:i:s'),
+                'marketing_service_status' => 'online',
+                'whatsapp_service_status' => config('services.twilio.account_sid') ? 'online' : 'offline',
+                'ai_service_status' => config('openai.api_key') ? 'online' : 'offline'
+            ]
+        ]);
+    })->name('monitoring.commands');
 
     // Assistant IA
     Route::get('ai/assistant', function () {

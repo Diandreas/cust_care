@@ -16,8 +16,13 @@ class AIContentService
 
     public function __construct()
     {
-        if (config('services.openai.api_key')) {
-            $this->openAIClient = \OpenAI\Laravel\Facades\OpenAI::client();
+        if (config('openai.api_key')) {
+            try {
+                $this->openAIClient = \OpenAI\Laravel\Facades\OpenAI::client();
+            } catch (\Exception $e) {
+                // Client IA non disponible, continuer sans
+                $this->openAIClient = null;
+            }
         }
     }
 
