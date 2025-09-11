@@ -13,6 +13,7 @@ class Visit extends Model
         'client_id',
         'user_id',
         'visit_date',
+        'interaction_type',
         'notes',
     ];
 

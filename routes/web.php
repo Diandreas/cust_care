@@ -30,6 +30,7 @@ use App\Http\Controllers\MarketingAIController;
 use App\Http\Controllers\MarketingWhatsAppController;
 use App\Http\Controllers\MarketingChatController;
 use App\Http\Controllers\MarketingAnalyticsController;
+use App\Http\Controllers\StatisticsController;
 
 // Page d'accueil
 Route::get('/', function () {
@@ -54,6 +55,17 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     // Tableau de bord
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/custom-statistics', function () {
+        return Inertia::render('CustomStatistics');
+    })->name('dashboard.custom-statistics');
+    
+    // API Routes pour les statistiques
+    Route::prefix('api/statistics')->group(function () {
+        Route::get('/dashboard', [StatisticsController::class, 'getDashboardStats'])->name('statistics.dashboard');
+        Route::get('/custom', [StatisticsController::class, 'getCustomStats'])->name('statistics.custom');
+        Route::get('/available-data', [StatisticsController::class, 'getAvailableData'])->name('statistics.available-data');
+        Route::post('/export', [StatisticsController::class, 'exportStats'])->name('statistics.export');
+    });
     Route::post('/campaigns/{campaign}/retry', [CampaignController::class, 'retry'])->name('campaigns.retry');
 
     // API Routes

@@ -28,6 +28,7 @@ import { Separator } from '@/Components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
 import { ScrollArea } from '@/Components/ui/scroll-area';
+import SimpleCampaignStats from '@/Components/Dashboard/SimpleCampaignStats';
 
 // Lucide icons
 import {
@@ -63,7 +64,15 @@ import {
     ArrowRight,
     Info,
     Zap,
-    Gift
+    Gift,
+    BarChart3,
+    TrendingUp,
+    Target,
+    DollarSign,
+    Percent,
+    MousePointer,
+    Heart,
+    Globe
 } from 'lucide-react';
 
 interface CampaignsIndexProps {
@@ -103,7 +112,7 @@ export default function CampaignsIndex({
     });
 
     // UI State
-    const [viewMode, setViewMode] = useState<'calendar' | 'grid'>('calendar');
+    const [viewMode, setViewMode] = useState<'calendar' | 'grid' | 'metrics'>('calendar');
     const [calendarView, setCalendarView] = useState(Views.MONTH);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -957,34 +966,47 @@ export default function CampaignsIndex({
             user={auth.user}
             header={
 
-                <div className="p-4 border-b bg-card">
+                <div className="p-4 border-b backdrop-blur-xl bg-gradient-to-r from-white/20 via-white/10 to-white/5 border-b-white/20">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex items-center">
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                                className="mr-2"
+                                className="mr-4 backdrop-blur-xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 border border-white/20 rounded-2xl p-3 hover:scale-105 hover:shadow-xl transition-all duration-300"
+                                title={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
                             >
                                 {sidebarOpen ? <PanelRightClose className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
                             </Button>
 
-                            <h1 className="text-xl font-semibold">{t('common.campaigns')}</h1>
 
                             <div className="ml-4 flex items-center">
                                 <Tabs
                                     value={viewMode}
-                                    onValueChange={(value) => setViewMode(value as 'calendar' | 'grid')}
+                                    onValueChange={(value) => setViewMode(value as 'calendar' | 'grid' | 'metrics')}
                                     className="w-auto"
                                 >
-                                    <TabsList className="grid w-auto grid-cols-2">
-                                        <TabsTrigger value="calendar" className="px-3">
-                                            <CalendarIcon className="h-4 w-4 mr-2" />
-                                            <span className="hidden sm:inline">{t('campaigns.calendar')}</span>
+                                    <TabsList className="backdrop-blur-xl bg-gradient-to-r from-white/20 via-white/10 to-white/5 border border-white/20 rounded-2xl p-1">
+                                        <TabsTrigger 
+                                            value="calendar" 
+                                            className="p-3 data-[state=active]:bg-white/30 data-[state=active]:backdrop-blur-xl rounded-xl"
+                                            title="Calendar View"
+                                        >
+                                            <CalendarIcon className="h-5 w-5" />
                                         </TabsTrigger>
-                                        <TabsTrigger value="grid" className="px-3">
-                                            <Grid className="h-4 w-4 mr-2" />
-                                            <span className="hidden sm:inline">{t('campaigns.grid')}</span>
+                                        <TabsTrigger 
+                                            value="grid" 
+                                            className="p-3 data-[state=active]:bg-white/30 data-[state=active]:backdrop-blur-xl rounded-xl"
+                                            title="Grid View"
+                                        >
+                                            <Grid className="h-5 w-5" />
+                                        </TabsTrigger>
+                                        <TabsTrigger 
+                                            value="metrics" 
+                                            className="p-3 data-[state=active]:bg-white/30 data-[state=active]:backdrop-blur-xl rounded-xl"
+                                            title="Metrics View"
+                                        >
+                                            <BarChart3 className="h-5 w-5" />
                                         </TabsTrigger>
                                     </TabsList>
                                 </Tabs>
@@ -1216,7 +1238,7 @@ export default function CampaignsIndex({
         >
             <Head title={t('common.campaigns')} />
 
-            <div className="flex h-screen overflow-hidden bg-background">
+            <div className="flex h-screen overflow-hidden bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
                 {/* Main Content */}
                 <div className="flex flex-col w-full">
                     {/* Header */}
@@ -1230,10 +1252,47 @@ export default function CampaignsIndex({
                                     animate={{ width: 256, opacity: 1 }}
                                     exit={{ width: 0, opacity: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    className="border-r border-border bg-card overflow-hidden"
+                                    className="border-r border-white/20 backdrop-blur-xl bg-gradient-to-b from-white/20 via-white/10 to-white/5 overflow-hidden"
                                 >
                                     <ScrollArea className="h-full px-4 py-4">
-                                        {/* Mini Calendar */}
+                                        {/* Liquid Glass Stats - Icons Only */}
+                                        <div className="mb-6 space-y-3">
+                                            <div className="grid grid-cols-1 gap-3">
+                                                <div 
+                                                    className="backdrop-blur-xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 border border-white/20 rounded-2xl p-4 hover:scale-105 hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                                                    title={`Total Campaigns: ${campaigns.data.length}`}
+                                                >
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                    <div className="relative z-10 text-center">
+                                                        <CalendarIcon className="h-8 w-8 mx-auto mb-2 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
+                                                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{campaigns.data.length}</div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div 
+                                                    className="backdrop-blur-xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 border border-white/20 rounded-2xl p-4 hover:scale-105 hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                                                    title={`Sent: ${campaignsByStatus.sent?.length || 0}`}
+                                                >
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-emerald-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                    <div className="relative z-10 text-center">
+                                                        <Check className="h-8 w-8 mx-auto mb-2 text-green-600 dark:text-green-400 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
+                                                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{campaignsByStatus.sent?.length || 0}</div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div 
+                                                    className="backdrop-blur-xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 border border-white/20 rounded-2xl p-4 hover:scale-105 hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                                                    title={`Scheduled: ${campaignsByStatus.scheduled?.length || 0}`}
+                                                >
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                    <div className="relative z-10 text-center">
+                                                        <Clock className="h-8 w-8 mx-auto mb-2 text-yellow-600 dark:text-yellow-400 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
+                                                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{campaignsByStatus.scheduled?.length || 0}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {/* Date Icon */}
                                         <Card className="mb-4">
                                             <CardHeader className="pb-2">
                                                 <div className="flex items-center justify-between">
@@ -1466,48 +1525,37 @@ export default function CampaignsIndex({
                                             )}
                                         </div>
 
-                                        {/* Tags Section */}
+                                        {/* Success Rate Icon */}
                                         <div className="mt-6">
-                                            <h3 className="px-2 pt-2 pb-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                                                {t('common.tags')}
-                                            </h3>
-
-                                            {tags.length > 0 ? (
-                                                <div className="space-y-1">
-                                                    {tags.map(tag => (
-                                                        <div
-                                                            key={tag.id}
-                                                            className="flex items-center px-3 py-1.5 text-sm rounded-md text-foreground hover:bg-muted group"
-                                                        >
-                                                            <TagIcon className="h-3 w-3 mr-3 text-muted-foreground" />
-                                                            <span className="truncate flex-1">{tag.name}</span>
-                                                            <Badge variant="outline" className="ml-2">
-                                                                {tag.clients_count}
-                                                            </Badge>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="h-6 w-6 p-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                onClick={() => {
-                                                                    setQuickAddForm({
-                                                                        ...quickAddForm,
-                                                                        tag_id: tag.id.toString()
-                                                                    });
-                                                                    setShowQuickAddModal(true);
-                                                                }}
-                                                                title={t('campaigns.createCampaignWithTag', { tag: tag.name })}
-                                                            >
-                                                                <Plus className="h-3 w-3" />
-                                                            </Button>
-                                                        </div>
-                                                    ))}
+                                            <div 
+                                                className="backdrop-blur-xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 border border-white/20 rounded-2xl p-6 hover:scale-105 hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                                                title={`Success Rate: ${campaigns.data.length > 0 ? Math.round(((campaignsByStatus.sent?.length || 0) / campaigns.data.length) * 100) : 0}%`}
+                                            >
+                                                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                <div className="relative z-10 text-center">
+                                                    <Target className="h-10 w-10 mx-auto mb-3 text-purple-600 dark:text-purple-400 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
+                                                    <div className="text-3xl font-bold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+                                                        {campaigns.data.length > 0 ? Math.round(((campaignsByStatus.sent?.length || 0) / campaigns.data.length) * 100) : 0}%
+                                                    </div>
                                                 </div>
-                                            ) : (
-                                                <div className="px-3 py-2 text-sm text-muted-foreground">
-                                                    {t('campaigns.noTags')}
-                                                </div>
-                                            )}
+                                            </div>
                                         </div>
+
+                                        {/* Tags Icon */}
+                                        {tags.length > 0 && (
+                                            <div className="mt-6">
+                                                <div 
+                                                    className="backdrop-blur-xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 border border-white/20 rounded-2xl p-4 hover:scale-105 hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                                                    title={`Tags: ${tags.length} available`}
+                                                >
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                    <div className="relative z-10 text-center">
+                                                        <TagIcon className="h-8 w-8 mx-auto mb-2 text-orange-600 dark:text-orange-400 group-hover:scale-110 group-hover:rotate-12 transition-all duration-300" />
+                                                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{tags.length}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </ScrollArea>
                                 </motion.div>
                             )}
@@ -1515,6 +1563,13 @@ export default function CampaignsIndex({
 
                         {/* Main Content Area with flex-grow */}
                         <div className="flex-1 overflow-auto">
+                            {/* Simple Campaign Stats */}
+                            {viewMode === 'metrics' && (
+                                <div className="p-6 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 min-h-screen">
+                                    <SimpleCampaignStats campaigns={campaigns.data} />
+                                </div>
+                            )}
+                            
                             {/* Content based on view mode */}
                             {viewMode === 'calendar' ? (
                                 <div className="h-full p-4">
