@@ -55,6 +55,7 @@ export type PageProps<
 export interface Campaign {
     id: number;
     name: string;
+    subject?: string;
     message_content: string;
     status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'partially_sent' | 'paused' | 'failed' | 'cancelled';
     scheduled_at: string | null;
@@ -63,4 +64,5 @@ export interface Campaign {
     failed_count: number;
     created_at: string;
     recipients?: Client[];
+    tag_id?: number;
 }
