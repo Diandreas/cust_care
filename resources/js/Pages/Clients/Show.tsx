@@ -38,6 +38,7 @@ interface Visit {
     id: number;
     client_id: number;
     visit_date: string;
+    interaction_type: string | null;
     notes: string | null;
     created_at: string;
 }
@@ -93,6 +94,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
     const { success, error } = useToast();
     const [isAddingVisit, setIsAddingVisit] = useState(false);
     const [isAddingMessage, setIsAddingMessage] = useState(false);
+    const [visitInteractionType, setVisitInteractionType] = useState('');
     const [visitNotes, setVisitNotes] = useState('');
     const [messageContent, setMessageContent] = useState('');
     const [visits, setVisits] = useState<Visit[]>(initialClient.visits || []);
@@ -222,6 +224,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
         setIsLoadingVisit(true);
         axios.post(`/api/clients/${client.id}/visit`, {
+            interaction_type: visitInteractionType,
             notes: visitNotes
         })
             .then(response => {
@@ -239,6 +242,7 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
 
                 // Reset form and close modal
                 setIsAddingVisit(false);
+                setVisitInteractionType('');
                 setVisitNotes('');
             })
             .catch(err => {
@@ -885,6 +889,16 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-sm text-gray-900 dark:text-white">
                                                                 Visite effectuée
+                                                                {visit.interaction_type && (
+                                                                    <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
+                                                                        ({visit.interaction_type === 'achat' && 'Achat'}
+                                                                        {visit.interaction_type === 'visite_technique' && 'Visite technique'}
+                                                                        {visit.interaction_type === 'rendez_vous' && 'Rendez-vous'}
+                                                                        {visit.interaction_type === 'appel_telephonique' && 'Appel téléphonique'}
+                                                                        {visit.interaction_type === 'email' && 'Email'}
+                                                                        {visit.interaction_type === 'autre' && 'Autre'})
+                                                                    </span>
+                                                                )}
                                                             </p>
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">
                                                                 {formatTimeAgo(visit.visit_date)}
@@ -985,6 +999,16 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                                         {formatTimeAgo(visit.visit_date)}
                                                                     </span>
                                                                 </div>
+                                                                {visit.interaction_type && (
+                                                                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 mb-2">
+                                                                        {visit.interaction_type === 'achat' && 'Achat'}
+                                                                        {visit.interaction_type === 'visite_technique' && 'Visite technique'}
+                                                                        {visit.interaction_type === 'rendez_vous' && 'Rendez-vous'}
+                                                                        {visit.interaction_type === 'appel_telephonique' && 'Appel téléphonique'}
+                                                                        {visit.interaction_type === 'email' && 'Email'}
+                                                                        {visit.interaction_type === 'autre' && 'Autre'}
+                                                                    </div>
+                                                                )}
                                                                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                                                                     Enregistrée le {formatDateTime(visit.created_at)}
                                                                 </p>
@@ -1037,6 +1061,16 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                                                     {formatTimeAgo(item.type === 'message' ? item.sent_at : item.visit_date)}
                                                                 </span>
                                                             </div>
+                                                            {item.type === 'visit' && item.interaction_type && (
+                                                                <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 mt-1 mr-2">
+                                                                    {item.interaction_type === 'achat' && 'Achat'}
+                                                                    {item.interaction_type === 'visite_technique' && 'Visite technique'}
+                                                                    {item.interaction_type === 'rendez_vous' && 'Rendez-vous'}
+                                                                    {item.interaction_type === 'appel_telephonique' && 'Appel téléphonique'}
+                                                                    {item.interaction_type === 'email' && 'Email'}
+                                                                    {item.interaction_type === 'autre' && 'Autre'}
+                                                                </div>
+                                                            )}
                                                             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                                                                 {item.type === 'message'
                                                                     ? (item.content?.length > 100 ? item.content.substring(0, 100) + '...' : item.content)
@@ -1231,6 +1265,25 @@ export default function Show({ auth, client: initialClient, tags: initialTags }:
                                 </div>
 
                                 <div className="space-y-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                                            Type d'interaction
+                                        </label>
+                                        <select
+                                            value={visitInteractionType}
+                                            onChange={(e) => setVisitInteractionType(e.target.value)}
+                                            className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                                        >
+                                            <option value="">Sélectionner un type d'interaction</option>
+                                            <option value="achat">Achat</option>
+                                            <option value="visite_technique">Visite technique</option>
+                                            <option value="rendez_vous">Rendez-vous</option>
+                                            <option value="appel_telephonique">Appel téléphonique</option>
+                                            <option value="email">Email</option>
+                                            <option value="autre">Autre</option>
+                                        </select>
+                                    </div>
+                                    
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                                             Notes de visite

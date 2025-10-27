@@ -379,42 +379,42 @@ export default function Welcome({
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             {[
                                 {
-                                    icon: "🎂",
+                                    icon: "cake",
                                     title: t('welcome.features.birthday.title'),
                                     description: t('welcome.features.birthday.description'),
                                     example: t('welcome.features.birthday.example'),
                                     frequency: t('welcome.features.birthday.frequency')
                                 },
                                 {
-                                    icon: "📅",
+                                    icon: "calendar",
                                     title: t('welcome.features.reminder.title'),
                                     description: t('welcome.features.reminder.description'),
                                     example: t('welcome.features.reminder.example'),
                                     frequency: t('welcome.features.reminder.frequency')
                                 },
                                 {
-                                    icon: "🔥",
+                                    icon: "flame",
                                     title: t('welcome.features.promotion.title'),
                                     description: t('welcome.features.promotion.description'),
                                     example: t('welcome.features.promotion.example'),
                                     frequency: t('welcome.features.promotion.frequency')
                                 },
                                 {
-                                    icon: "💔",
+                                    icon: "user-x",
                                     title: t('welcome.features.winback.title'),
                                     description: t('welcome.features.winback.description'),
                                     example: t('welcome.features.winback.example'),
                                     frequency: t('welcome.features.winback.frequency')
                                 },
                                 {
-                                    icon: "🎁",
+                                    icon: "gift",
                                     title: t('welcome.features.loyalty.title'),
                                     description: t('welcome.features.loyalty.description'),
                                     example: t('welcome.features.loyalty.example'),
                                     frequency: t('welcome.features.loyalty.frequency')
                                 },
                                 {
-                                    icon: "📦",
+                                    icon: "package",
                                     title: t('welcome.features.stock.title'),
                                     description: t('welcome.features.stock.description'),
                                     example: t('welcome.features.stock.example'),
@@ -424,7 +424,15 @@ export default function Welcome({
                                 <div key={index} className={`bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 ${
                                     visibleSections.has('examples') && !prefersReducedMotion ? 'animate-fade-in-up' : ''
                                 }`} style={{ animationDelay: `${index * 0.1}s` }}>
-                                    <div className="text-4xl mb-4">{feature.icon}</div>
+                                    <div className="text-4xl mb-4">
+                                        {/* Lucide icon */}
+                                        {feature.icon === 'cake' && <svg className="w-8 h-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21V8a2 2 0 0 0-2-2h-4"/><path d="M4 21v-9a2 2 0 0 1 2-2h4"/><path d="M14 5a2 2 0 1 0-4 0v1h4Z"/><path d="M8 8v13"/><path d="M16 8v13"/><path d="M4 13h16"/></svg>}
+                                        {feature.icon === 'calendar' && <svg className="w-8 h-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>}
+                                        {feature.icon === 'flame' && <svg className="w-8 h-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5a3.5 3.5 0 1 0 7 0c0-3.5-3.5-5.5-3.5-7 0-1.5 1-2.5 1-2.5s-5 2-5 6.5Z"/></svg>}
+                                        {feature.icon === 'user-x' && <svg className="w-8 h-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 8 5 5"/><path d="m22 8-5 5"/></svg>}
+                                        {feature.icon === 'gift' && <svg className="w-8 h-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13"/><path d="M3 12h18"/><path d="M12 8c-1 0-6-1-6-3s2-3 3-3 3 1 3 3"/><path d="M12 8c1 0 6-1 6-3s-2-3-3-3-3 1-3 3"/></svg>}
+                                        {feature.icon === 'package' && <svg className="w-8 h-8 text-purple-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m7.5 4.27 9 5.15"/><path d="M3.29 7 12 12l8.71-5"/><path d="M12 22V12"/></svg>}
+                                    </div>
                                     <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
                                     <p className="text-gray-600 mb-4 leading-relaxed">{feature.description}</p>
 

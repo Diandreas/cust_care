@@ -10,6 +10,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class MarketingWhatsAppController extends Controller
 {
@@ -179,6 +180,93 @@ class MarketingWhatsAppController extends Controller
             return response()->json([
                 'success' => false,
                 'error' => 'Erreur de connexion: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Étape 1: Demande d'authentification WhatsApp (OTP)
+     */
+    public function requestAuth(Request $request)
+    {
+        $request->validate([
+            'phone_number' => 'required|string|max:20',
+        ]);
+
+        try {
+            $otp = (string) random_int(100000, 999999);
+
+            // Stocker OTP 10 minutes
+            Cache::put('wa_otp:' . auth()->id() . ':' . $request->phone_number, $otp, now()->addMinutes(10));
+
+            // Envoyer le code via WhatsApp
+            $tempClient = new MarketingClient([
+                'user_id' => auth()->id(),
+                'phone' => $request->phone_number,
+                'name' => 'Auth',
+                'status' => 'active',
+            ]);
+
+            $message = "Votre code de vérification WhatsApp est: {$otp}. Ce code expire dans 10 minutes.";
+            $this->whatsappService->sendMessage($tempClient, $message, [
+                'type' => 'auth_otp',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Code envoyé via WhatsApp',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp requestAuth failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Impossible d\'envoyer le code. Réessayez.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Étape 2: Vérification de l'OTP
+     */
+    public function verifyAuth(Request $request)
+    {
+        $request->validate([
+            'phone_number' => 'required|string|max:20',
+            'verification_code' => 'required|string|size:6',
+        ]);
+
+        try {
+            $key = 'wa_otp:' . auth()->id() . ':' . $request->phone_number;
+            $otp = Cache::get($key);
+
+            if (!$otp || $otp !== $request->verification_code) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Code invalide ou expiré',
+                ], 422);
+            }
+
+            // Marquer comme connecté
+            Cache::forget($key);
+            Cache::put('wa_connected:' . auth()->id(), true, now()->addDays(7));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'WhatsApp connecté',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('WhatsApp verifyAuth failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Vérification impossible. Réessayez.',
             ], 500);
         }
     }

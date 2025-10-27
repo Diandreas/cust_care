@@ -1,5 +1,6 @@
 /* Import du fichier de thème centralisé */
 @import 'theme.css';
+@import 'liquid-glass.css';
 
 @tailwind base;
 @tailwind components;

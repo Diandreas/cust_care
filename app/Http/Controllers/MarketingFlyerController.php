@@ -447,33 +447,4 @@ class MarketingFlyerController extends Controller
             'stats' => $stats
         ]);
     }
-
-    /**
-     * Générer du contenu IA pour un flyer (méthode privée)
-     */
-    private function generateAIContent($flyer, $aiSettings)
-    {
-        try {
-            $content = $this->aiService->generateFlyerContent(
-                $aiSettings['topic'] ?? 'Flyer marketing',
-                $flyer->format,
-                [
-                    'requirements' => $aiSettings['requirements'] ?? [],
-                    'tone' => $aiSettings['tone'] ?? 'professional',
-                    'user_id' => auth()->id(),
-                ]
-            );
-
-            $flyer->update([
-                'ai_generated_content' => [
-                    'generated_at' => now()->toISOString(),
-                    'settings' => $aiSettings,
-                    'content' => $content
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la génération automatique de contenu IA: ' . $e->getMessage());
-        }
-    }
 }

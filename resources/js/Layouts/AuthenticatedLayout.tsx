@@ -49,7 +49,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Home, Users2, Sparkles, MessageCircle, FileText,
     CreditCard, Settings, User as UserIcon,
-    Menu, X, LogOut, Bell, ChevronRight
+    Menu, X, LogOut, Bell, ChevronRight, TrendingUp,
+    Bot, BarChart3, Zap, Image, Phone, Activity
 } from 'lucide-react';
 import { useTranslation } from '@/i18n';
 
@@ -90,9 +91,10 @@ const Logo = ({ expanded = true }) => (
     </Link>
 );
 
-// Component 2: NavItem épuré et moderne
+// Component 2: NavItem épuré et moderne avec support des sous-menus
 const NavItem = ({ item, expanded }) => {
     const { t } = useTranslation();
+    const [isSubMenuOpen, setIsSubMenuOpen] = useState(item.current || false);
 
     const itemClasses = cn(
         "relative flex items-center rounded-xl transition-all duration-300 group",
@@ -108,6 +110,70 @@ const NavItem = ({ item, expanded }) => {
         "h-5 w-5"
     );
 
+    // Si l'item a des enfants et la sidebar est étendue
+    if (item.children && expanded) {
+        return (
+            <div className="space-y-1">
+                <motion.div
+                    whileHover={{ x: 4 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                >
+                    <button
+                        onClick={() => setIsSubMenuOpen(!isSubMenuOpen)}
+                        className={itemClasses}
+                        aria-expanded={isSubMenuOpen}
+                    >
+                        <item.icon className={iconClasses} aria-hidden="true" />
+                        <span className="whitespace-nowrap font-medium flex-1 text-left">{item.name}</span>
+                        <ChevronRight 
+                            className={cn(
+                                "h-4 w-4 transition-transform duration-200",
+                                isSubMenuOpen && "rotate-90",
+                                item.current ? "text-white" : "text-slate-400"
+                            )} 
+                        />
+                        {item.current && (
+                            <motion.div
+                                layoutId="activeIndicator"
+                                className="absolute right-2 h-1.5 w-1.5 rounded-full bg-white"
+                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                            />
+                        )}
+                    </button>
+                </motion.div>
+                
+                <AnimatePresence>
+                    {isSubMenuOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="ml-4 space-y-1 overflow-hidden"
+                        >
+                            {item.children.map((child) => (
+                                <Link
+                                    key={child.name}
+                                    href={child.href}
+                                    className={cn(
+                                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all duration-200",
+                                        child.current
+                                            ? "bg-gradient-to-r from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 text-indigo-700 dark:text-indigo-300 font-medium"
+                                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                                    )}
+                                >
+                                    <child.icon className="h-4 w-4" />
+                                    <span>{child.name}</span>
+                                </Link>
+                            ))}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+        );
+    }
+
+    // Item normal sans enfants
     return expanded ? (
         <motion.div
             whileHover={{ x: 4 }}
@@ -171,7 +237,7 @@ const UserMenu = ({ user }) => {
                 >
                     <Avatar className="h-8 w-8">
                         <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm">
-                            {user.name.charAt(0)}
+                            {user?.name?.charAt(0) || 'U'}
                         </AvatarFallback>
                     </Avatar>
                 </Button>
@@ -183,12 +249,12 @@ const UserMenu = ({ user }) => {
                 <div className="flex items-center p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg mb-2">
                     <Avatar className="h-10 w-10">
                         <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">
-                            {user.name.charAt(0)}
+                            {user?.name?.charAt(0) || 'U'}
                         </AvatarFallback>
                     </Avatar>
                     <div className="ml-3 flex flex-col">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{user.name}</p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white">{user?.name || 'Utilisateur'}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email || ''}</p>
                     </div>
                 </div>
                 <div className="space-y-1">
@@ -286,6 +352,23 @@ export default function AuthenticatedLayout({
         { name: t('navigation.clients'), href: route('clients.index'), icon: Users2, current: url.startsWith('/clients') },
         { name: t('navigation.campaigns'), href: route('campaigns.index'), icon: Sparkles, current: url.startsWith('/campaigns') },
         { name: t('navigation.templates'), href: route('templates.index'), icon: FileText, current: url.startsWith('/templates') },
+        { 
+            name: 'Marketing Digital', 
+            href: route('marketing.dashboard'), 
+            icon: TrendingUp, 
+            current: url.startsWith('/marketing'),
+            children: [
+                { name: 'Dashboard', href: route('marketing.dashboard'), icon: BarChart3, current: url === '/marketing/dashboard' },
+                { name: 'Assistant IA', href: route('marketing.ai.assistant'), icon: Bot, current: url.startsWith('/marketing/ai') },
+                { name: 'Clients Marketing', href: route('marketing.clients.index'), icon: Users2, current: url.startsWith('/marketing/clients') },
+                { name: 'Configuration Auto', href: route('marketing.config.automation'), icon: Settings, current: url.startsWith('/marketing/config') },
+                { name: 'Monitoring', href: route('marketing.monitoring.commands'), icon: Activity, current: url.startsWith('/marketing/monitoring') },
+                { name: 'Automatisations', href: route('marketing.automation.dashboard'), icon: Zap, current: url.startsWith('/marketing/automation') },
+                { name: 'Générateur Flyers', href: route('marketing.flyers.create'), icon: Image, current: url.startsWith('/marketing/flyers') },
+                { name: 'WhatsApp Business', href: route('marketing.whatsapp.dashboard'), icon: Phone, current: url.startsWith('/marketing/whatsapp') },
+                { name: 'Analytics', href: route('marketing.analytics.dashboard'), icon: BarChart3, current: url.startsWith('/marketing/analytics') },
+            ]
+        },
         { name: t('navigation.subscription'), href: route('subscription.index'), icon: CreditCard, current: url.startsWith('/subscription') },
         // { name: t('navigation.settings'), href: route('settings.index'), icon: Settings, current: url.startsWith('/settings') },
     ];
@@ -340,12 +423,12 @@ export default function AuthenticatedLayout({
                                 <div className="flex items-center space-x-2">
                                     <Avatar className="h-9 w-9">
                                         <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold">
-                                            {user.name.charAt(0)}
+                                            {user?.name?.charAt(0) || 'U'}
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="flex flex-col">
-                                        <p className="text-sm font-semibold truncate max-w-[130px] text-slate-900 dark:text-white">{user.name}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[130px]">{user.email}</p>
+                                        <p className="text-sm font-semibold truncate max-w-[130px] text-slate-900 dark:text-white">{user?.name || 'Utilisateur'}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[130px]">{user?.email || ''}</p>
                                     </div>
                                 </div>
                                 <Link
@@ -420,13 +503,13 @@ export default function AuthenticatedLayout({
                             )}>
                                 <Avatar className="h-8 w-8">
                                     <AvatarFallback className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold text-sm">
-                                        {user.name.charAt(0)}
+                                        {user?.name?.charAt(0) || 'U'}
                                     </AvatarFallback>
                                 </Avatar>
                                 {sidebarExpanded && (
                                     <div className="flex flex-col">
-                                        <p className="text-sm font-semibold truncate max-w-[120px] text-slate-900 dark:text-white">{user.name}</p>
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{user.email}</p>
+                                        <p className="text-sm font-semibold truncate max-w-[120px] text-slate-900 dark:text-white">{user?.name || 'Utilisateur'}</p>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{user?.email || ''}</p>
                                     </div>
                                 )}
                             </div>

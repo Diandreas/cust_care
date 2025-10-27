@@ -798,12 +798,14 @@ class ClientController extends Controller
 
         $validated = $request->validate([
             'notes' => 'nullable|string',
+            'interaction_type' => 'nullable|string|max:100',
         ]);
 
         $visit = new Visit([
             'client_id' => $client->id,
             'user_id' => Auth::id(),
             'visit_date' => now(), // Utiliser le bon champ visit_date
+            'interaction_type' => $validated['interaction_type'] ?? null,
             'notes' => $validated['notes'] ?? null,
         ]);
 

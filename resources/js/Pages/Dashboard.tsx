@@ -28,7 +28,7 @@ import {
   ArrowUpCircle, ArrowDownCircle, Users, MessageSquare, SendIcon, TrendingUp,
   Calendar, Clock, BarChart2, AlertTriangle, XCircle, ArrowUpRight, Activity,
   Download, RefreshCw, Filter, Plus, ChevronRight, MoreHorizontal, Settings,
-  Zap, Target, Globe
+  Zap, Target, Globe, Heart, Layout
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -39,6 +39,8 @@ import {
   DropdownMenuTrigger,
 } from "@/Components/ui/dropdown-menu";
 import { formatDistanceToNow } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
+import StatisticsSection from '@/Components/Dashboard/StatisticsSection';
 
 interface DashboardProps {
   auth: any;
@@ -120,6 +122,66 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
   const { t } = useTranslation();
   const [timeRange, setTimeRange] = useState('month');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCustomizer, setShowCustomizer] = useState(false);
+  const [visibleKPIs, setVisibleKPIs] = useState({
+    clients: true,
+    messages: true,
+    campaigns: true,
+    engagement: true
+  });
+
+  // HelloBoost theme colors
+  const helloBoostColors = {
+    primary: '#6366F1',    // Indigo HelloBoost
+    secondary: '#D946EF',  // Fuchsia HelloBoost
+    tertiary: '#EC4899',   // Pink HelloBoost
+    success: '#10B981',    // Emerald
+    warning: '#F59E0B',    // Amber
+    danger: '#EF4444',     // Red
+    neutral: '#6B7280',    // Gray
+    light: '#F8FAFC',      // Slate 50
+    dark: '#1E293B',       // Slate 800
+  };
+
+  // Données réelles de la BD
+  const kpis = [
+    {
+      key: 'clients',
+      title: 'Clients',
+      value: stats.total_clients || 0,
+      change: stats.client_stats?.growth_rate_formatted || '0%',
+      icon: Users,
+      color: helloBoostColors.primary
+    },
+    {
+      key: 'messages',
+      title: 'Messages',
+      value: stats.total_messages || 0,
+      change: stats.message_stats?.delivery_rate_formatted || '0%',
+      icon: MessageSquare,
+      color: helloBoostColors.success
+    },
+    {
+      key: 'campaigns',
+      title: 'Campagnes',
+      value: stats.total_campaigns || 0,
+      change: stats.campaign_stats?.success_rate_formatted || '0%',
+      icon: SendIcon,
+      color: helloBoostColors.secondary
+    },
+    {
+      key: 'engagement',
+      title: 'Engagement',
+      value: stats.trends?.engagement.rate_formatted || '0%',
+      change: `${stats.trends?.engagement.engaged_clients || 0}`,
+      icon: Heart,
+      color: helloBoostColors.tertiary
+    }
+  ];
+
+  const toggleKPI = (key: string) => {
+    setVisibleKPIs(prev => ({ ...prev, [key]: !prev[key as keyof typeof prev] }));
+  };
 
   // Date formatting utility
   const formatDate = (dateString: string): string => {
@@ -141,19 +203,6 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
     setTimeout(() => {
       setIsRefreshing(false);
     }, 1000);
-  };
-
-  // HelloBoost theme colors
-  const helloBoostColors = {
-    primary: '#6366F1',    // Indigo HelloBoost
-    secondary: '#D946EF',  // Fuchsia HelloBoost
-    tertiary: '#EC4899',   // Pink HelloBoost
-    success: '#10B981',    // Emerald
-    warning: '#F59E0B',    // Amber
-    danger: '#EF4444',     // Red
-    neutral: '#6B7280',    // Gray
-    light: '#F8FAFC',      // Slate 50
-    dark: '#1E293B',       // Slate 800
   };
 
   // Prepare chart data
@@ -198,6 +247,15 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
                 <SelectItem value="year">12 derniers mois</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCustomizer(!showCustomizer)}
+              className="border-gray-200 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700"
+            >
+              <Layout className="w-4 h-4 mr-2" />
+              {showCustomizer ? 'Masquer' : 'Personnaliser'}
+            </Button>
             <Button variant="outline" onClick={refreshData} disabled={isRefreshing} className="border-gray-200 bg-white shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700">
               <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Actualiser
@@ -242,133 +300,96 @@ export default function Dashboard({ auth, stats, recentMessages }: DashboardProp
           </div>
         )}
 
-        {/* Métriques principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Clients */}
-          <Card className="relative overflow-hidden border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 rounded-bl-full"></div>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="p-2 bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 rounded-lg">
-                  <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {stats.trends?.active_clients.rate_formatted || "0%"} actifs
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.total_clients || 0}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Clients totaux</p>
-                {stats.client_stats && (
-                  <div className="flex items-center text-sm">
-                    {stats.client_stats.growth_is_positive ? (
-                      <ArrowUpCircle className="mr-1 h-4 w-4 text-green-500" />
-                    ) : (
-                      <ArrowDownCircle className="mr-1 h-4 w-4 text-red-500" />
-                    )}
-                    <span className={stats.client_stats.growth_is_positive ? 'text-green-600' : 'text-red-600'}>
-                      {stats.client_stats.growth_rate_formatted}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Messages */}
-          <Card className="relative overflow-hidden border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-orange-500/10 to-orange-600/5 rounded-bl-full"></div>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                  <MessageSquare className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {stats.message_stats?.delivery_rate_formatted || "0%"} livrés
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.total_messages || 0}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Messages envoyés</p>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
-                    {stats.message_stats?.status_counts.sent || 0} envoyés
-                  </span>
-                  <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">
-                    {stats.message_stats?.status_counts.pending || 0} en attente
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Campagnes */}
-          <Card className="relative overflow-hidden border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-bl-full"></div>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <SendIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  {stats.campaign_stats?.success_rate_formatted || "0%"} succès
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.total_campaigns || 0}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Campagnes créées</p>
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">
-                    {stats.campaign_stats?.status_counts.draft || 0} brouillons
-                  </span>
-                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded">
-                    {stats.campaign_stats?.status_counts.sent || 0} envoyées
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Engagement */}
-          <Card className="relative overflow-hidden border-gray-200 dark:border-gray-700 hover:shadow-md transition-all hover:border-transparent hover:bg-gradient-to-r hover:from-indigo-500/5 hover:via-purple-500/5 hover:to-pink-500/5 dark:hover:from-indigo-900/30 dark:hover:via-purple-900/30 dark:hover:to-pink-900/30">
-            <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-bl-full"></div>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                  <Activity className="h-5 w-5 text-green-600 dark:text-green-400" />
-                </div>
-                <Badge variant="outline" className="text-xs">
-                  Ce mois
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-1">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {stats.trends?.engagement.rate_formatted || "0%"}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Taux d'engagement</p>
-                <div className="flex items-center text-sm">
-                  <span className="text-green-600">
-                    {stats.trends?.engagement.engaged_clients || 0} clients engagés
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Simple Header */}
+        <div className="flex items-center justify-between mb-8">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowCustomizer(!showCustomizer)}
+            className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-xl p-3 hover:bg-white/20 transition-all"
+            title="Customize Dashboard"
+          >
+            <Settings className="h-5 w-5" />
+          </Button>
         </div>
+
+        {/* Simple KPI Customizer */}
+        <AnimatePresence>
+          {showCustomizer && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-8 overflow-hidden"
+            >
+              <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/20 transition-all">
+                <div className="absolute inset-0 bg-gradient-to-r opacity-5 rounded-2xl"></div>
+                <div className="grid grid-cols-4 gap-4 relative z-10">
+                  {kpis.map((kpi) => {
+                    const Icon = kpi.icon;
+                    return (
+                      <motion.button
+                        key={kpi.key}
+                        whileHover={{ scale: 1.1 }}
+                        onClick={() => toggleKPI(kpi.key)}
+                        className={`p-3 rounded-xl transition-all ${visibleKPIs[kpi.key as keyof typeof visibleKPIs]
+                          ? 'backdrop-blur-xl bg-white/20 border border-white/30'
+                          : 'bg-white/5 border border-white/10'
+                          }`}
+                        title={kpi.title}
+                      >
+                        <Icon className="h-6 w-6 mx-auto" style={{ color: kpi.color }} />
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Liquid Glass KPI Cards - Icon Only */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <AnimatePresence>
+            {kpis
+              .filter(kpi => visibleKPIs[kpi.key as keyof typeof visibleKPIs])
+              .map((kpi, index) => {
+                const Icon = kpi.icon;
+                return (
+                  <motion.div
+                    key={kpi.key}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ scale: 1.05, y: -10 }}
+                    className="backdrop-blur-xl bg-gradient-to-br from-white/20 via-white/10 to-white/5 border border-white/20 rounded-2xl p-8 group cursor-pointer hover:shadow-lg transition-all duration-300"
+                    style={{ animationDelay: `${index * 0.5}s` }}
+                    title={`${kpi.title}: ${kpi.value} (${kpi.change})`}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r opacity-10 rounded-2xl group-hover:opacity-20 transition-opacity"></div>
+
+                    <div className="relative z-10 text-center">
+                      <div
+                        className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center backdrop-blur-sm transition-all duration-300 group-hover:scale-110 group-hover:rotate-12"
+                        style={{ backgroundColor: `${kpi.color}20` }}
+                      >
+                        <Icon className="w-8 h-8" style={{ color: kpi.color }} />
+                      </div>
+
+                      <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1 group-hover:scale-110 transition-transform">
+                        {kpi.value}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })
+            }
+          </AnimatePresence>
+        </div>
+
+        {/* Section Statistiques */}
+        <StatisticsSection timeRange={timeRange} />
 
         {/* Graphiques principaux */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

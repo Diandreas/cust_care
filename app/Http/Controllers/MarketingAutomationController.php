@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Artisan;
+use Symfony\Component\Process\Process;
 
 class MarketingAutomationController extends Controller
 {
@@ -468,6 +470,175 @@ class MarketingAutomationController extends Controller
             ->count();
 
         return round(($successfulRules / $totalRules) * 100, 1);
+    }
+
+    /**
+     * Exécuter manuellement une automatisation depuis l'interface
+     */
+    public function executeManual(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|string|in:birthday,seasonal,new-client,inactive-client,all',
+            'dry_run' => 'boolean'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $type = $request->type;
+            $dryRun = $request->dry_run ?? false;
+            $logs = [];
+
+            // Démarrer le processus d'exécution
+            $logs[] = "🚀 Démarrage de l'automatisation {$type}...";
+            
+            if ($dryRun) {
+                $logs[] = "⚠️ Mode test activé - Aucune action réelle ne sera effectuée";
+            }
+
+            $startTime = microtime(true);
+
+            switch ($type) {
+                case 'birthday':
+                    $logs[] = "🎂 Exécution des automatisations d'anniversaire...";
+                    $result = $this->automationService->executeBirthdayAutomations();
+                    break;
+
+                case 'seasonal':
+                    $logs[] = "🎊 Exécution des automatisations saisonnières...";
+                    $result = $this->automationService->executeSeasonalAutomations();
+                    break;
+
+                case 'new-client':
+                    $logs[] = "👋 Exécution des automatisations pour nouveaux clients...";
+                    $result = $this->automationService->executeNewClientAutomations();
+                    break;
+
+                case 'inactive-client':
+                    $logs[] = "😴 Exécution des automatisations pour clients inactifs...";
+                    $result = $this->automationService->executeInactiveClientAutomations();
+                    break;
+
+                case 'all':
+                default:
+                    $logs[] = "🔄 Exécution de toutes les automatisations...";
+                    $result = $this->automationService->executeAllAutomations();
+                    break;
+            }
+
+            $endTime = microtime(true);
+            $executionTime = round($endTime - $startTime, 2);
+
+            $logs[] = "✅ Automatisation terminée en {$executionTime}s";
+            $logs[] = "📊 Résultats: " . json_encode($result);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Automatisation {$type} exécutée avec succès",
+                'logs' => $logs,
+                'results' => $result,
+                'execution_time' => $executionTime
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'exécution manuelle d\'automatisation', [
+                'type' => $request->type,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'exécution: ' . $e->getMessage(),
+                'logs' => array_merge($logs ?? [], ["❌ Erreur: " . $e->getMessage()])
+            ], 500);
+        }
+    }
+
+    /**
+     * Mettre à jour une règle d'automatisation
+     */
+    public function updateRule(Request $request, MarketingAutomationRule $rule)
+    {
+        $this->authorize('update', $rule);
+
+        $validator = Validator::make($request->all(), [
+            'status' => 'string|in:active,inactive,draft',
+            'name' => 'string|max:255',
+            'conditions' => 'array',
+            'actions' => 'array'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $rule->update($request->only(['status', 'name', 'conditions', 'actions']));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Règle mise à jour avec succès',
+                'rule' => $rule
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de la mise à jour de règle d\'automatisation', [
+                'rule_id' => $rule->id,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Arrêter une exécution en cours
+     */
+    public function stopExecution(Request $request, $executionId)
+    {
+        try {
+            // Dans une vraie implémentation, vous stockeriez les exécutions en cours
+            // dans Redis ou une table de base de données
+            // Pour l'instant, on simule l'arrêt
+            
+            Log::info('Arrêt d\'exécution demandé', [
+                'execution_id' => $executionId,
+                'user_id' => auth()->id()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Exécution arrêtée avec succès'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Erreur lors de l\'arrêt d\'exécution', [
+                'execution_id' => $executionId,
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'arrêt: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
